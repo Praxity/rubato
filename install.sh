@@ -132,6 +132,7 @@ RECOVERED=
 recover_activation
 # Recovery already fulfils rollback; applying it again would skip a certified pack.
 if [ "$ACTION" = rollback ] && [ "$RECOVERED" = yes ]; then
+	[ -f "$ROOT/active" ] || die 'No active pack after recovery; rerun install to activate a pack'
   printf 'Recovered active pack: %s. No additional rollback applied.\n' "$(sed -n '1p' "$ROOT/active" 2>/dev/null || printf none)"
   exit 0
 fi
