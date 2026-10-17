@@ -90,3 +90,19 @@ for (const boundary of ['.activation-pending', 'active']) for (const prior of [f
  assert.equal(readFileSync(join(f.toolkit,'active'),'utf8'),`${f.pack.version}\n${prior?'0.1.0':''}\n`);
  assert.equal(existsSync(join(f.toolkit,'.activation-pending')),false);
 });
+
+test('rollback after interrupted first activation refuses without an active pack', { skip: process.platform === 'win32' }, t => {
+ const f = installation(t, { tools: ['studio'] });
+ const runtime = join(f.root, 'fake node/bin/node'), marker = join(f.root, 'killed');
+ writeFileSync(runtime, readFileSync(runtime, 'utf8').replace("echo 'fixture doctor: ok'; exit 0", `if [ ! -e ${quote(marker)} ]; then touch ${quote(marker)}; kill -KILL "$(cat ${quote(join(f.toolkit, '.install-lock/pid'))})"; fi; echo 'fixture doctor: ok'; exit 0`));
+ f.pack.runtimes.node.archives['darwin-arm64'] = archive(join(f.root, 'fake node'), join(f.root, 'kill-node.tar.gz'));
+ f.save();
+ assert.notEqual(f.install().status, 0);
+ assert.equal(existsSync(join(f.toolkit, '.activation-pending')), true);
+ const result = f.action('rollback');
+ assert.notEqual(result.status, 0);
+ assert.match(result.stderr, /No active pack after recovery; rerun install/);
+ for (const path of ['active', '.activation-pending', '.launcher-sha256']) assert.equal(existsSync(join(f.toolkit, path)), false);
+ assert.equal(existsSync(join(f.home, '.praxity/bin/praxity')), false);
+ assert.equal(existsSync(join(f.toolkit, '0.1.0')), true);
+});
