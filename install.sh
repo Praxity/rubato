@@ -101,9 +101,14 @@ recover_activation() {
   ledger_assert "$ROOT/.activation-pending"
   RECOVERY_CURRENT=$(sed -n '1p' "$ROOT/.activation-pending")
   RECOVERY_PREVIOUS=$(sed -n '2p' "$ROOT/.activation-pending")
+  RECOVERY_ATTEMPTED=$(sed -n '3p' "$ROOT/.activation-pending")
   if [ -n "$RECOVERY_CURRENT" ]; then
     activate "$RECOVERY_CURRENT" "$RECOVERY_PREVIOUS"
-    printf 'Activation failed; rolled back to pack %s. Resolve the doctor error and rerun.\n' "$RECOVERY_CURRENT" >&2
+    if [ "$RECOVERY_CURRENT" = "$RECOVERY_ATTEMPTED" ]; then
+      printf 'Pack recertification failed; pack %s remains active. Resolve the doctor error and rerun.\n' "$RECOVERY_CURRENT" >&2
+    else
+      printf 'Activation failed; rolled back to pack %s. Resolve the doctor error and rerun.\n' "$RECOVERY_CURRENT" >&2
+    fi
   else
     owned_remove_tree "$ROOT/active"
     owned_remove_tree "$BIN/praxity"
@@ -122,7 +127,14 @@ done
 WORK=$(mktemp -u "$ROOT/.metadata.XXXXXX")
 owned_mkdir "$WORK"
 # Recover even after an uncatchable signal before accepting another action.
+RECOVERED=
+[ ! -f "$ROOT/.activation-pending" ] || RECOVERED=yes
 recover_activation
+# Recovery already fulfils rollback; applying it again would skip a certified pack.
+if [ "$ACTION" = rollback ] && [ "$RECOVERED" = yes ]; then
+  printf 'Recovered active pack: %s. No additional rollback applied.\n' "$(sed -n '1p' "$ROOT/active" 2>/dev/null || printf none)"
+  exit 0
+fi
 if [ -f "$ROOT/active" ]; then
   ledger_assert "$ROOT/active"
   ACTIVE_VERSION=$(sed -n '1p' "$ROOT/active")
@@ -383,10 +395,9 @@ if [ -n "$CURRENT" ] && [ "$CURRENT" != "$VERSION" ]; then
 fi
 ROLLBACK_CURRENT=$CURRENT
 ROLLBACK_PREVIOUS=$OLD_PREVIOUS
-# A failed recertification must not point back at the failing active version.
-if [ "$CURRENT" = "$VERSION" ]; then ROLLBACK_CURRENT=$OLD_PREVIOUS; ROLLBACK_PREVIOUS=; fi
+# Recertification restores the existing pointers just as a new install does.
 PENDING=$(new_temp)
-capture "$PENDING" printf '%s\n%s\n' "$ROLLBACK_CURRENT" "$ROLLBACK_PREVIOUS"
+capture "$PENDING" printf '%s\n%s\n%s\n' "$ROLLBACK_CURRENT" "$ROLLBACK_PREVIOUS" "$VERSION"
 owned_publish "$PENDING" "$ROOT/.activation-pending"
 activate "$VERSION" "$PREVIOUS"
 LEDGER_NODE="$ROOT/$VERSION/runtimes/node/$NODE_ENTRY"
