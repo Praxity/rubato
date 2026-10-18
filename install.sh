@@ -105,15 +105,15 @@ recover_activation() {
   if [ -n "$RECOVERY_CURRENT" ]; then
     activate "$RECOVERY_CURRENT" "$RECOVERY_PREVIOUS"
     if [ "$RECOVERY_CURRENT" = "$RECOVERY_ATTEMPTED" ]; then
-      printf 'Pack recertification failed; pack %s remains active. Resolve the doctor error and rerun.\n' "$RECOVERY_CURRENT" >&2
+      printf 'Pack recertification failed; pack %s remains active. Resolve the version or doctor error and rerun.\n' "$RECOVERY_CURRENT" >&2
     else
-      printf 'Activation failed; rolled back to pack %s. Resolve the doctor error and rerun.\n' "$RECOVERY_CURRENT" >&2
+      printf 'Activation failed; rolled back to pack %s. Resolve the version or doctor error and rerun.\n' "$RECOVERY_CURRENT" >&2
     fi
   else
     owned_remove_tree "$ROOT/active"
     owned_remove_tree "$BIN/praxity"
     owned_remove_tree "$ROOT/.launcher-sha256"
-    printf '%s\n' 'Activation failed; rolled back to no active pack. Resolve the doctor error and rerun.' >&2
+    printf '%s\n' 'Activation failed; rolled back to no active pack. Resolve the version or doctor error and rerun.' >&2
   fi
   owned_remove_tree "$ROOT/.activation-pending"
 }
@@ -404,9 +404,9 @@ activate "$VERSION" "$PREVIOUS"
 LEDGER_NODE="$ROOT/$VERSION/runtimes/node/$NODE_ENTRY"
 owned_remove_tree "$BOOTSTRAP"
 # Certify the new activation before refreshing any host's skills.
-if ! "$BIN/praxity" doctor; then
+if ! "$BIN/praxity" version || ! "$BIN/praxity" doctor; then
   recover_activation
-  die 'Activation doctor failed. Resolve the reported error and rerun.'
+  die 'Activation version or doctor failed. Resolve the reported error and rerun.'
 fi
 owned_remove_tree "$ROOT/.activation-pending"
 # A new pack can add or change skills. Refresh only host adapters the user

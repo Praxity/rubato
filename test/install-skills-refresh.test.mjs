@@ -67,7 +67,7 @@ test('reactivating a pack whose CLI predates skills refresh skips the refresh qu
   const setup = installation(t);
   passed(setup.install());
   // Packs before 0.1.0 answer skills refresh with their usage line.
-  replaceInstalled(setup, '0.1.0', 'src/cli.mjs', "console.error('Usage: praxity skills install|uninstall'); process.exit(1);\n");
+  replaceInstalled(setup, '0.1.0', 'src/cli.mjs', "if (process.argv[2] === 'version') { console.log('{}'); process.exit(0); }\nconsole.error('Usage: praxity skills install|uninstall'); process.exit(1);\n");
   const rerun = setup.install(); passed(rerun);
   assert.doesNotMatch(rerun.stderr, /Usage|not refreshed/);
   assert.match(rerun.stdout, /Installed pack 0\.1\.0/);
