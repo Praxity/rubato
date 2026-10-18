@@ -113,6 +113,36 @@ test('thin canvas archives publish without the retired editor HTML shell', async
   assert.deepEqual(calls.map(call => call[0]), ['check', 'draft', 'upload', 'verify', 'activate', 'readback']);
 });
 
+test('thin canvas digest permits surrounding whitespace', async t => {
+  const { options, calls, release } = candidate(t, payload => {
+    thinCanvas(payload);
+    payload.files['editor/canvas.sha256'] = ` \r\n${hash(payload.files['editor/canvas.js'])}\t\n`;
+  });
+  await publishStudioPack({ ...options, dryRun: false }, release);
+  assert.deepEqual(calls.map(call => call[0]), ['check', 'draft', 'upload', 'verify', 'activate', 'readback']);
+});
+
+for (const [name, sidecar, message] of [
+  ['mismatched digest', '0'.repeat(64), 'Canvas digest mismatch'],
+  ['digest of another script', hash('another canvas'), 'Canvas digest mismatch'],
+  ['malformed digest', 'not a digest', 'Invalid canvas digest'],
+  ['empty digest', '', 'Invalid canvas digest'],
+  ['short digest', 'a'.repeat(63), 'Invalid canvas digest'],
+  ['long digest', 'a'.repeat(65), 'Invalid canvas digest'],
+  ['uppercase digest', 'A'.repeat(64), 'Invalid canvas digest'],
+]) {
+  for (const invalidArch of ['arm64', 'x64']) test(`thin canvas ${name} on ${invalidArch} refuses before publication`, async t => {
+    const { options, calls, release } = candidate(t, payload => {
+      thinCanvas(payload);
+      // candidate() hashes the changed sidecar into a consistent inventory.
+      if (payload.arch === invalidArch) payload.files['editor/canvas.sha256'] = sidecar;
+    });
+    await assert.rejects(publishStudioPack({ ...options, dryRun: false }, release), { message });
+    assert.deepEqual(calls, []);
+    assert.equal(existsSync(options.outputDir), false);
+  });
+}
+
 for (const missing of ['editor/canvas.js', 'editor/canvas.sha256']) {
   for (const legacyShell of [false, true]) test(`thin canvas missing ${missing} refuses, legacy shell ${legacyShell}`, async t => {
     const { options, calls, release } = candidate(t, payload => {

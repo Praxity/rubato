@@ -60,6 +60,11 @@ export function verifyStudioArchive(file, arch, studioSha, expectedDigest, studi
   }
   const missing = [...new Set(required)].filter(name => !expected.has(name));
   requireValue(missing.length === 0, `Missing legal, runtime or package payload: ${missing.join(', ')}`);
+  if (expected.has('editor/canvas.js')) {
+    const canvasDigest = tar(['-xOf', file, 'studio-cli/editor/canvas.sha256']).toString().trim();
+    requireValue(/^[a-f0-9]{64}$/.test(canvasDigest), 'Invalid canvas digest');
+    requireValue(canvasDigest === expected.get('editor/canvas.js'), 'Canvas digest mismatch');
+  }
   // Upstream paths are allowed only in these vendored families, with third-party
   // provenance in the verified inventory. Scan all Praxity payload and inventory.
   const upstream = /^(?:typst|node_modules|licenses)\/|^export-assets\/image-codecs\//;
