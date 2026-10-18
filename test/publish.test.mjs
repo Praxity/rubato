@@ -100,6 +100,73 @@ test('publication creates a new draft, uploads an allowlist, then activates last
   assert.deepEqual(calls[2][1].sort(), ['SHA256SUMS', 'pack.json', 'praxity-cli-0.3.0-macos-arm64.tar.gz', 'praxity-cli-0.3.0-macos-x64.tar.gz', 'rubato-0.1.2.tar.gz']);
 });
 
+function thinCanvas({ files }) {
+  delete files['editor/index.html'];
+  files['editor/canvas.js'] = 'globalThis.PraxityCanvas = {};';
+  files['editor/canvas.sha256'] = `${hash(files['editor/canvas.js'])}\n`;
+}
+
+test('thin canvas archives publish without the retired editor HTML shell', async t => {
+  const { options, calls, release } = candidate(t, thinCanvas);
+  const pack = await publishStudioPack({ ...options, dryRun: false }, release);
+  assert.equal(pack.tools.find(tool => tool.id === 'studio').sourceRevision, sha);
+  assert.deepEqual(calls.map(call => call[0]), ['check', 'draft', 'upload', 'verify', 'activate', 'readback']);
+});
+
+test('thin canvas digest permits surrounding whitespace', async t => {
+  const { options, calls, release } = candidate(t, payload => {
+    thinCanvas(payload);
+    payload.files['editor/canvas.sha256'] = ` \r\n${hash(payload.files['editor/canvas.js'])}\t\n`;
+  });
+  await publishStudioPack({ ...options, dryRun: false }, release);
+  assert.deepEqual(calls.map(call => call[0]), ['check', 'draft', 'upload', 'verify', 'activate', 'readback']);
+});
+
+for (const [name, sidecar, message] of [
+  ['mismatched digest', '0'.repeat(64), 'Canvas digest mismatch'],
+  ['digest of another script', hash('another canvas'), 'Canvas digest mismatch'],
+  ['malformed digest', 'not a digest', 'Invalid canvas digest'],
+  ['empty digest', '', 'Invalid canvas digest'],
+  ['short digest', 'a'.repeat(63), 'Invalid canvas digest'],
+  ['long digest', 'a'.repeat(65), 'Invalid canvas digest'],
+  ['uppercase digest', 'A'.repeat(64), 'Invalid canvas digest'],
+]) {
+  for (const invalidArch of ['arm64', 'x64']) test(`thin canvas ${name} on ${invalidArch} refuses before publication`, async t => {
+    const { options, calls, release } = candidate(t, payload => {
+      thinCanvas(payload);
+      // candidate() hashes the changed sidecar into a consistent inventory.
+      if (payload.arch === invalidArch) payload.files['editor/canvas.sha256'] = sidecar;
+    });
+    await assert.rejects(publishStudioPack({ ...options, dryRun: false }, release), { message });
+    assert.deepEqual(calls, []);
+    assert.equal(existsSync(options.outputDir), false);
+  });
+}
+
+for (const missing of ['editor/canvas.js', 'editor/canvas.sha256']) {
+  for (const legacyShell of [false, true]) test(`thin canvas missing ${missing} refuses, legacy shell ${legacyShell}`, async t => {
+    const { options, calls, release } = candidate(t, payload => {
+      thinCanvas(payload);
+      delete payload.files[missing];
+      if (legacyShell) payload.files['editor/index.html'] = '<html></html>';
+    });
+    await assert.rejects(publishStudioPack({ ...options, dryRun: false }, release), {
+      message: `Missing legal, runtime or package payload: ${missing}`,
+    });
+    assert.deepEqual(calls, []);
+    assert.equal(existsSync(options.outputDir), false);
+  });
+}
+
+test('missing browser payload refuses before publication', async t => {
+  const { options, calls, release } = candidate(t, ({ files }) => { delete files['editor/index.html']; });
+  await assert.rejects(publishStudioPack({ ...options, dryRun: false }, release), {
+    message: 'Missing legal, runtime or package payload: editor/index.html',
+  });
+  assert.deepEqual(calls, []);
+  assert.equal(existsSync(options.outputDir), false);
+});
+
 for (const [name, mutate] of [
   ['wrong Studio SHA', ({ inventory }) => { inventory.sourceRevision = 'f'.repeat(40); }],
   ['dirty build', ({ inventory }) => { inventory.sourceTreeDirty = true; }],
