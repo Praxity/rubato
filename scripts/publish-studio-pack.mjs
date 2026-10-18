@@ -49,13 +49,17 @@ export function verifyStudioArchive(file, arch, studioSha, expectedDigest, studi
     if (member.name === 'inventory.json') continue;
     requireValue(expected.get(member.name) === member.hash, 'Payload hash mismatch');
   }
-  const required = [studio.entry, studio.notices, 'package.json', 'editor/index.html', 'typst/typst', 'legal/LICENSE', 'legal/LICENSING.md'];
+  // Thin canvas replaced the HTML shell. A partial canvas cannot fall back to it.
+  const browser = ['editor/canvas.js', 'editor/canvas.sha256'];
+  const required = [studio.entry, studio.notices, 'package.json', 'typst/typst', 'legal/LICENSE', 'legal/LICENSING.md',
+    ...(browser.some(name => expected.has(name)) ? browser : ['editor/index.html'])];
   if (studio.skillPath) required.push(`${studio.skillPath}/SKILL.md`);
   for (const dependency of inventory.dependencies) {
     requireValue(dependency.notices.length > 0, 'Missing dependency notices');
     required.push(...dependency.notices);
   }
-  requireValue(required.every(name => expected.has(name)), 'Missing legal, runtime or package payload');
+  const missing = [...new Set(required)].filter(name => !expected.has(name));
+  requireValue(missing.length === 0, `Missing legal, runtime or package payload: ${missing.join(', ')}`);
   // Upstream paths are allowed only in these vendored families, with third-party
   // provenance in the verified inventory. Scan all Praxity payload and inventory.
   const upstream = /^(?:typst|node_modules|licenses)\/|^export-assets\/image-codecs\//;
