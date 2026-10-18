@@ -22,6 +22,11 @@ for (const update of [false, true]) for (const failing of ['version', 'doctor'])
     assert.match(result.stderr, /Activation.*failed/);
     assert.equal(existsSync(join(setup.toolkit, 'active')), update);
     if (update) assert.equal(readFileSync(join(setup.toolkit, 'active'), 'utf8'), '0.1.0\n\n');
+    if (!update) {
+      assert.equal(existsSync(join(setup.home, '.praxity/bin/praxity')), false);
+      assert.equal(existsSync(join(setup.toolkit, '.launcher-sha256')), false);
+    }
+    assert.match(result.stderr, /Resolve the version or doctor error and rerun/);
     assert.equal(existsSync(join(setup.toolkit, '.activation-pending')), false);
     assert.deepEqual(readFileSync(calls, 'utf8').trim().split('\n'), failing === 'version' ? ['version'] : ['version', 'doctor']);
   });
