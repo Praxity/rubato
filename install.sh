@@ -404,9 +404,9 @@ activate "$VERSION" "$PREVIOUS"
 LEDGER_NODE="$ROOT/$VERSION/runtimes/node/$NODE_ENTRY"
 owned_remove_tree "$BOOTSTRAP"
 # Certify the new activation before refreshing any host's skills.
-if ! "$BIN/praxity" doctor; then
+if ! "$BIN/praxity" version || ! "$BIN/praxity" doctor; then
   recover_activation
-  die 'Activation doctor failed. Resolve the reported error and rerun.'
+  die 'Activation version or doctor failed. Resolve the reported error and rerun.'
 fi
 owned_remove_tree "$ROOT/.activation-pending"
 # A new pack can add or change skills. Refresh only host adapters the user
