@@ -94,7 +94,7 @@ Every solver must be a model at least as strong as the writer. A weaker solver m
    praxity inspect <course-dir> --schema 1 > <inspect.json>
    ```
 
-   Pass this JSON to Trace, never the course folder. Keep `<inspect.json>` and every report, bundle and review folder outside the course folder, so a solver can never reach the source or keys. Give each pass its own new report folder `<dir>`; never write over an earlier pass. Keep `<inspect.json>` outside the bundle's parent folder too. Count the course's scored single-answer choices: every `::: choice` in the lessons that `course.yaml` lists, with parentheses markers and exactly one `(x)`, under its effective scoring settings, including group and deck scoring. Leave out multiple-selection choices and unscored polls. An old projection without keys must not produce an empty-bank pass.
+   Pass this JSON to Trace, never the course folder. Keep `<inspect.json>` and every report, bundle and review folder outside the course folder, so a solver can never reach the source or keys. Give each pass its own new report folder `<dir>`; never write over an earlier pass. Keep `<inspect.json>` outside the bundle's parent folder too. Count the course's scored single-answer choices: every `::: choice` in the lessons that `course.yaml` lists, with parentheses markers and exactly one `(x)`, under its effective scoring settings, including group and deck scoring. Leave out multiple-selection choices and unscored polls. An old projection without keys must not produce an empty-bank pass. Masked scoring needs an authored English declaration, `locale: en` in `course.yaml` or `lang: en` in each lesson, and the pinned Studio, whose inspect reports where each lesson's language comes from. Without both, every bank's masked result is `language-unconfirmed` and every pass stops.
 
 1. Run the scripted report:
 
@@ -110,7 +110,7 @@ Every solver must be a model at least as strong as the writer. A weaker solver m
    praxity trace prepare item-cues <inspect.json> --out <bundle>
    ```
 
-   Use a new, empty bundle folder for every pass. Trace also creates the review folder `<review>`, named `<bundle>-review/`, beside it, for everything written after solving. Its `operator.json` holds the seed and option order, and its `prompt.md` is for you, the operator. Keep that folder away from every solver. If `prepare item-cues` fails with an unknown view, see If item-cues is unavailable; fix any other error rather than bypassing Trace. Spawn a fresh subagent for each probe, `masked/`, `choices-only/` and `cover-the-options/`, that has never seen the course source or the key. When the bundle manifest's `masked` status has `applies: false`, its folder holds no items: run no masked solver, and copy that status into `<review>/answer.json` as `<review>/prompt.md` shows. Copy only its probe folder into its own workspace, start it there and give it nothing else. Combine their untouched answers in `<review>/answer.json` as `<review>/prompt.md` specifies, copying the identity fields from the bundle manifest. Each answer echoes its `bundleId` and `probe` unchanged. Never write combined answers, reports or judge notes inside the bundle.
+   Use a new, empty bundle folder for every pass. Trace also creates the review folder `<review>`, named `<bundle>-review/`, beside it, for everything written after solving. Its `operator.json` holds the seed and option order, and its `prompt.md` is for you, the operator. Keep that folder away from every solver. If `prepare item-cues` fails with an unknown view, see If item-cues is unavailable; fix any other error rather than bypassing Trace. Spawn a fresh subagent for each probe, `masked/`, `choices-only/` and `cover-the-options/`, that has never seen the course source or the key. Run the masked solver whenever `masked/items.json` is non-empty, even when some banks or the pooled course are unavailable, and combine its answer with `applies: true`. Copy the unavailable `masked` status unchanged only when that file is empty. `<review>/prompt.md` shows both shapes. Copy only its probe folder into its own workspace, start it there and give it nothing else. Combine their untouched answers in `<review>/answer.json` as `<review>/prompt.md` specifies, copying the identity fields from the bundle manifest. Each answer echoes its `bundleId` and `probe` unchanged. Never write combined answers, reports or judge notes inside the bundle.
 
 3. Run the report once to show the cover-the-options rows for judgement:
 
@@ -148,7 +148,7 @@ Every solver must be a model at least as strong as the writer. A weaker solver m
 
    Gate the masked probe's pooled course row on both tails at 0.025 each: `itemCues.course.masked.p` and `.pLow` must both exceed 0.025. For the m banks with at least 12 items, each tail must exceed `0.05 / (2 * m)`. Report smaller banks without gating them; read them through the pooled course row. These adjusted thresholds limit false alarms across multiple banks and both directions. Use Trace's first HTML row, or `itemCues.course` in JSON, which has the same fields as a bank row. Neither a cover-the-options result nor a plain choices-only score is a guessing test. A flat percentage is noise on small banks.
 
-   The gate can only pass on a scored masked result. Every bank and the course row need `masked.applies` set to `true` and `masked.total` equal to their `count`, whatever their size. Any other status, whatever its `reason`, leaves the probe unscored. On the course row and on every bank with at least 12 items, `tooFewItems` and `tooFewItemsLow` must both be `false`. Either flag means that tail can't reach significance with so few items, so it carries no evidence. A tail at or below its threshold is a fail whatever the other tail's flag says.
+   The gate can only pass on a scored masked result. Every bank and the course row need `masked.applies` set to `true`, `masked.status` set to `"scored"` and `masked.total` equal to their `count`, whatever their size. Any other status, whatever its `reason`, leaves the probe unscored; `"not run"` means no masked answers were combined. On the course row and on every bank with at least 12 items, each tail must be able to fail at that row's own threshold: `pMin`, the upper tail with every answer right, and `pLowMin`, the lower tail with every answer wrong, must both be at or below it. Otherwise that tail carries no evidence at this size. Trace's `tooFewItems` and `tooFewItemsLow` flags use 0.05, which is too loose for these thresholds. A tail at or below its threshold is a fail whatever the other tail's power.
 
    This executable predicate checks both statistical tails against Trace's JSON. It returns `"pass"`, `"fail"` or `"stop"`. It stops on missing rows, item counts that aren't positive integers, a course total that differs from the sum of its banks, an unscored masked result and a population too small to test. It does not replace the independent reviews or coverage reconciliation.
 
@@ -160,22 +160,29 @@ Every solver must be a model at least as strong as the writer. A weaker solver m
      if (!Array.isArray(banks) || banks.length === 0 || ![course, ...banks].every(counted)) return 'stop';
      if (course.count !== banks.reduce((sum, bank) => sum + bank.count, 0)) return 'stop';
      // Any status but applies: true, including a reason added later, leaves the probe unscored.
-     if (![course, ...banks].every(row => row.masked?.applies === true && row.masked.total === row.count)) return 'stop';
+     if (![course, ...banks].every(row => row.masked?.applies === true && row.masked.status === 'scored' && row.masked.total === row.count)) return 'stop';
      const large = banks.filter(bank => bank.count >= 12);
      const gated = [[course, 0.025], ...large.map(bank => [bank, 0.05 / (2 * large.length)])];
      const tail = p => typeof p === 'number' && p >= 0 && p <= 1;
      if (!gated.every(([row]) => tail(row.masked.p) && tail(row.masked.pLow))) return 'stop';
      // A tail at or below its threshold is evidence, whatever the other tail's power.
      if (gated.some(([row, limit]) => row.masked.p <= limit || row.masked.pLow <= limit)) return 'fail';
-     // ponytail: a four-option lower tail can't fail while 0.75^n exceeds its threshold: about 13 items at the course's 0.025,
-     // about 19 per bank when five banks share 0.005. Needs Trace to report attainable minima or power flags at these thresholds.
-     if (!gated.every(([row]) => row.masked.tooFewItems === false && row.masked.tooFewItemsLow === false)) return 'stop';
+     // Each tail must be able to fail at this row's own threshold; Trace's 0.05 flags are too loose for it.
+     if (!gated.every(([row]) => tail(row.masked.pMin) && tail(row.masked.pLowMin))) return 'stop';
+     if (!gated.every(([row, limit]) => row.masked.pMin <= limit && row.masked.pLowMin <= limit)) return 'stop';
      return 'pass';
    }
    // Evaluate guessingGate(report.itemCues) on this pass's report.json. Plain choicesOnly is never read.
    ```
 
-   On `"fail"`, rewrite as above. On `"stop"`, the gate can't pass this pass. Finish the other probes, the key check, the judgements and their rewrites within the pass cap. Then report all of their results, mark the bank unverified, give the stop reason and ask the person how to proceed. The reason is `masked.reason` and `masked.detail` when `applies` isn't `true`; `"language-unconfirmed"`, for example, means Trace can't confirm the course language from the inspect JSON. Otherwise name the rows with `tooFewItems` or `tooFewItemsLow`, or the rows and fields that are missing. Don't compute tails by hand, don't mask items by hand, and don't treat the plain choices-only score as a substitute.
+   On `"fail"`, rewrite as above. On `"stop"`, the gate can't pass this pass. Finish the other probes, the key check, the judgements and their rewrites within the pass cap. Then report all of their results, mark the bank unverified, give the stop reason and ask the person how to proceed. Give the reason and its remedy:
+
+   - When `applies` isn't `true`, give `masked.reason` and `masked.detail`. Trace reports them per bank: a scored bank's masked hits still drive the rewrites above, but a blocked bank keeps the pooled course row unavailable, so the gate stops. `"language-unconfirmed"`: the inspect JSON has no authored English declaration; add `locale: en` to `course.yaml` or `lang: en` per lesson, use the pinned Studio, then re-run inspect. `"language"`: a lesson declares another language, or the item text shows listed non-English markers; fix a wrong declaration, otherwise the bank stays unverified. `"mask-space"`: an item can't be masked safely; reword or remove it. For any other reason, give Trace's detail as it stands.
+   - When `status` is `"not run"`, the masked answers weren't combined; run the masked solver.
+   - When a gated row can't reach its threshold, give that row's `pMin` and `pLowMin` against its limit.
+   - Otherwise name the rows and fields that are missing.
+
+   Don't compute tails by hand, don't mask items by hand, and don't treat the plain choices-only score as a substitute.
 
    A masked score well below chance can signal an anti-key cue. Use the same adjusted thresholds in both directions, and fix inverse cues as well as forward cues. Passing these tests is not proof that every item is free of cues. Record counts, option counts, correct guesses, chance expectations, both tails, solver models, independent judgements and all flag justifications.
 

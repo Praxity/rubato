@@ -144,7 +144,11 @@ function assertProbeRoles(skill) {
   assert.match(attack, /^- Cover-the-options: /m);
   assert.match(attack, /^- Explanations, step 4 below: /m);
   assert.match(attack, /^   - The masked gate below returns `"pass"`\./m);
-  assert.match(attack, /`masked` status has `applies: false`, its folder holds no items: run no masked solver/);
+  // A partly blocked course still has runnable banks, so the solver runs on any non-empty masked file.
+  assert.match(attack, /Run the masked solver whenever `masked\/items\.json` is non-empty/);
+  assert.match(attack, /Copy the unavailable `masked` status unchanged only when that file is empty\./);
+  // Masked scoring needs an authored English declaration and the pinned Studio's provenance.
+  assert.match(attack, /needs an authored English declaration, `locale: en` in `course\.yaml` or `lang: en` in each lesson, and the pinned Studio/);
 }
 
 // A gate stop finishes the pass and asks; the pinned Trace makes any hand fallback unnecessary.
@@ -156,7 +160,16 @@ function assertStopRules(skill) {
   const stop = paragraphs(attack).find(paragraph => paragraph.includes('On `"stop"`'));
   assert.ok(stop, 'Say what a stopped gate means');
   assert.match(stop, /Finish the other probes, the key check, the judgements and their rewrites within the pass cap\. Then report all of their results, mark the bank unverified, give the stop reason and ask the person/);
-  assert.match(stop, /Don't compute tails by hand, don't mask items by hand/);
+  const stopText = attack.slice(attack.indexOf(stop), attack.indexOf('A masked score well below chance'));
+  // Trace's reasons apply per bank, and each has its remedy.
+  assert.match(stopText, /Trace reports them per bank/);
+  for (const [reason, remedy] of [['language-unconfirmed', /add `locale: en` to `course\.yaml` or `lang: en` per lesson, use the pinned Studio, then re-run inspect/],
+    ['language', /fix a wrong declaration/], ['mask-space', /reword or remove it/]]) {
+    assert.match(stopText, new RegExp('`"' + reason + '"`: [^`]*'), reason);
+    assert.match(stopText, remedy, reason);
+  }
+  assert.match(stopText, /give that row's `pMin` and `pLowMin` against its limit/);
+  assert.match(stopText, /Don't compute tails by hand, don't mask items by hand/);
   assert.doesNotMatch(skill, /^### The masked probe by hand/m);
   const fallback = section(skill, '### If item-cues is unavailable');
   assert.ok(fallback);
@@ -179,7 +192,9 @@ function assertSolverStrength(skill) {
   assert.match(skill, /^Every solver must be a model at least as strong as the writer\. A weaker solver misses cues the writer can see/m);
 }
 
-const scored = (count, p, pLow) => ({ applies: true, right: 0, total: count, chanceExpected: count / 4, p, pLow, tooFewItems: false, tooFewItemsLow: false });
+// Trace's scored masked row for four-option items: pMin and pLowMin are the all-right and all-wrong tails.
+const scored = (count, p, pLow) => ({ applies: true, status: 'scored', right: 0, total: count, chanceExpected: count / 4, p, pLow,
+  pMin: 0.25 ** count, pLowMin: 0.75 ** count, tooFewItems: false, tooFewItemsLow: false });
 const row = (count, p, pLow = 0.5, plain = scored(count, 0.5, 0.5)) => ({ count, masked: scored(count, p, pLow), choicesOnly: plain });
 const loadGate = source => runInNewContext(`${source}\nguessingGate`);
 
@@ -248,7 +263,8 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(' This is the guessing-cue gate.', ''),
         skill.replace(/^- Plain choices-only: [^\n]*\r?\n/m, ''),
         skill.replace('   - The masked gate below returns `"pass"`.', '   - The choices-only statistical gate passes.'),
-        skill.replace(' its folder holds no items: run no masked solver, and', ''),
+        skill.replace('Run the masked solver whenever `masked/items.json` is non-empty', 'Run the masked solver only when every bank is available'),
+        skill.replace(' Masked scoring needs an authored English declaration,', ' Masked scoring needs'),
       ]) {
         assert.notEqual(stripped, skill);
         assert.throws(() => assertProbeRoles(stripped));
@@ -260,6 +276,9 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(/^   On `"fail"`[^\n]*\r?\n/m, ''),
         skill.replace(' Finish the other probes, the key check, the judgements and their rewrites within the pass cap.', ''),
         skill.replace(" Don't compute tails by hand, don't mask items by hand,", ''),
+        skill.replace(' Trace reports them per bank:', ''),
+        skill.replace('; reword or remove it.', '.'),
+        skill.replace(/^   - When a gated row can't reach its threshold[^\n]*\r?\n/m, ''),
         skill.replace('   The bank is done only when all of these hold:', '   Stop only when all of these hold:'),
         skill.replace("Update Rubato's tools with the install-praxity skill and retry.", 'Run the plain choices-only, cover-the-options and masked probes by hand.'),
         skill.replace('## Plan follow-up practice', '### The masked probe by hand\n\nMask each item.\n\n## Plan follow-up practice'),
@@ -321,7 +340,8 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     // Trace's masked contract. Each case also runs against the predicate with its rule removed, which must change the result.
     const mutant = (from, to) => { assert.ok(predicate.includes(from), from); return loadGate(predicate.replace(from, to)); };
     const plainFails = scored(32, 0.000001, 0.5);
-    const unavailable = reason => ({ applies: false, reason, detail: 'Masked probe not applicable.', p: 0.5, pLow: 0.5, total: 32, tooFewItems: false, tooFewItemsLow: false });
+    // Inject every scored field, so only the applies rule can refuse these.
+    const unavailable = reason => ({ ...scored(32, 0.5, 0.5), applies: false, reason, detail: 'Masked probe not applicable.' });
     const withMasked = masked => ({ banks: [{ ...row(32, 0.5), masked }], course: { ...row(32, 0.5), masked } });
     const noApplies = scored(32, 0.5, 0.5); delete noApplies.applies;
     const noMasked = row(32, 0.5); delete noMasked.masked;
@@ -364,28 +384,38 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     }
     assert.equal(gate({ banks: [null, row(32, 0.5)], course: row(32, 0.5) }), 'stop', 'A null bank stops rather than throwing');
 
+    // An eligible but unsolved bank has applies: true and status "not run"; it never passes, even with tails injected.
+    const notRun = { ...scored(32, 0.5, 0.5), status: 'not run' };
+    const ignoresStatus = mutant(" && row.masked.status === 'scored'", '');
+    assert.equal(gate(withMasked(notRun)), 'stop', 'A "not run" masked result stops');
+    assert.equal(ignoresStatus(withMasked(notRun)), 'pass', 'Without the status rule the injected tails would pass');
+
     // A demonstrated fail is a fail, even when the other tail is underpowered.
-    const eightOfEight = { ...row(8, 0.25 ** 8, 1), masked: { ...scored(8, 0.25 ** 8, 1), tooFewItemsLow: true } };
+    const eightOfEight = { ...row(8, 0.25 ** 8, 1), masked: scored(8, 0.25 ** 8, 1) };
     const report8 = { banks: [eightOfEight], course: eightOfEight };
     assert.equal(gate(report8), 'fail', 'Eight of eight right fails though the lower tail cannot');
-    const flagsLine = predicate.match(/^.*tooFewItems === false.*\r?\n/m)[0];
+    const powerLine = predicate.match(/^.*row\.masked\.pMin <= limit.*\r?\n/m)[0];
     const failLine = predicate.match(/^.*return 'fail';\r?\n/m)[0];
-    const flagsFirst = loadGate(predicate.replace(flagsLine, '').replace(failLine, flagsLine + failLine));
-    assert.equal(flagsFirst(report8), 'stop', 'Checking the flags first would hide the fail');
+    const powerFirst = loadGate(predicate.replace(powerLine, '').replace(failLine, powerLine + failLine));
+    assert.equal(powerFirst(report8), 'stop', 'Checking power first would hide the fail');
 
-    const small = (flag, where) => {
-      const tooFew = { ...row(32, 0.5), masked: { ...scored(32, 0.5, 0.5), [flag]: true } };
-      return where === 'course' ? { banks: [row(32, 0.5)], course: tooFew } : { banks: [tooFew], course: row(32, 0.5) };
-    };
-    const ignoresSmall = mutant('row.masked.tooFewItems === false && row.masked.tooFewItemsLow === false', 'true');
-    for (const flag of ['tooFewItems', 'tooFewItemsLow']) for (const where of ['course', 'bank']) {
-      assert.equal(gate(small(flag, where)), 'stop', `${flag} on the ${where} stops`);
-      assert.equal(ignoresSmall(small(flag, where)), 'pass');
-    }
-    const noFlags = row(32, 0.5); delete noFlags.masked.tooFewItemsLow;
-    assert.equal(gate({ banks: [row(32, 0.5)], course: noFlags }), 'stop', 'Missing small-sample flags stop');
-    assert.match(predicate, /ponytail: a four-option lower tail can't fail while 0\.75\^n exceeds its threshold: about 13 items at the course's 0\.025,\s*\/\/ about 19 per bank when five banks share 0\.005\./);
-    assert.ok(0.75 ** 12 > 0.025 && 0.75 ** 13 < 0.025 && 0.75 ** 18 > 0.005 && 0.75 ** 19 < 0.005, 'The marked limits match the thresholds');
+    // Power uses Trace's attainable minima at the gate's own thresholds, not its 0.05 flags.
+    const ignoresPower = mutant('row.masked.pMin <= limit && row.masked.pLowMin <= limit', 'true');
+    // One 12-item four-option bank, none right: pLow = pLowMin = 0.75 ** 12 ≈ 0.032 > 0.025, though Trace's flags are false.
+    const zeroOf12 = { ...row(12, 1, 0.75 ** 12), masked: scored(12, 1, 0.75 ** 12) };
+    const twelve = { banks: [zeroOf12], course: zeroOf12 };
+    assert.equal(zeroOf12.masked.tooFewItemsLow, false);
+    assert.equal(gate(twelve), 'stop', '0 of 12 on a 12-item course cannot fail its lower tail, so it stops');
+    assert.equal(ignoresPower(twelve), 'pass', 'Trusting the 0.05 flags would pass an anti-key bank');
+    // Five 15-item banks at 0.005: one has none right (0.75 ** 15 ≈ 0.013), the pooled course is clean.
+    const zeroOf15 = { ...row(15, 1, 0.75 ** 15), masked: scored(15, 1, 0.75 ** 15) };
+    const fiveBanks = { banks: [zeroOf15, ...Array.from({ length: 4 }, () => row(15, 0.6, 0.6))], course: row(75, 0.8, 0.28) };
+    assert.equal(gate(fiveBanks), 'stop', 'A 15-item bank cannot reach 0.005 in its lower tail');
+    assert.equal(ignoresPower(fiveBanks), 'pass');
+    const noMinimum = row(32, 0.5); delete noMinimum.masked.pLowMin;
+    assert.equal(gate({ banks: [row(32, 0.5)], course: noMinimum }), 'stop', 'A row without attainable minima stops');
+    assert.doesNotMatch(predicate, /ponytail|tooFewItems/, 'The power check replaces the 0.05 flags and their marked limit');
+
 
     assert.doesNotMatch(skill, /\b[A-Z]:[\\/]|\/Users\/|\/home\/|file:\/\//i);
     assert.match(skill, /fresh subagent.*never seen.*course source.*key/);
