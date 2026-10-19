@@ -94,7 +94,8 @@ function assertDistractorTension(skill) {
     // Each true-elsewhere distractor carries the reason this stem rules it out.
     const notes = [...trueElsewhere.matchAll(/" \(([^)]*)\)/g)].map(([, note]) => note);
     assert.equal(notes.length, 3, 'Every true-elsewhere distractor has a note');
-    for (const note of notes) assert.match(note, /ruled out by|doesn't|would make|not radiation|nothing in/);
+    // Structure, not wording: the case it is right for, then why this stem rules it out.
+    for (const note of notes) assert.match(note, /^right for [^;]+; \S.+/);
   }
   const numeric = paragraphs(tension).find(paragraph => paragraph.startsWith('Numeric items'));
   assert.ok(numeric, 'Show the numeric-distractor pattern');
@@ -116,19 +117,23 @@ function assertDistractorTension(skill) {
 function assertKeyCheck(skill) {
   const tension = section(skill, '## Distractors that need the stem') ?? '';
   assert.match(tension, /the detail in this stem that rules it out\. If no detail rules it out, it is a second key/);
-  assert.match(tension, /Another guideline, jurisdiction or older standard for the same case is not a neighbouring case\./);
+  assert.match(tension, /never a clause added only to deny that option/);
+  // The keyless judge sees only the stem, so a deciding standard has to be named there.
+  assert.match(tension, /may be a distractor only when the stem names the standard that rules it out/);
   const attack = skill.split('## 3. Attack the bank')[1] ?? '';
   const check = paragraphs(attack).find(paragraph => paragraph.includes('Run the key check'));
   assert.ok(check, 'A fresh judge checks for second keys');
-  assert.match(check, /never seen the key/);
+  assert.match(check, /fresh judge that wrote no items, answered no probe and has never seen the key/);
   assert.match(check, /stem from `cover-the-options\/items\.json` and its options from `choices-only\/items\.json`, matched by `ref`/);
   assert.match(check, /marks every option that correctly answers the stem/);
-  assert.match(check, /Rewrite every item with more than one mark, or with the key unmarked\./);
+  assert.match(check, /best or most likely answer, it marks only the single best option, and flags the item when two options are equally defensible as best/);
+  assert.match(check, /Rewrite every item with more than one mark, a flag, or the key unmarked\./);
   const notes = paragraphs(attack).find(paragraph => paragraph.includes("the writer's note for each distractor"));
   assert.ok(notes, 'The judge, not the writer, confirms plain-probe exemptions');
+  assert.match(notes, /The judge confirms or rejects each note in `<review>\/key-check\.md`\./);
   assert.match(notes, /The writer never decides which items skip a rewrite\./);
   assert.match(attack, /Rewrite every item the plain solver got right unless the key check confirmed every one of its distractor notes\./);
-  assert.match(attack, /^   - The key check marked exactly one option, the key, on every item\./m);
+  assert.match(attack, /^   - The key check marked exactly one option, the key, on every item, and flagged none\./m);
 }
 
 function assertProbeRoles(skill) {
@@ -225,7 +230,13 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(/^   Run the key check[^\n]*\r?\n/m, ''),
         skill.replace(' The writer never decides which items skip a rewrite.', ''),
         skill.replace('unless the key check confirmed every one of its distractor notes.', 'unless each of its distractors is right for a named neighbouring question or case.'),
-        skill.replace(/^   - The key check marked exactly one option, the key, on every item\.\r?\n/m, ''),
+        skill.replace(/^   - The key check marked exactly one option, the key, on every item, and flagged none\.\r?\n/m, ''),
+        // Independence: the judge is separate from the writer and solvers, and it, not the writer, rules on each note.
+        skill.replace('fresh judge that wrote no items, answered no probe and has never seen the key', 'judge that has never seen the key'),
+        skill.replace(' The judge confirms or rejects each note in `<review>/key-check.md`.', ''),
+        skill.replace(/ For a stem that asks for the best or most likely answer,[^.]*\.[^.]*\./, ''),
+        skill.replace(' It may be a distractor only when the stem names the standard that rules it out, because the key check sees the stem alone.', ' Name the standard the course follows in the stem or the course.'),
+        skill.replace(' The ruling detail must be one the case naturally has and the tested knowledge interprets, never a clause added only to deny that option.', ''),
       ]) {
         assert.notEqual(stripped, skill);
         assert.throws(() => assertKeyCheck(stripped));
@@ -293,10 +304,12 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     assert.equal(passes({ banks, course: row(32, 0.99, 0.01) }), false, 'A pooled anti-key fails');
     assert.equal(passes({ banks: [row(32, 0.99, 0.01)], course: row(32, 0.5) }), false, 'A bank anti-key fails');
     assert.equal(passes({ banks: [row(32, 0.5)], course: row(32, 0.5, 0.025) }), false, 'The course lower-tail boundary does not pass');
-    const largeBanks = Array.from({ length: 5 }, () => row(12, 0.006, 0.006));
-    assert.equal(passes({ banks: largeBanks, course: row(60, 0.5) }), true, 'Five large banks use 0.005 per tail');
-    assert.equal(passes({ banks: [row(12, 0.005), ...largeBanks.slice(1)], course: row(60, 0.5) }), false);
-    assert.equal(passes({ banks: [row(12, 0.5, 0.005), ...largeBanks.slice(1)], course: row(60, 0.5) }), false);
+    // Tails Trace can report: one tail near a threshold means the other is near 1, and a 20-item
+    // four-option bank can reach 0.005 in both directions (0.75 ** 20 ≈ 0.0032).
+    const largeBanks = [row(20, 0.006, 0.998), row(20, 0.998, 0.006), ...Array.from({ length: 3 }, () => row(20, 0.6, 0.55))];
+    assert.equal(passes({ banks: largeBanks, course: row(100, 0.6, 0.55) }), true, 'Five large banks use 0.005 per tail');
+    assert.equal(passes({ banks: [row(20, 0.005, 0.998), ...largeBanks.slice(1)], course: row(100, 0.6, 0.55) }), false);
+    assert.equal(passes({ banks: [row(20, 0.998, 0.005), ...largeBanks.slice(1)], course: row(100, 0.6, 0.55) }), false);
     const noLowerTail = row(32, 0.5); delete noLowerTail.masked.pLow;
     assert.equal(passes({ banks: [noLowerTail], course: row(32, 0.5) }), false, 'An older report with no lower tail cannot pass');
     for (const report of [undefined, {}, { banks }, { banks: [], course: row(0, 1) }, { banks, course: row(31, 0.5) }]) {
@@ -371,7 +384,8 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     }
     const noFlags = row(32, 0.5); delete noFlags.masked.tooFewItemsLow;
     assert.equal(gate({ banks: [row(32, 0.5)], course: noFlags }), 'stop', 'Missing small-sample flags stop');
-    assert.match(predicate, /ponytail: lower tail unfailable below ~13 four-option items until Trace reports the attainable minimum/);
+    assert.match(predicate, /ponytail: a four-option lower tail can't fail while 0\.75\^n exceeds its threshold: about 13 items at the course's 0\.025,\s*\/\/ about 19 per bank when five banks share 0\.005\./);
+    assert.ok(0.75 ** 12 > 0.025 && 0.75 ** 13 < 0.025 && 0.75 ** 18 > 0.005 && 0.75 ** 19 < 0.005, 'The marked limits match the thresholds');
 
     assert.doesNotMatch(skill, /\b[A-Z]:[\\/]|\/Users\/|\/home\/|file:\/\//i);
     assert.match(skill, /fresh subagent.*never seen.*course source.*key/);

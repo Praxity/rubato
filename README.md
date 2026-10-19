@@ -15,11 +15,12 @@ or MCP server. `pack.json` pins every archive by URL and SHA-256.
 
 Studio reads grammar 4 courses; convert grammar 3 courses first.
 The checked-in manifest pins Studio CLI `0.3.0-main.abaf1f3f`, Check
-`0.6.0-alpha.c61b1cb3c` and Trace `0.1.1-experimental.09fcaaf76`.
-Studio downloads from Rubato's asset-only experimental prerelease
-`v0.1.1-tools.experimental.20261019.3`, and Check and Trace from
-`v0.1.1-tools.experimental.20261019`. These host the verified CLI archives without
-a pack manifest or installer bootstrap.
+`0.6.0-alpha.c61b1cb3c` and Trace `0.1.1-experimental.92a164dd8`.
+Rubato's asset-only experimental prereleases host the verified CLI archives
+without a pack manifest or installer bootstrap: Studio downloads from
+`v0.1.1-tools.experimental.20261019.3`, Check from
+`v0.1.1-tools.experimental.20261019` and Trace from
+`v0.1.1-tools.experimental.20261019.2`.
 The remaining tool archives come from Rubato `v0.1.1`.
 These candidate pins support installation from a reviewed checkout; the published
 Rubato `v0.1.1` manifest and stable update channel remain unchanged.
@@ -456,7 +457,7 @@ before marking the release latest; update refuses incomplete releases.
 The published `v0.1.1` release contains all five darwin-arm64 tool archives and
 Studio's darwin-x64 archive. The checked-in `pack.json` replaces its Check and
 Trace pins with commit-qualified portable CLI archives hosted on Rubato's
-asset-only experimental prerelease, recording each full source revision and
+asset-only experimental prereleases, recording each full source revision and
 archive SHA-256. These are byte-for-byte copies of the owning tools' prereleases.
 The asset-only release does not update the stable channel or publish a pack.
 Check, Trace, Print and Import reuse the same archives for Intel macOS.

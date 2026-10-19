@@ -53,8 +53,8 @@ test('macOS installation plans select the reviewed Studio, Check and Trace prere
         'darwin-x64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.3/praxity-studio-cli-0.3.0-main.abaf1f3f-darwin-x64.tar.gz' } },
     { id: 'check', version: '0.6.0-alpha.c61b1cb3c', revision: 'c61b1cb3ce3a4e7afb0a44f3dd70e82a52c1154d',
       url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz' },
-    { id: 'trace', version: '0.1.1-experimental.09fcaaf76', revision: '09fcaaf76841175d150210ec29c66d7ebab05cc3',
-      url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-trace-0.1.1-experimental.09fcaaf76-portable.tar.gz' },
+    { id: 'trace', version: '0.1.1-experimental.92a164dd8', revision: '92a164dd8573ff80fd24c61614b229f62f0eff2a',
+      url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.2/praxity-trace-0.1.1-experimental.92a164dd8-portable.tar.gz' },
   ];
   for (const candidate of candidates) {
     const tool = pack.tools.find(tool => tool.id === candidate.id);
@@ -67,6 +67,21 @@ test('macOS installation plans select the reviewed Studio, Check and Trace prere
       assert.equal(archive.stripComponents, 1);
     }
   }
+});
+
+// Trace revisions whose item-cues ship the masked probe, `<bundle>-review/` and `operator.json`
+// (Praxity/praxity-trace#22). The assessment-writing skill gates on that contract, so an older pin,
+// such as 09fcaaf, leaves its workflow unrunnable. Add a revision here only after checking its payload.
+const maskedTraceRevisions = new Set(['92a164dd8573ff80fd24c61614b229f62f0eff2a']);
+const pinsMaskedTrace = pack => maskedTraceRevisions.has(pack.tools.find(tool => tool.id === 'trace')?.sourceRevision);
+
+test('the pinned Trace ships the masked item-cues contract the assessment skill gates on', () => {
+  const pack = realPack();
+  assert.ok(pinsMaskedTrace(pack), 'Pin a Trace revision with the masked item-cues contract');
+  assert.match(readFileSync(join(repository, 'skills/assessment-writing/SKILL.md'), 'utf8'), /`<bundle>-review\/`/);
+  const old = realPack();
+  old.tools.find(tool => tool.id === 'trace').sourceRevision = '09fcaaf76841175d150210ec29c66d7ebab05cc3';
+  assert.equal(pinsMaskedTrace(old), false, 'The pre-masked pin fails');
 });
 
 test('unpublished fixture tools are omitted from the installation plan', () => {
