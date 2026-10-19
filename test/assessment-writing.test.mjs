@@ -51,13 +51,18 @@ function assertJudge(skill) {
   const labels = [...judge.match(/`coverJudgement:([^`]+)`/)[1].matchAll(/"(\w+)"/g)].map(([, label]) => label).sort();
   assert.deepEqual(labels, ['alsoCorrect', 'cantTell', 'differs', 'matches']);
   assert.match(judge, /coverTheOptions\.judgeModel/);
+  assert.match(judge, /`<bundle>\/judge-notes\.md`/);
+  assert.match(judge, /per `differs` or `cantTell` item reference/);
   const reports = [...skill.matchAll(/^\s*praxity trace report [^\r\n]*--item-cues[^\r\n]*$/gm)];
   const judgeAt = skill.indexOf(judge);
   assert.ok(reports.length === 2 && reports[0].index < judgeAt && judgeAt < reports[1].index, 'Expose report rows before judging, then report the judgements');
   const alternative = skill.split(/\r?\n\s*\r?\n/).find(paragraph => paragraph.trimStart().startsWith('`alsoCorrect`'));
   assert.ok(alternative, 'A defensible alternative needs its own handling');
-  assert.match(alternative, /single best answer/);
-  assert.match(alternative, /Do not narrow the stem/);
+  assert.match(alternative, /"Another valid answer"/);
+  assert.match(alternative, /stem lets more than one answer stand/);
+  assert.match(alternative, /does not establish whether the offered options have a single best answer/);
+  assert.match(alternative, /Either tighten the stem so only the key fits, or accept it as a best-answer item/);
+  assert.match(alternative, /make the options settle which answer is best/);
 }
 
 const row = (count, p, pLow = 0.5) => ({ count, choicesOnly: { total: count, p, pLow } });

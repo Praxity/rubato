@@ -23,19 +23,19 @@ Name the one idea being tested and the decision the stem asks for. List the misc
 - When options classify parts of a case, include every part they name in the stem. A distractor that names an absent part is wrong for the wrong reason. Write feedback by Explaining a wrong answer below, separate from option text so it cannot disclose the answer before submission.
 - A predict question must use a different case from the later check, so the check still makes learners recall the answer.
 - Set `{shuffle}` on scored choices. Leave key position to runtime randomisation. With `dontKnow` alone, keep "I don't know" pinned last below the options, outside the shuffled answers. Use the supported `dontKnow` setting rather than authoring another ordinary option.
-- When Studio supports confidence (planned), confidence and don't-know responses will share one submit control: "Submit: Sure of my answer / I guessed / Don't know", keeping don't know outside the option list. Studio has no confidence syntax yet; do not add rating blocks or invent fields.
+- When Studio supports confidence (planned), keep "Don't know" in the submit control rather than the option list. Studio does not yet support confidence or separate right-when fields; do not invent syntax.
 
 ## Explaining a wrong answer
 
 Teach why this case fits one concept and not the tempting alternative. A category name or a verdict alone leaves the learner to work out the difference.
 
-For each wrong option, apply its defining test to the case's own words. Show where it fails, then apply the right concept's test. Add one change that would make the wrong option right. Prefer changing one feature of the case to changing the question. Today, put that right-when contrast inside the option's `feedback`. Separate rightWhen storage will be possible when the course format supports it (planned); give no syntax yet.
+For each wrong option, apply its defining test to the case's own words. Show where it fails, then apply the right concept's test. Add one change that would make the wrong option right. Prefer changing one feature of the case to changing the question. Today, put that right-when contrast inside the option's `feedback`.
 
 The key's `feedback` also applies its defining test to this case. Let the UI supply the verdict. Expand acronyms and use the course glossary where supported, since feedback may appear apart from the lesson.
 
 Keep shared misconception notes general: explain why the mix-up is tempting, then give the defining contrast and an example of each side. A bare false assertion gives a confused learner nothing to reason with. Use "Why it can seem right" as the learner-facing label for that explanation.
 
-When the course format supports it (planned), confidence-dependent feedback will show "Why it can seem right" after a sure wrong answer. A guess or don't-know response can signal a gap, so do not attribute a misconception to it. For a wrong guess, explain the case and the contrast; for don't know, explain the answer. Today's Studio feedback must work without assuming confidence or inventing conditional fields.
+Write wrong-answer feedback that works for a guess: explain the case and the contrast, and do not assume the learner held the misconception. For a don't-know response, explain the answer.
 
 Neutral invented learner-facing example:
 
@@ -52,7 +52,7 @@ feedback: Sixteen is the total number of jars. The mean shares that total across
 
 ## Plan follow-up practice
 
-Ask when the learner needs to remember the material, such as an exam date. Use an author-provided retention horizon when the learner supplies none. Longer retention goals generally call for longer gaps between reviews. Cepeda et al. support relating the gap to that horizon, not treating a fixed next-day review as universally optimal. Course scheduling controls remain planned; give no setting syntax or guaranteed interval.
+Ask the author when learners need to remember the material, such as an exam date. Longer retention goals generally call for longer gaps between reviews. Cepeda et al. support relating the gap to that horizon, not treating a fixed next-day review as universally optimal. Course scheduling controls remain planned; give no setting syntax or guaranteed interval.
 
 ## 3. Attack the bank
 
@@ -90,9 +90,9 @@ This step is required. The writer never grades its own items. Trace owns the scr
    praxity trace report <inspect.json> --out <dir> --item-cues <bundle>/answer.json
    ```
 
-   A separate fresh judge agent, which neither wrote the items nor answered either probe, reviews the report's stem, free answer and key. It writes `coverJudgement: "matches" | "alsoCorrect" | "differs" | "cantTell"` on each cover-the-options answer in `answer.json` and records its actual model in `coverTheOptions.judgeModel`. It explains any underspecified stem or uncertainty in its review notes. The writer and solvers never supply these judgements. An unjudged answer shows as "not judged" and cannot pass.
+   A separate fresh judge agent, which neither wrote the items nor answered either probe, reviews the report's stem, free answer and key. It writes `coverJudgement: "matches" | "alsoCorrect" | "differs" | "cantTell"` on each cover-the-options answer in `answer.json` and records its actual model in `coverTheOptions.judgeModel`. It writes `<bundle>/judge-notes.md` with one line per `differs` or `cantTell` item reference, distinguishing an underspecified stem from a solver error and explaining any uncertainty and its resolution. The writer and solvers never supply these judgements. An unjudged answer shows as "not judged" and cannot pass.
 
-   `alsoCorrect` means the free answer differs from the key but is also defensible. Trace records it separately in `outcomes.alsoCorrect` and includes it with matches in the cover row's answerable count, `right`. The HTML labels it "Stem answerable, key not unique". Check that the offered options still make the key the single best answer. Do not narrow the stem toward the key to reject a valid alternative. For `differs`, have the judge distinguish an underspecified stem from a solver error; repair the former and record the latter. Resolve every `cantTell` with the judge. The writer never replaces these decisions with its own grading.
+   `alsoCorrect` means the solver gave a different answer that is also correct: the stem lets more than one answer stand. Trace records it separately in `outcomes.alsoCorrect` and includes it with matches in the cover row's answerable count, `right`. The HTML labels it "Another valid answer"; this does not establish whether the offered options have a single best answer. Either tighten the stem so only the key fits, or accept it as a best-answer item and make the options settle which answer is best. For `differs`, have the judge distinguish an underspecified stem from a solver error; repair the former and record the latter. Resolve every `cantTell` with the judge. The writer never replaces these decisions with its own grading.
 
    Run the same report again with the judgements:
 
@@ -100,7 +100,7 @@ This step is required. The writer never grades its own items. Trace owns the scr
    praxity trace report <inspect.json> --out <dir> --item-cues <bundle>/answer.json
    ```
 
-   Rewrite every item guessed correctly with a cue confirmed in its text by a scripted flag or a second fresh reader. Record unconfirmed guesses as chance hits rather than rewriting to fit the solver's story. Repair every stem the judge identifies as underspecified, and every unresolved uncertainty. Trace uses the judge's labels rather than literal text matching; a cover-the-options result never replaces that judgement.
+   Rewrite every item guessed correctly with a cue confirmed in its text by a scripted flag or a second fresh reader. Record unconfirmed guesses as chance hits rather than rewriting to fit the solver's story. Repair every stem the judge identifies as underspecified, and every unresolved uncertainty. Trace uses the judge's labels rather than literal text matching.
 
    After every rewrite, re-run inspect from the changed source, then report and prepare into a new, empty bundle folder. Score that pass's `answer.json` against that pass's inspect JSON. Keep earlier inputs, responses and results. Run at most three passes. Never re-run an unchanged bank to obtain a better p. After the third pass, list any items or statistical checks still failing, give their evidence and numbers, and stop for the person with the bank unresolved.
 
@@ -108,7 +108,7 @@ This step is required. The writer never grades its own items. Trace owns the scr
 
    - Confirmed cues are resolved.
    - Scripted flags are fixed or justified.
-   - The independent judge has no unresolved decisions or "not judged" items. Valid alternative answers remain valid; the offered options must support one best key.
+   - The independent judge has no unresolved decisions or "not judged" items. Another valid answer is addressed by tightening the stem or making the options settle a best-answer item.
    - The explanations probe below passes.
    - The choices-only statistical gate passes.
 
