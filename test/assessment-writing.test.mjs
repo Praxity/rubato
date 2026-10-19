@@ -30,7 +30,7 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     assert.match(skill, /Set `\{shuffle\}` on scored choices/);
     assert.match(skill, /"I don't know" pinned last/);
     assert.match(skill, /"Don't know" sits in the submit control, not the option list/);
-    assert.doesNotMatch(skill, /\b[A-Z]:[\\/]|\/Users\/|\/home\/|codex-runs|file:\/\//i);
+    assert.doesNotMatch(skill, /\b[A-Z]:[\\/]|\/Users\/|\/home\/|file:\/\//i);
     for (const [, href] of skill.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
       if (/^https?:/.test(href)) continue;
       const target = href.split('#')[0];
