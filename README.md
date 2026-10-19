@@ -309,7 +309,9 @@ are refused before removal. Host skills retain their separate ownership record.
 
 ## Skills
 
-Rubato owns `skills/install-praxity` and `skills/studio-editor`. Each tool
+Rubato owns `skills/install-praxity`, `skills/studio-editor` and
+[`skills/assessment-writing`](skills/assessment-writing/SKILL.md). The assessment
+skill teaches misconception-based distractors and independent answer-cue probes. Each tool
 owns the skill and references shipped in its archive. The generator collects
 installed tools' skill folders without rewriting them.
 
