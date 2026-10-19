@@ -269,6 +269,34 @@ for (const boundary of ['directory', 'pid', 'reacquired pid']) test(`skills addi
   assert.equal(existsSync(join(context.home, '.claude/skills/install-praxity/SKILL.md')), true);
   assert.equal(existsSync(join(context.home, '.praxity/toolkit-skills.lock')), false);
 });
+test('every course export procedure initializes identity first without flags', () => {
+  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  let exports = 0;
+  for (const [name, bytes] of outputs.codex) {
+    if (!name.endsWith('.md')) continue;
+    const lines = bytes.toString().split('\n');
+    let previousExport = 0;
+    for (const [index, line] of lines.entries()) {
+      if (!/praxity\S* export\b|\bExport (?:HTML|PDF|a course|the course)\b/i.test(line)) continue;
+      exports++;
+      assert.match(lines.slice(previousExport, index).join('\n'), /`(?:~\/\.praxity\/bin\/)?praxity identity init [^`\s]+`/, `${name}: initialize identity before each export`);
+      previousExport = index + 1;
+    }
+  }
+  assert.ok(exports > 0, 'cover at least one course export procedure');
+});
+
+test('skills require confirmation that no version was published before rederiving identity', () => {
+  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  for (const [name, bytes] of outputs.codex) {
+    if (!name.endsWith('.md')) continue;
+    for (const paragraph of bytes.toString().split(/\r?\n\s*\r?\n/)) {
+      if (!paragraph.includes('--rederive')) continue;
+      assert.match(paragraph.replace(/\s+/g, ' '), /confirm\w*.*no version (?:was|has been) published/i, `${name}: require publication confirmation for --rederive`);
+    }
+  }
+});
+
 test('canonical adapter generation matches reviewed golden files', t => {
   const { context } = fixture(t);
   const outputs = outputsFor(context);
