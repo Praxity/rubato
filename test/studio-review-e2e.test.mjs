@@ -12,6 +12,16 @@ import { repository } from './helpers.mjs';
 // No variable, or a build without comments support, skips with a reason.
 // Seed the documented local store format; every inspection, edit and reply uses the CLI.
 // No browser assets or --review launcher are needed to exercise the comments procedure.
+test('live review fixture follows the packaged shared edit routing', () => {
+  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
+  const lifecycle = readFileSync(join(repository, 'skills/studio-editor/references/review-cli.md'), 'utf8');
+  assert.equal(skill.match(/^## .*review.*$/gm)?.length, 1);
+  assert.match(lifecycle, /Route by request type first/);
+  assert.ok(lifecycle.includes('](../SKILL.md#guarded-text-edit)'));
+  assert.ok(lifecycle.includes('](../SKILL.md#structural-change)'));
+  assert.doesNotMatch(lifecycle, /praxity edit |--text-fields/);
+});
+
 test('real Studio fixes one text comment and replies to an unsupported request without resolving it', { timeout: 90_000 }, t => {
   if (!process.env.PRAXITY_BIN) return t.skip('Set PRAXITY_BIN to a real Studio CLI with comments support.');
   const bin = resolve(process.env.PRAXITY_BIN);
@@ -119,7 +129,7 @@ test('real Studio fixes one text comment and replies to an unsupported request w
   assert.equal(readFileSync(lesson, 'utf8'), source.replace('Original heading', 'Revised heading'));
 
   const fixedReply = 'Changed the heading to "Revised heading" and verified neighbouring source is unchanged.';
-  const openReply = 'Left open: the requested two-column redesign is structural and is outside supported text edits.';
+  const openReply = 'Left open: the redesign target is unbound: select the exact target before a text or structural change.';
   const replyFile = join(root, 'fixed-reply.txt');
   const unsupportedFile = join(root, 'unsupported-reply.txt');
   writeFileSync(replyFile, fixedReply);

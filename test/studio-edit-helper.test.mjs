@@ -19,8 +19,8 @@ test('prescribed helper invocation uses the active installed runtime with no Nod
   writeFileSync(join(toolkit, 'active'), '0.1.1\n');
   writeFileSync(join(pack, 'state.json'), JSON.stringify({ owner: 'praxity-toolkit', platform }));
   writeFileSync(join(pack, 'pack.json'), JSON.stringify({ runtimes: { node: { entry: { [platform]: entry } } } }));
-  const document = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
-  const step = document.split('3. Apply only')[1].split('\n4. ')[0];
+  const document = readFileSync(join(repository, 'skills/studio-editor/references/review-cli.md'), 'utf8');
+  const step = document.split('## File-backed arguments\n')[1].split('## Review CLI refusals')[0];
   for (const field of ['~/.praxity/toolkit/active', 'state.json', 'pack.json', 'runtimes.node.entry[platform]']) assert.ok(step.includes(field), field);
   assert.match(step.replace(/\s+/g, ' '), /Quote the runtime, helper and args-file paths/);
   const invocation = step.match(/"<installed-node>" "<skill-directory>\/scripts\/run-praxity.mjs" "<dry-run-args-file>"/)?.[0];

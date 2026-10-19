@@ -14,9 +14,15 @@ T3 course actions and skills for T3, Claude Code and Codex CLI. There is no SDK
 or MCP server. `pack.json` pins every archive by URL and SHA-256.
 
 Studio reads grammar 4 courses; convert grammar 3 courses first.
-Pack 0.1.1 pins Studio CLI `0.3.0-main.92e21573` and Check
-`0.6.0-main.993069cc`. All macOS tool archives download from the `v0.1.1`
-Rubato release after publication.
+The checked-in manifest pins Studio CLI `0.3.0-main.abaf1f3f`, Check
+`0.6.0-alpha.c61b1cb3c` and Trace `0.1.1-experimental.09fcaaf76`.
+Studio downloads from Rubato's asset-only experimental prerelease
+`v0.1.1-tools.experimental.20261019.3`, and Check and Trace from
+`v0.1.1-tools.experimental.20261019`. These host the verified CLI archives without
+a pack manifest or installer bootstrap.
+The remaining tool archives come from Rubato `v0.1.1`.
+These candidate pins support installation from a reviewed checkout; the published
+Rubato `v0.1.1` manifest and stable update channel remain unchanged.
 The installer supports Apple Silicon and Intel macOS and chooses native arm64
 runtimes when launched through Rosetta. Studio has an archive for each
 architecture. Check, Trace, Print and Import share portable archives across both.
@@ -309,7 +315,9 @@ are refused before removal. Host skills retain their separate ownership record.
 
 ## Skills
 
-Rubato owns `skills/install-praxity` and `skills/studio-editor`. Each tool
+Rubato owns `skills/install-praxity`, `skills/studio-editor` and
+[`skills/assessment-writing`](skills/assessment-writing/SKILL.md). The assessment
+skill teaches misconception-based distractors, case-specific feedback and independent probes. Each tool
 owns the skill and references shipped in its archive. The generator collects
 installed tools' skill folders without rewriting them.
 
@@ -445,12 +453,15 @@ It contains regular files and directories only. The checksum list has one
 bootstrap, with no duplicate entries for either. Publish all assets together
 before marking the release latest; update refuses incomplete releases.
 
-All five darwin-arm64 tool archives and Studio's darwin-x64 archive are staged
-as assets of this repository's `v0.1.1` release, each with its SHA-256 in
-`pack.json`. Download URLs become available when that release is published.
-Check, Trace, Print and Import reuse the same archives for Intel macOS. The
-Trace and Print asset names retain `darwin-arm64` for compatibility; their
-payload inventories declare them portable. Other platform entries stay
+The published `v0.1.1` release contains all five darwin-arm64 tool archives and
+Studio's darwin-x64 archive. The checked-in `pack.json` replaces its Check and
+Trace pins with commit-qualified portable CLI archives hosted on Rubato's
+asset-only experimental prerelease, recording each full source revision and
+archive SHA-256. These are byte-for-byte copies of the owning tools' prereleases.
+The asset-only release does not update the stable channel or publish a pack.
+Check, Trace, Print and Import reuse the same archives for Intel macOS.
+Print's asset name retains `darwin-arm64` for compatibility; its payload
+inventory declares it portable. Other platform entries stay
 `unpublished`, with the reason recorded beside each.
 
 Published pack manifests retain their original archive URLs. GitHub redirects
