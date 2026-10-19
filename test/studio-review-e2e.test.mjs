@@ -1,17 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 // Run: PRAXITY_BIN=/path/to/praxity.mjs node --test test/studio-review-e2e.test.mjs
 // PRAXITY_BIN is one real Studio launcher or packaged .mjs/.js CLI path, not shell text.
-// No variable, or a build without comments/--review support, skips with a reason.
-// The real review server seeds feedback over HTTP; every fix/reply uses the CLI.
-test('real Studio fixes one text comment and replies to an unsupported request without resolving it', { timeout: 90_000 }, async t => {
-  if (!process.env.PRAXITY_BIN) return t.skip('Set PRAXITY_BIN to a real Studio CLI with comments and --review support.');
+// No variable, or a build without comments support, skips with a reason.
+// Seed the documented local store format; every inspection, edit and reply uses the CLI.
+// No browser assets or --review launcher are needed to exercise the comments procedure.
+test('real Studio fixes one text comment and replies to an unsupported request without resolving it', { timeout: 90_000 }, t => {
+  if (!process.env.PRAXITY_BIN) return t.skip('Set PRAXITY_BIN to a real Studio CLI with comments support.');
   const bin = resolve(process.env.PRAXITY_BIN);
   const nodeScript = /\.(?:mjs|js)$/i.test(bin);
   const executable = nodeScript ? process.execPath : bin;
@@ -21,22 +22,10 @@ test('real Studio fixes one text comment and replies to an unsupported request w
   if (help.status !== 0 || !/comments resolve/.test(help.stdout)) {
     return t.skip('PRAXITY_BIN does not support praxity comments --help; update Studio.');
   }
-  const studioHelp = spawnSync(executable, [...prefix, 'studio', '--help'], { encoding: 'utf8', timeout: 15_000 });
-  assert.ifError(studioHelp.error);
-  if (studioHelp.status !== 0 || !studioHelp.stdout.includes('--review')) {
-    return t.skip('PRAXITY_BIN does not advertise studio --review; update Studio.');
-  }
-
   const root = mkdtempSync(join(tmpdir(), 'praxity-review-fixture-'));
   const course = join(root, 'course');
   mkdirSync(course);
-  let server;
-  let closed;
-  t.after(async () => {
-    if (server && server.exitCode === null && server.signalCode === null) server.kill('SIGTERM');
-    if (closed) await closed;
-    rmSync(root, { recursive: true });
-  });
+  t.after(() => rmSync(root, { recursive: true }));
   const source = '---\ntitle: Lesson 1\n---\n\n# Page 1\n\n## Original heading\n\nNeighbouring body stays unchanged.\n';
   const lesson = join(course, 'lesson.prax');
   writeFileSync(join(course, 'course.yaml'), 'title: A course\nlessons: [lesson.prax]\n');
@@ -45,83 +34,59 @@ test('real Studio fixes one text comment and replies to an unsupported request w
   function cli(args) {
     const result = spawnSync(executable, [...prefix, ...args], { cwd: course, encoding: 'utf8', timeout: 20_000 });
     assert.ifError(result.error);
-    // CLI commands here never contain capabilities; keep server stdout out of assertions.
     assert.equal(result.status, 0, `${args[0]} ${args[1]}: ${result.stderr || result.stdout}`);
     return args.includes('--json') ? JSON.parse(result.stdout) : result.stdout;
   }
   cli(['identity', 'init', '.']);
-  server = spawn(executable, [...prefix, 'studio', '.', '--review', '--no-open'], {
-    cwd: course, stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  closed = new Promise(accept => server.once('close', accept));
-  const ready = await new Promise((accept, reject) => {
-    let output = '';
-    const finish = (error, url) => {
-      clearTimeout(timer);
-      server.stdout.off('data', onData);
-      server.off('error', onError);
-      server.off('exit', onExit);
-      if (error) reject(error); else accept(url);
-    };
-    const onData = chunk => {
-      output += chunk;
-      const match = output.match(/https?:\/\/[^\s]+#session=[^\s]+(?=\r?\n)/);
-      if (match) finish(null, match[0]);
-    };
-    const onError = () => finish(new Error('Studio launcher could not start.'));
-    const onExit = code => finish(new Error(`Studio exited before readiness, status ${code}.`));
-    const timer = setTimeout(() => finish(new Error('Studio did not print a ready URL within 30 seconds.')), 30_000);
-    server.stdout.on('data', onData);
-    server.on('error', onError);
-    server.on('exit', onExit);
-    server.stderr.resume();
-  });
-  const page = await fetch(ready, { signal: AbortSignal.timeout(30_000) });
-  assert.equal(page.status, 200);
-  const html = await page.text();
-  const configText = html.match(/<script\b[^>]*\bid="praxity-review-config"[^>]*>([\s\S]*?)<\/script>/)?.[1];
-  assert.ok(configText, 'Read page carries review bootstrap');
-  const config = JSON.parse(configText);
-  assert.ok(config.page.lessonId && config.page.pageId, 'review page has durable scope');
   const inspected = cli(['inspect', '.', '--text-fields', '--json']);
-  // Read the rendered heading ID, then join exactly to inspection, as the skill requires.
-  const headingId = html.match(/<div\b[^>]*data-node-id="([^"]+)"[^>]*>\s*<h2\b[^>]*>Original heading<\/h2>/)?.[1];
-  assert.ok(headingId, 'rendered heading has a node ID');
-  const fields = inspected.textFields.filter(field => field.nodeId === headingId && field.file === 'lesson.prax');
+  // Fixture setup identifies its sole authored heading; fixing later joins only on anchor IDs.
+  const fields = inspected.textFields.filter(field => field.kind === 'heading' && field.file === 'lesson.prax');
   assert.equal(fields.length, 1);
   const target = fields[0];
   assert.equal(target.text, 'Original heading');
-  assert.ok(target.ownerId && target.field && target.fileRevision);
+  assert.ok(target.nodeId && target.ownerId && target.field && target.fileRevision && target.lessonId && target.pageId);
 
   const anchor = {
-    courseId: null, lessonId: config.page.lessonId, pageId: config.page.pageId,
-    nodeId: headingId, blockId: target.ownerId, revision: config.page.revision,
+    courseId: null, lessonId: target.lessonId, pageId: target.pageId,
+    nodeId: target.nodeId, blockId: target.ownerId, revision: target.fileRevision,
     quote: { type: 'TextQuoteSelector', exact: 'Original heading', prefix: '', suffix: '' },
     pin: null, tab: null, revealPath: [], cssPath: null,
     context: { pageTitle: 'Page 1', targetLabel: 'Heading' },
   };
-  async function createComment(body, commentAnchor) {
-    const response = await fetch(new URL(`${config.endpoint}/comments`, page.url), {
-      method: 'POST', signal: AbortSignal.timeout(10_000),
-      headers: { 'Content-Type': 'application/json', Origin: new URL(page.url).origin, 'X-Praxity-Review': config.capability },
-      body: JSON.stringify({ reviewId: config.reviewId, requestId: randomUUID(), anchor: commentAnchor, body }),
-    });
-    assert.equal(response.status, 200, 'review server admits fixture comment');
-    const result = await response.json();
-    assert.equal(result.ok, true);
-    return result.thread.id;
-  }
-  const supportedId = await createComment('Change the heading to "Revised heading".', anchor);
-  const unsupportedId = await createComment('Redesign the whole page with a two-column layout.', {
+  const reviewId = randomUUID();
+  const reviewer = { id: randomUUID(), displayName: 'Reviewer', role: 'reviewer' };
+  const at = '2026-10-19T00:00:00.000Z';
+  const thread = (body, commentAnchor) => ({
+    id: randomUUID(), reviewId, anchor: commentAnchor, status: 'open', version: 1,
+    createdAt: at, updatedAt: at, resolution: null,
+    messages: [{ id: randomUUID(), body, actor: reviewer, at, provenance: 'local-preview' }],
+  });
+  const supportedSeed = thread('Change the heading to "Revised heading".', anchor);
+  const unsupportedSeed = thread('Redesign the whole page with a two-column layout.', {
     ...anchor, nodeId: null, blockId: null, quote: null,
   });
+  const storage = join(course, '.praxity/reviews');
+  mkdirSync(join(storage, reviewId), { recursive: true });
+  writeFileSync(join(storage, '.gitignore'), '*\n');
+  writeFileSync(join(storage, 'manifest.json'), JSON.stringify({
+    schema: 1, initialized: true, reviewId,
+    localPrincipal: { id: randomUUID(), displayName: 'Course author' },
+  }));
+  writeFileSync(join(storage, reviewId, 'comments.json'), JSON.stringify({
+    schema: 1, reviewId, course: { namespace: null, bound: false }, changeSeq: 2,
+    threads: [supportedSeed, unsupportedSeed], receipts: [],
+  }));
+  // The store owner validates these fixture bytes before the procedure can read them.
+  const supportedId = supportedSeed.id;
+  const unsupportedId = unsupportedSeed.id;
 
   const open = cli(['comments', 'list', '.', '--status', 'open', '--json']);
   assert.equal(open.threads.length, 2);
   const supported = open.threads.find(thread => thread.id === supportedId);
   const unsupported = open.threads.find(thread => thread.id === unsupportedId);
   const fresh = cli(['inspect', '.', '--text-fields', '--json']);
-  const admitted = fresh.textFields.filter(field => field.nodeId === supported.anchor.nodeId && field.file === 'lesson.prax');
+  const admitted = fresh.textFields.filter(field => field.nodeId === supported.anchor.nodeId && field.file === 'lesson.prax'
+    && field.lessonId === supported.anchor.lessonId && field.pageId === supported.anchor.pageId);
   assert.equal(admitted.length, 1);
   const binding = admitted[0];
   assert.equal(binding.ownerId, supported.anchor.blockId);
