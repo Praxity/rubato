@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, watch, unlinkSync, renameSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync, spawn } from 'node:child_process';
 import { buildAdapters, installSkills, uninstallSkills } from '../src/skills.mjs';
@@ -283,8 +283,10 @@ function assertExportProcedure(text, name) {
   return exports;
 }
 
-const rederiveRule = 'Never pass `--rederive` unless the person has confirmed in this conversation that no version of the course was published.';
-const studioStopRule = "If init reports pending identity or any block that would need `--rederive`, stop. Don't open Studio and don't run `--rederive`. Show the person what init reported and ask how to proceed.";
+// The prax-format skill owns the identity rule, including when rederivation is allowed.
+// Rubato skills run init before each Studio or export command and point to that rule.
+const identityRule = "follow the prax-format skill's identity rule";
+const studioStopRule = "If init reports anything other than `ok: true`, stop: don't open Studio, and follow the prax-format skill's identity rule.";
 
 function praxityCommands(code) {
   // Match the launcher suffix so paths, variables, npx and shell chains share a detector.
@@ -321,8 +323,8 @@ function assertCommandProcedures(text, name) {
 
 function assertRederivationRule(text, required = false) {
   const normalized = text.replace(/\s+/g, ' ');
-  if (required) assert.ok(normalized.includes(rederiveRule), 'document the publication confirmation rule');
-  assert.ok(!normalized.replaceAll(rederiveRule, '').replaceAll(studioStopRule, '').includes('--rederive'), 'only the exact confirmation and stop sentences may mention --rederive');
+  if (required) assert.ok(normalized.includes(identityRule), 'point to the identity rule its owner documents');
+  assert.ok(!normalized.includes('--rederive'), 'only the prax-format skill may mention --rederive');
 }
 
 test('every course export procedure initializes identity first without flags', () => {
@@ -335,7 +337,7 @@ test('every course export procedure initializes identity first without flags', (
   assert.equal(exports, 1, 'pin the prose export procedure inventory');
 });
 
-test('skills require confirmation that no version was published before rederiving identity', () => {
+test('skills that initialize identity defer rederivation to the prax-format identity rule', () => {
   const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
   for (const [name, bytes] of outputs.codex) {
     if (!name.endsWith('.md')) continue;
@@ -363,7 +365,8 @@ test('Studio guards reject missing, late or mismatched initialization and missin
   assert.throws(() => assertCommandProcedures(withoutInit));
   assert.throws(() => assertCommandProcedures(withoutInit.replace('~/.praxity/bin/praxity studio . --no-open', `~/.praxity/bin/praxity studio . --no-open\n${init}`)));
   assert.throws(() => assertCommandProcedures(skill.replace(init, init.replace('init .', 'init ./other-course'))));
-  assert.throws(() => assertCommandProcedures(skill.replace(/If init reports pending identity[\s\S]*?how to proceed\./, '')));
+  assert.notEqual(skill.replace(/If init reports anything other[\s\S]*?identity rule\./, ''), skill);
+  assert.throws(() => assertCommandProcedures(skill.replace(/If init reports anything other[\s\S]*?identity rule\./, '')));
   assert.throws(() => assertCommandProcedures(skill.replace(init, init.replace('init .', 'init . --yes'))));
   assert.throws(() => assertCommandProcedures(skill.replace('~/.praxity/bin/praxity studio . --no-open', '~/.praxity/bin/praxity studio . --no-open\n~/.praxity/bin/praxity studio . --no-open')));
   assert.throws(() => assertCommandProcedures(`${skill}\n\`\`\`sh\n  $ praxity studio ./other-course\n\`\`\``));
@@ -415,7 +418,7 @@ for (const operation of ['studio', 'export']) test(`${operation} guards cover la
 
 test('export guards reject misplaced or missing initialization, flags and stray rederivation', () => {
   const skill = readFileSync(join(repository, 'skills/install-praxity/SKILL.md'), 'utf8');
-  const step = skill.match(/   Before every export,[\s\S]*?(?=   Export HTML)/)[0];
+  const step = skill.match(/^Before every export,[^\n]*\n/m)[0];
   const withoutStep = skill.replace(step, '');
   assert.throws(() => assertExportProcedure(withoutStep));
   assert.throws(() => assertExportProcedure(`${withoutStep}\n${step}`));
@@ -423,7 +426,7 @@ test('export guards reject misplaced or missing initialization, flags and stray 
     assert.throws(() => assertExportProcedure(skill.replace('~/.praxity/bin/praxity identity init <course-folder>', command)));
   }
   assert.throws(() => assertRederivationRule(`${skill}\nUse --rederive.\n`, true));
-  assert.throws(() => assertRederivationRule(skill.replace(/Never pass `--rederive`[\s\S]*?published\./, ''), true));
+  assert.throws(() => assertRederivationRule(skill.replaceAll(identityRule, 'check identity'), true));
 });
 
 test('canonical adapter generation matches reviewed golden files', t => {
@@ -455,6 +458,45 @@ test('tool-owned skills and references are collected unchanged', t => {
   assert.equal(outputs.claude.get('.claude/skills/praxity-trace/references/legal.txt').toString(), 'Required notice.\n');
   assert.throws(() => buildAdapters({ source: join(context.root, 'skills'), tools: [tool, tool], packVersion: '0.1.0' }), /Duplicate skill/);
 });
+function brokenLinks(files) {
+  const broken = [];
+  for (const [name, bytes] of files) {
+    if (!name.endsWith('.md')) continue;
+    // Fenced and inline code hold placeholders, not links an agent follows.
+    const prose = bytes.toString().replace(/^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, '').replace(/(`+)[\s\S]*?\1/g, '');
+    for (const [, href] of prose.matchAll(/\]\(([^\s)]+)\)/g)) {
+      if (/^(?:[a-z][\w+.-]*:|#)/i.test(href)) continue;
+      // Each skill is installed and loaded on its own, so a link must stay in its own folder.
+      const root = `${name.split('/').slice(0, 3).join('/')}/`;
+      const target = posix.normalize(posix.join(posix.dirname(name), href.split('#')[0]));
+      if (!target.startsWith(root) || !files.has(target)) broken.push(`${name} -> ${href}`);
+    }
+  }
+  return broken;
+}
+
+test('every relative link in an installed skill resolves inside the adapter (T12)', t => {
+  const { context } = fixture(t);
+  // Studio ships SKILL.md at the root of prax-format/, with its references beside it.
+  const studio = join(context.root, 'tools/studio/prax-format');
+  mkdirSync(join(studio, 'skill'), { recursive: true }); mkdirSync(join(studio, 'reference'));
+  writeFileSync(join(studio, 'SKILL.md'), '---\nname: prax-format\ndescription: Write a course.\n---\nRead [blocks](reference/blocks.md) and [choices](skill/assessments.md).\n');
+  writeFileSync(join(studio, 'skill/assessments.md'), 'See [blocks](../reference/blocks.md#choice). Not a link: `![alt](source)`.\n');
+  writeFileSync(join(studio, 'reference/blocks.md'), '# Blocks\n');
+  const outputs = buildAdapters({ source: join(repository, 'skills'), tools: [studio], packVersion: '0.1.0' });
+  for (const host of ['claude', 'codex']) assert.deepEqual(brokenLinks(outputs[host]), [], host);
+  assert.ok(outputs.claude.has('.claude/skills/prax-format/reference/blocks.md'));
+  // A skill that links out of its own folder fails the same check.
+  writeFileSync(join(studio, 'SKILL.md'), '---\nname: prax-format\ndescription: Write a course.\n---\nRead [blocks](../reference/blocks.md).\n');
+  const outside = buildAdapters({ source: join(repository, 'skills'), tools: [studio], packVersion: '0.1.0' });
+  assert.deepEqual(brokenLinks(outside.codex), ['.agents/skills/prax-format/SKILL.md -> ../reference/blocks.md']);
+  // So does a link into another installed skill, although its target exists.
+  writeFileSync(join(studio, 'SKILL.md'), '---\nname: prax-format\ndescription: Write a course.\n---\nSee [the editor](../studio-editor/SKILL.md).\n');
+  const sibling = buildAdapters({ source: join(repository, 'skills'), tools: [studio], packVersion: '0.1.0' });
+  assert.ok(sibling.codex.has('.agents/skills/studio-editor/SKILL.md'));
+  assert.deepEqual(brokenLinks(sibling.codex), ['.agents/skills/prax-format/SKILL.md -> ../studio-editor/SKILL.md']);
+});
+
 test('portable CRLF skills retain their bytes and require real frontmatter', t => {
   const { context } = fixture(t);
   const tool = join(context.root, 'Windows portable skill'); mkdirSync(tool);

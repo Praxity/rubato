@@ -23,7 +23,7 @@ function candidate(t, mutate = () => {}, mutateInventory = () => {}, mutateStage
       'legal/LICENSE': 'PolyForm Perimeter License 1.0.1',
       'legal/LICENSING.md': 'Terms', 'editor/index.html': '<html></html>',
       'typst/typst': 'native compiler', 'licenses/example/LICENSE': 'MIT',
-      'prax-format/skill/SKILL.md': '---\nname: prax-format\ndescription: Write a course.\n---\nTool-owned skill.\n',
+      'prax-format/SKILL.md': '---\nname: prax-format\ndescription: Write a course.\n---\nTool-owned skill.\n',
     };
     const inventory = { sourceRevision: sha, sourceTreeDirty: false, platform: 'darwin', arch,
       version: '0.3.0', entrypoint: 'praxity.mjs', legal: ['legal/LICENSE', 'legal/LICENSING.md'],
@@ -173,7 +173,7 @@ for (const [name, mutate] of [
   ['wrong native architecture', ({ inventory }) => { inventory.arch = 'riscv64'; }],
   ['missing legal notice', ({ files }) => { delete files['legal/LICENSE']; }],
   ['missing upstream notice', ({ files }) => { delete files['licenses/example/LICENSE']; }],
-  ['missing installer skill', ({ files }) => { delete files['prax-format/skill/SKILL.md']; }],
+  ['missing installer skill', ({ files }) => { delete files['prax-format/SKILL.md']; }],
   ['private checkout', ({ files }) => { files['apps/desktop/private.ts'] = 'source'; }],
   ['review provenance', ({ files }) => { files['studio-cli-review/build-inputs.json'] = '{}'; }],
   ['source map', ({ files }) => { files['editor/main.js.map'] = '{}'; }],
