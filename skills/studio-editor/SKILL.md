@@ -5,8 +5,18 @@ description: Open or restart Praxity Studio in a browser or preview, and resolve
 
 ## Open Studio
 
-Use the local project folder as the working directory. Launch the absolute
-`~/.praxity/bin/praxity studio . --no-open` command as a background process through
+Use the local project folder as the working directory. Before every open or
+restart, run identity init for that folder. If init reports pending identity or
+retired or replaced IDs, stop and ask the person before opening Studio.
+Never pass `--rederive` unless the person has confirmed in this conversation that
+no version of the course was published.
+
+```sh
+~/.praxity/bin/praxity identity init .
+~/.praxity/bin/praxity studio . --no-open
+```
+
+After init succeeds, launch the Studio command as a background process through
 the host's process tool. Keep its process handle and stdout in the active session.
 Do not redirect output to a file or launch a second editor for the same folder.
 

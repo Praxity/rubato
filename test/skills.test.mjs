@@ -282,6 +282,26 @@ function assertExportProcedure(text, name) {
 }
 
 const rederiveRule = 'Never pass `--rederive` unless the person has confirmed in this conversation that no version of the course was published.';
+const studioStopRule = 'If init reports pending identity or retired or replaced IDs, stop and ask the person before opening Studio.';
+
+function assertStudioProcedure(text, name) {
+  let opens = 0;
+  for (const block of text.matchAll(/```[^\n]*\n([\s\S]*?)```|`([^`\n]+)`/g)) {
+    const initialized = new Set();
+    for (const command of (block[1] ?? block[2]).matchAll(/^[\t ]*(?:\$ )?(?:~\/\.praxity\/bin\/)?praxity (identity init|studio)\s+("[^"]+"|'[^']+'|<[^>]+>|[^\s]+)([^\n]*)$/gm)) {
+      const [, operation, course, flags] = command;
+      if (operation === 'identity init') {
+        if (!course.startsWith('-') && !flags.trim()) initialized.add(course);
+      } else {
+        opens++;
+        assert.ok(initialized.has(course), `${name}: initialize the same course before each Studio command without flags`);
+        initialized.delete(course);
+      }
+    }
+  }
+  if (opens) assert.ok(text.replace(/\s+/g, ' ').includes(studioStopRule), `${name}: stop and ask before opening Studio when identity is blocked`);
+  return opens;
+}
 
 function assertRederivationRule(text, required = false) {
   const normalized = text.replace(/\s+/g, ' ');
@@ -303,8 +323,31 @@ test('skills require confirmation that no version was published before rederivin
   const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
   for (const [name, bytes] of outputs.codex) {
     if (!name.endsWith('.md')) continue;
-    assertRederivationRule(bytes.toString(), name.endsWith('/install-praxity/SKILL.md'));
+    assertRederivationRule(bytes.toString(), bytes.toString().includes('praxity identity init'));
   }
+});
+
+test('every Studio open procedure initializes the same course first and stops on blocked identity', () => {
+  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  let opens = 0;
+  for (const [name, bytes] of outputs.codex) {
+    if (name.endsWith('.md')) opens += assertStudioProcedure(bytes.toString(), name);
+  }
+  assert.ok(opens > 0, 'cover at least one Studio open procedure');
+});
+
+test('Studio guards reject missing, late or mismatched initialization and missing stop instructions', () => {
+  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
+  const init = '~/.praxity/bin/praxity identity init .\n';
+  assert.ok(skill.includes(init));
+  const withoutInit = skill.replace(init, '');
+  assert.throws(() => assertStudioProcedure(withoutInit));
+  assert.throws(() => assertStudioProcedure(withoutInit.replace('~/.praxity/bin/praxity studio . --no-open', `~/.praxity/bin/praxity studio . --no-open\n${init}`)));
+  assert.throws(() => assertStudioProcedure(skill.replace(init, init.replace('init .', 'init ./other-course'))));
+  assert.throws(() => assertStudioProcedure(skill.replace(/If init reports pending identity[\s\S]*?before opening Studio\./, '')));
+  assert.throws(() => assertStudioProcedure(skill.replace(init, init.replace('init .', 'init . --yes'))));
+  assert.throws(() => assertStudioProcedure(skill.replace('~/.praxity/bin/praxity studio . --no-open', '~/.praxity/bin/praxity studio . --no-open\n~/.praxity/bin/praxity studio . --no-open')));
+  assert.throws(() => assertStudioProcedure(`${skill}\n\`\`\`sh\n  $ praxity studio ./other-course\n\`\`\``));
 });
 
 test('export guards reject misplaced or missing initialization, flags and stray rederivation', () => {
