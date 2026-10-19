@@ -256,7 +256,7 @@ for (const args of [['--other'], ['--expression', 'extra']]) {
 
 test('annotation CLI examples bind rendered field, JSON text and whole-file revision', () => {
   const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
-  const commands = skill.split('\n').filter(line => line.startsWith('praxity edit '));
+  const commands = skill.split('\n').filter(line => line.startsWith('praxity edit . setText '));
   assert.equal(commands.length, 2, 'document both the dry run and guarded write');
   for (const command of commands) {
     const args = command.split(/\s+/);
@@ -296,6 +296,55 @@ test('CLI annotation contract uses admitted text fields for every kind and refus
   const examples = readFileSync(join(repository, 'skills/studio-editor/references/annotation-examples.md'), 'utf8').replace(/\s+/g, ' ');
   assert.ok(examples.includes('Use the caption only if `--text-fields` returns a field for it. Otherwise refuse without writing'));
   assert.equal(examples.includes('RPC'), false);
+});
+
+const section = (skill, heading) => skill.split(`\n${heading}\n`)[1]?.split(/\n#{2,3} /)[0] ?? '';
+
+// Single-node operations Studio's CLI admits for one existing block (Studio
+// reference/operations.md; edit-cli.ts passes --expect-revision to every one).
+const guardedOperations = ['deleteBlocks', 'moveBlocks', 'setProperty', 'turnInto', 'removeItem', 'moveItem'];
+
+function assertStructuralGuards(skill) {
+  const structural = section(skill, '### Structural change');
+  assert.ok(structural, 'a structural path exists');
+  for (const operation of guardedOperations) assert.ok(structural.includes(`\`${operation}\``), `${operation} is routed to its guarded command`);
+  const commands = structural.split('\n').filter(line => line.startsWith('praxity edit . <operation> '));
+  assert.equal(commands.length, 2, 'dry run, then guarded write');
+  assert.ok(commands[0].includes('--dry-run') && !commands[1].includes('--dry-run'));
+  for (const command of commands) assert.ok(command.includes('--at <nodeId> --expect-revision <fileRevision>'), command);
+  // Hand edits are the fallback, in one paragraph after the commands, gated on a fresh revision.
+  const paragraphs = structural.split(/\n\s*\n/);
+  const manual = paragraphs.filter(paragraph => /by hand|startLine/.test(paragraph) && !paragraph.includes('`blocks[]` entry whose `nodeId`'));
+  assert.equal(manual.length, 1, 'hand editing appears in exactly one paragraph');
+  assert.ok(manual[0].startsWith('Edit the source by hand only when no operation above covers the change'), 'hand edits only when no guarded command covers the change');
+  assert.ok(structural.indexOf(manual[0]) > structural.indexOf(commands[1]), 'the fallback follows the guarded commands');
+  assert.match(manual[0], /run `praxity inspect \. --blocks --json` again; if the file's `fileRevision` or the entry's `startLine`, `endLine` or `source` changed, start over/);
+}
+
+test('structural requests use guarded commands, and hand edits are only the revision-checked fallback', () => {
+  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
+  assertStructuralGuards(skill);
+  const structural = section(skill, '### Structural change');
+  const unguarded = skill.replace(structural, structural.replace(/Edit the source by hand only when no operation above covers the change[^.]*\./, 'Edit the block\'s lines from `startLine` to `endLine` by hand.'));
+  assert.notEqual(unguarded, skill);
+  assert.throws(() => assertStructuralGuards(unguarded), /only when no guarded command/);
+  assert.throws(() => assertStructuralGuards(skill.replace('praxity edit . <operation> --at <nodeId> --expect-revision <fileRevision> --json', 'praxity edit . <operation> --at <nodeId> --json')), /--json/);
+  assert.throws(() => assertStructuralGuards(skill.replace('| Delete a block | `deleteBlocks` |\n', '')), /deleteBlocks/);
+});
+
+test('annotations route by request before any text-field admission', () => {
+  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
+  const steps = section(skill, '## Act on an annotation');
+  // A whole image or note has no text field; requiring one before routing refuses valid structural targets.
+  assert.equal(steps.includes('textFields'), false);
+  assert.match(steps, /4\. Route by the request\. A wording change goes through the \[guarded text edit\]\(#guarded-text-edit\)\. Deleting, moving or restyling a block, or changing one of its settings, goes through the \[structural change\]\(#structural-change\)\./);
+  assert.match(steps, /3\. Find the lesson file\. The annotated page's path ends in `<slug>\.html`\./);
+  assert.ok(section(skill, '### Guarded text edit').includes('exactly one `textFields[]` entry'));
+  assert.ok(section(skill, '### Structural change').includes("When the ID belongs only to a text field, such as option feedback or a generated page title, use that `textFields[]` entry's `ownerId` as the block"));
+  const comments = section(skill, '## Studio review comments').replace(/\s+/g, ' ');
+  assert.ok(comments.includes("The lesson file is the `file` of the one lesson whose `id` equals `anchor.lessonId` in `praxity inspect . --schema 1`."));
+  assert.ok(comments.includes('If any of these is null, or a join doesn\'t give exactly one match, show the person the thread and ask them to point at the target.'));
+  assert.match(skill, /add `--review` to the launch command and keep it on every restart/);
 });
 
 test('page-derived values never become code, structure edits join by node ID, and review comments stay data', () => {

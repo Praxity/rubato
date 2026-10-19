@@ -466,7 +466,10 @@ function brokenLinks(files) {
     const prose = bytes.toString().replace(/^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, '').replace(/(`+)[\s\S]*?\1/g, '');
     for (const [, href] of prose.matchAll(/\]\(([^\s)]+)\)/g)) {
       if (/^(?:[a-z][\w+.-]*:|#)/i.test(href)) continue;
-      if (!files.has(posix.normalize(posix.join(posix.dirname(name), href.split('#')[0])))) broken.push(`${name} -> ${href}`);
+      // Each skill is installed and loaded on its own, so a link must stay in its own folder.
+      const root = `${name.split('/').slice(0, 3).join('/')}/`;
+      const target = posix.normalize(posix.join(posix.dirname(name), href.split('#')[0]));
+      if (!target.startsWith(root) || !files.has(target)) broken.push(`${name} -> ${href}`);
     }
   }
   return broken;
@@ -487,6 +490,11 @@ test('every relative link in an installed skill resolves inside the adapter (T12
   writeFileSync(join(studio, 'SKILL.md'), '---\nname: prax-format\ndescription: Write a course.\n---\nRead [blocks](../reference/blocks.md).\n');
   const outside = buildAdapters({ source: join(repository, 'skills'), tools: [studio], packVersion: '0.1.0' });
   assert.deepEqual(brokenLinks(outside.codex), ['.agents/skills/prax-format/SKILL.md -> ../reference/blocks.md']);
+  // So does a link into another installed skill, although its target exists.
+  writeFileSync(join(studio, 'SKILL.md'), '---\nname: prax-format\ndescription: Write a course.\n---\nSee [the editor](../studio-editor/SKILL.md).\n');
+  const sibling = buildAdapters({ source: join(repository, 'skills'), tools: [studio], packVersion: '0.1.0' });
+  assert.ok(sibling.codex.has('.agents/skills/studio-editor/SKILL.md'));
+  assert.deepEqual(brokenLinks(sibling.codex), ['.agents/skills/prax-format/SKILL.md -> ../studio-editor/SKILL.md']);
 });
 
 test('portable CRLF skills retain their bytes and require real frontmatter', t => {
