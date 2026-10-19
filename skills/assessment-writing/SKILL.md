@@ -49,10 +49,6 @@ feedback: Sixteen is the total number of jars. The mean shares that total across
 :::
 ```
 
-## Plan follow-up practice
-
-Ask the author when learners need to remember the material, such as an exam date. Longer retention goals generally call for longer gaps between reviews. Cepeda et al. support relating the gap to that horizon, not treating a fixed next-day review as universally optimal. Course scheduling controls remain planned; give no setting syntax or guaranteed interval.
-
 ## 3. Attack the bank
 
 This step is required. The writer never solves or judges its own items. Trace owns the cue rules and the probes: follow the `praxity-trace` skill's item-cues section, and each bundle's `prompt.md` for who sees what and the `answer.json` format. Through Rubato, Trace runs as `praxity trace`.
@@ -63,7 +59,7 @@ This step is required. The writer never solves or judges its own items. Trace ow
    praxity inspect <course-dir> --schema 1 > <inspect.json>
    ```
 
-   Pass this JSON to Trace, never the course folder. Count the course's scored single-answer choices: every `::: choice` in the lessons `course.yaml` lists, with parentheses markers and exactly one `(x)`, under its effective scoring settings, including group and deck scoring. Leave out multiple-selection choices and unscored polls. An old projection without keys must not produce an empty-bank pass.
+   Pass this JSON to Trace, never the course folder. Count the course's scored single-answer choices: every `::: choice` in the lessons that `course.yaml` lists, with parentheses markers and exactly one `(x)`, under its effective scoring settings, including group and deck scoring. Leave out multiple-selection choices and unscored polls. An old projection without keys must not produce an empty-bank pass.
 
 1. Run the scripted report:
 
@@ -79,27 +75,27 @@ This step is required. The writer never solves or judges its own items. Trace ow
    praxity trace prepare item-cues <inspect.json> --out <bundle>
    ```
 
-   Use a new, empty bundle folder for every pass. If `prepare item-cues` fails with an unknown view, use the manual fallback; fix any other error rather than bypassing Trace. Spawn a fresh subagent for each probe that has never seen the course source or the key. Use a solver at least as capable as the writer, preferably from another model family, and give it only its probe folder. Record each solver's actual model. Combine their untouched answers in `<bundle>/answer.json` as the bundle's `prompt.md` specifies, copying `promptVersion` and the other identity fields from the manifest.
+   Use a new, empty bundle folder for every pass, and a new `<review>` folder beside it for everything written after solving. If `prepare item-cues` fails with an unknown view, use the manual fallback; fix any other error rather than bypassing Trace. Spawn a fresh subagent for each probe that has never seen the course source or the key. Use a solver at least as capable as the writer, preferably from another model family, and give it only its probe folder. Record each solver's actual model. Combine their untouched answers in `<review>/answer.json` as the bundle's `prompt.md` specifies, copying `promptVersion` and the other identity fields from the manifest.
 
 3. Run the report once to show the cover-the-options rows for judgement:
 
    ```sh
-   praxity trace report <inspect.json> --out <dir> --item-cues <bundle>/answer.json
+   praxity trace report <inspect.json> --out <dir> --item-cues <review>/answer.json
    ```
 
-   A separate fresh judge agent, which neither wrote the items nor answered either probe, compares each stem, free answer and key. It writes `coverJudgement: "matches" | "alsoCorrect" | "differs" | "cantTell"` on each cover-the-options answer in `answer.json` and records its actual model in `coverTheOptions.judgeModel`. It writes `<bundle>/judge-notes.md` with one line per `differs` or `cantTell` item reference, saying whether the stem is underspecified or the solver erred. An unjudged answer shows as "not judged" and cannot pass.
+   A separate fresh judge agent, which neither wrote the items nor answered either probe, compares each stem, free answer and key. It writes `coverJudgement: "matches" | "alsoCorrect" | "differs" | "cantTell"` on each cover-the-options answer in `<review>/answer.json` and records its actual model in `coverTheOptions.judgeModel`. It writes `<review>/judge-notes.md` with one line per `differs` or `cantTell` item reference, saying whether the stem is underspecified or the solver erred. An unjudged answer shows as "not judged" and cannot pass.
 
    `alsoCorrect` means the stem lets another answer stand. Either tighten the stem so only the key fits, or accept it as a best-answer item and make the options settle which answer is best.
 
    Run the same report again with the judgements:
 
    ```sh
-   praxity trace report <inspect.json> --out <dir> --item-cues <bundle>/answer.json
+   praxity trace report <inspect.json> --out <dir> --item-cues <review>/answer.json
    ```
 
    Rewrite every item the choices-only solver got right through a cue that a scripted flag or a second fresh reader confirms in its text. Record unconfirmed guesses as chance hits rather than rewriting to fit the solver's story. Repair every stem the judge calls underspecified, and every unresolved uncertainty.
 
-   After every rewrite, re-run inspect from the changed source, then report and prepare into a new, empty bundle folder. Score that pass's `answer.json` against that pass's inspect JSON. Keep earlier inputs, responses and results. Run at most three passes. Never re-run an unchanged bank to obtain a better p. After the third pass, list any items or statistical checks still failing, give their evidence and numbers, and stop for the person with the bank unresolved.
+   After every rewrite, re-run inspect from the changed source, then report and prepare into new, empty bundle and review folders. Score that pass's `answer.json` against that pass's inspect JSON. Keep earlier inputs, responses and results. Run at most three passes. Never re-run an unchanged bank to obtain a better p. After the third pass, list any items or statistical checks still failing, give their evidence and numbers, and stop for the person with the bank unresolved.
 
    Stop only when all of these hold:
 
@@ -145,6 +141,10 @@ Manually inspect the cue list in Write the item, plus key-position spread and ke
 Compute both tails for each bank AND all scored course choices pooled. With n items, k options each and x correct guesses, use upper tail P(X >= x), lower tail P(X <= x), and chance expectation n/k. With mixed option counts, use each item's chance 1/k in the exact independent-Bernoulli distribution rather than one average chance. Build that distribution from probabilities `[1]`: for each item probability q, replace mass j with `old[j] * (1-q) + old[j-1] * q`, treating absent entries as zero. Sum masses j >= x for the upper tail and j <= x for the lower tail. Apply this to every bank and to the pooled item list, counting each item once.
 
 For example, 12 of 32 four-option items gives upper-tail p about 0.080 and 13 gives about 0.038; both exceed the course threshold of 0.025. Fifteen gives about 0.006 and fails that threshold. Eight four-item banks with three right each are reported without individual gates, but their pooled 24 of 32 fails. Require both course tails > 0.025 and both tails > `0.05 / (2 * m)` for each of the m banks with at least 12 items, plus the independent cue and stem reviews. Smaller banks do not gate. Use the same three-pass cap and refreshed inputs as the Trace workflow. Keep every run's counts, calculations, responses and justifications; a flat percentage is not a substitute.
+
+## Plan follow-up practice
+
+Ask the author when learners need to remember the material, such as an exam date. Longer retention goals generally call for longer gaps between reviews. Cepeda et al. support relating the gap to that horizon, not treating a fixed next-day review as universally optimal. Course scheduling controls remain planned; give no setting syntax or guaranteed interval.
 
 ## Public research
 

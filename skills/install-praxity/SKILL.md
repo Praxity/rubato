@@ -5,7 +5,7 @@ description: Install, update or repair Rubato, the pack that provides the `praxi
 
 # Install and maintain Rubato
 
-Rubato installs per user under `~/.praxity/`. Its launcher is `~/.praxity/bin/praxity`; call it by that path when `praxity` is not on PATH. The launcher sends `praxity check`, `trace`, `print` and `import` to those tools and every other command to Studio. Tools run locally; the host and model provider control what leaves the machine.
+Rubato installs per user under `~/.praxity/`. Its launcher is `~/.praxity/bin/praxity`; call it by that path when `praxity` is not on PATH. `init`, `setup`, `doctor`, `skills`, `update`, `rollback` and `version` are Rubato's own commands; Rubato's `init` adds T3 actions and shadows Studio's. `praxity check`, `trace`, `print` and `import` go to those tools, and every other command, such as `inspect`, `edit`, `export`, `identity`, `studio` and `comments`, goes to Studio. Tools run locally; the host and model provider control what leaves the machine.
 
 ## Install or recover
 

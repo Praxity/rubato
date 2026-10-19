@@ -14,8 +14,8 @@ function assertAttackCommands(skill) {
   assert.deepEqual(commands.slice(1), [
     `praxity trace report ${input} --out <dir>`,
     `praxity trace prepare item-cues ${input} --out <bundle>`,
-    `praxity trace report ${input} --out <dir> --item-cues <bundle>/answer.json`,
-    `praxity trace report ${input} --out <dir> --item-cues <bundle>/answer.json`,
+    `praxity trace report ${input} --out <dir> --item-cues <review>/answer.json`,
+    `praxity trace report ${input} --out <dir> --item-cues <review>/answer.json`,
   ]);
 }
 
@@ -51,7 +51,9 @@ function assertJudge(skill) {
   const labels = [...judge.match(/`coverJudgement:([^`]+)`/)[1].matchAll(/"(\w+)"/g)].map(([, label]) => label).sort();
   assert.deepEqual(labels, ['alsoCorrect', 'cantTell', 'differs', 'matches']);
   assert.match(judge, /coverTheOptions\.judgeModel/);
-  assert.match(judge, /`<bundle>\/judge-notes\.md`/);
+  assert.match(judge, /`<review>\/judge-notes\.md`/);
+  // Trace's bundle prompt keeps keys and judge evidence out of the preparation bundle.
+  assert.doesNotMatch(skill, /<bundle>\/(?:answer\.json|judge)/);
   assert.match(judge, /per `differs` or `cantTell` item reference/);
   const reports = [...skill.matchAll(/^\s*praxity trace report [^\r\n]*--item-cues[^\r\n]*$/gm)];
   const judgeAt = skill.indexOf(judge);

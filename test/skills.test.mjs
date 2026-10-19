@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, symlinkSync, watch, unlinkSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, watch, unlinkSync, renameSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync, spawn } from 'node:child_process';
@@ -483,12 +483,10 @@ test('every relative link in an installed skill resolves inside the adapter (T12
   const outputs = buildAdapters({ source: join(repository, 'skills'), tools: [studio], packVersion: '0.1.0' });
   for (const host of ['claude', 'codex']) assert.deepEqual(brokenLinks(outputs[host]), [], host);
   assert.ok(outputs.claude.has('.claude/skills/prax-format/reference/blocks.md'));
-  // The skill folder a tool used to ship one level down links out of the adapter.
-  rmSync(join(studio, 'SKILL.md'));
-  writeFileSync(join(studio, 'skill/SKILL.md'), '---\nname: prax-format\ndescription: Write a course.\n---\nRead [blocks](../reference/blocks.md).\n');
-  const legacy = buildAdapters({ source: join(repository, 'skills'), tools: [studio], packVersion: '0.1.0' });
-  assert.ok(legacy.codex.has('.agents/skills/prax-format/SKILL.md'), 'older Studio archives still install');
-  assert.deepEqual(brokenLinks(legacy.codex).sort(), ['.agents/skills/prax-format/SKILL.md -> ../reference/blocks.md', '.agents/skills/prax-format/assessments.md -> ../reference/blocks.md#choice']);
+  // A skill that links out of its own folder fails the same check.
+  writeFileSync(join(studio, 'SKILL.md'), '---\nname: prax-format\ndescription: Write a course.\n---\nRead [blocks](../reference/blocks.md).\n');
+  const outside = buildAdapters({ source: join(repository, 'skills'), tools: [studio], packVersion: '0.1.0' });
+  assert.deepEqual(brokenLinks(outside.codex), ['.agents/skills/prax-format/SKILL.md -> ../reference/blocks.md']);
 });
 
 test('portable CRLF skills retain their bytes and require real frontmatter', t => {

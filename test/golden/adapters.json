@@ -1,16 +1,16 @@
 {
   "claude": {
-    ".claude/skills/assessment-writing/SKILL.md": "160b590634ebf66dab3b723c59dbc9d31933788346f03f6e7501dfcd2913abfe",
-    ".claude/skills/install-praxity/SKILL.md": "c7bee955125c520bab7790827d91c6e01c8148620669c6117c2a4d03642b0452",
+    ".claude/skills/assessment-writing/SKILL.md": "289a3c1b45a793222ca7b9963b15adabaf255abfc4f2b8f638e8adc3d824dd0e",
+    ".claude/skills/install-praxity/SKILL.md": "85b15d9e716afd95ec959c4f5946248d035805e760bb585f1181e8f20548569c",
     ".claude/skills/studio-editor/references/annotation-examples.md": "656682977d00dde76e0d53a3ba3a52ac1df111f2f8435466a2d78cd607ee347e",
     ".claude/skills/studio-editor/scripts/resolve-annotation.mjs": "cea369258564deee15134d76622bda8192c543dfd1a2baec4287a8528b1004d3",
-    ".claude/skills/studio-editor/SKILL.md": "ad47e5fcedade2b80fd88f380f09f353f46dc16851f88b6d8d0ebdb408020bf9"
+    ".claude/skills/studio-editor/SKILL.md": "34b8e3a863c289b503dddc5a6ed98565bad26a8c1809c34e2efd1cab330857c8"
   },
   "codex": {
-    ".agents/skills/assessment-writing/SKILL.md": "160b590634ebf66dab3b723c59dbc9d31933788346f03f6e7501dfcd2913abfe",
-    ".agents/skills/install-praxity/SKILL.md": "c7bee955125c520bab7790827d91c6e01c8148620669c6117c2a4d03642b0452",
+    ".agents/skills/assessment-writing/SKILL.md": "289a3c1b45a793222ca7b9963b15adabaf255abfc4f2b8f638e8adc3d824dd0e",
+    ".agents/skills/install-praxity/SKILL.md": "85b15d9e716afd95ec959c4f5946248d035805e760bb585f1181e8f20548569c",
     ".agents/skills/studio-editor/references/annotation-examples.md": "656682977d00dde76e0d53a3ba3a52ac1df111f2f8435466a2d78cd607ee347e",
     ".agents/skills/studio-editor/scripts/resolve-annotation.mjs": "cea369258564deee15134d76622bda8192c543dfd1a2baec4287a8528b1004d3",
-    ".agents/skills/studio-editor/SKILL.md": "ad47e5fcedade2b80fd88f380f09f353f46dc16851f88b6d8d0ebdb408020bf9"
+    ".agents/skills/studio-editor/SKILL.md": "34b8e3a863c289b503dddc5a6ed98565bad26a8c1809c34e2efd1cab330857c8"
   }
 }
