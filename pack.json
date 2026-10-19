@@ -144,14 +144,14 @@
       "archives": {
         "darwin-arm64": {
           "status": "published",
-          "url": "https://github.com/Praxity/praxity-check/releases/download/v0.6.0-alpha.c61b1cb3c/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz",
+          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz",
           "sha256": "77fd9a2c8d9cdf1041341eef6b0bc564c0e560279b3bc520d95ec23fc42f79eb",
           "format": "tar.gz",
           "stripComponents": 1
         },
         "darwin-x64": {
           "status": "published",
-          "url": "https://github.com/Praxity/praxity-check/releases/download/v0.6.0-alpha.c61b1cb3c/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz",
+          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz",
           "sha256": "77fd9a2c8d9cdf1041341eef6b0bc564c0e560279b3bc520d95ec23fc42f79eb",
           "format": "tar.gz",
           "stripComponents": 1
@@ -178,14 +178,14 @@
       "archives": {
         "darwin-arm64": {
           "status": "published",
-          "url": "https://github.com/Praxity/praxity-trace/releases/download/v0.1.1-experimental.09fcaaf76/praxity-trace-0.1.1-experimental.09fcaaf76-portable.tar.gz",
+          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-trace-0.1.1-experimental.09fcaaf76-portable.tar.gz",
           "sha256": "d5f8ef48f9277505996888322e11aa9f019d890e5f2a2052f590728925710265",
           "format": "tar.gz",
           "stripComponents": 1
         },
         "darwin-x64": {
           "status": "published",
-          "url": "https://github.com/Praxity/praxity-trace/releases/download/v0.1.1-experimental.09fcaaf76/praxity-trace-0.1.1-experimental.09fcaaf76-portable.tar.gz",
+          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-trace-0.1.1-experimental.09fcaaf76-portable.tar.gz",
           "sha256": "d5f8ef48f9277505996888322e11aa9f019d890e5f2a2052f590728925710265",
           "format": "tar.gz",
           "stripComponents": 1

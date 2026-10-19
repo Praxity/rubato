@@ -48,9 +48,9 @@ test('macOS installation plans select the reviewed Check and Trace prereleases',
   const pack = realPack();
   const candidates = [
     { id: 'check', version: '0.6.0-alpha.c61b1cb3c', revision: 'c61b1cb3ce3a4e7afb0a44f3dd70e82a52c1154d',
-      url: 'https://github.com/Praxity/praxity-check/releases/download/v0.6.0-alpha.c61b1cb3c/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz' },
+      url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz' },
     { id: 'trace', version: '0.1.1-experimental.09fcaaf76', revision: '09fcaaf76841175d150210ec29c66d7ebab05cc3',
-      url: 'https://github.com/Praxity/praxity-trace/releases/download/v0.1.1-experimental.09fcaaf76/praxity-trace-0.1.1-experimental.09fcaaf76-portable.tar.gz' },
+      url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-trace-0.1.1-experimental.09fcaaf76-portable.tar.gz' },
   ];
   for (const candidate of candidates) {
     const tool = pack.tools.find(tool => tool.id === candidate.id);
