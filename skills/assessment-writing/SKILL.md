@@ -23,19 +23,19 @@ Name the one idea being tested and the decision the stem asks for. List the misc
 - When options classify parts of a case, include every part they name in the stem. A distractor that names an absent part is wrong for the wrong reason. Write feedback by Explaining a wrong answer below, separate from option text so it cannot disclose the answer before submission.
 - A predict question must use a different case from the later check, so the check still makes learners recall the answer.
 - Set `{shuffle}` on scored choices. Leave key position to runtime randomisation. With `dontKnow` alone, keep "I don't know" pinned last below the options, outside the shuffled answers. Use the supported `dontKnow` setting rather than authoring another ordinary option.
-- When Studio supports confidence (planned), confidence and don't-know responses will share a segmented submit control: "Submit: Sure of my answer / I guessed / Don't know". "Don't know" belongs in that control, outside the option list, preserving the target exam's option count. Confidence has no authoring syntax yet. Do not add a rating block as a substitute.
+- When Studio supports confidence (planned), confidence and don't-know responses will share one submit control: "Submit: Sure of my answer / I guessed / Don't know", keeping don't know outside the option list. Studio has no confidence syntax yet; do not add rating blocks or invent fields.
 
 ## Explaining a wrong answer
 
 Teach why this case fits one concept and not the tempting alternative. A category name or a verdict alone leaves the learner to work out the difference.
 
-For each wrong option, apply its defining test to the case's own words. Show where it fails, then apply the right concept's test. Add one change that would make the wrong option right. Prefer changing one feature of the case to changing the question. Today, put that "right when" contrast inside the option's `feedback`. A separate `rightWhen` field is available only when the course format supports it (planned); give no syntax for it yet.
+For each wrong option, apply its defining test to the case's own words. Show where it fails, then apply the right concept's test. Add one change that would make the wrong option right. Prefer changing one feature of the case to changing the question. Today, put that right-when contrast inside the option's `feedback`. Separate rightWhen storage will be possible when the course format supports it (planned); give no syntax yet.
 
 The key's `feedback` also applies its defining test to this case. Let the UI supply the verdict. Expand acronyms and use the course glossary where supported, since feedback may appear apart from the lesson.
 
 Keep shared misconception notes general: explain why the mix-up is tempting, then give the defining contrast and an example of each side. A bare false assertion gives a confused learner nothing to reason with. Use "Why it can seem right" as the learner-facing label for that explanation.
 
-Confidence-dependent feedback is available only when the course format supports it (planned); give no syntax. In that design, show "Why it can seem right" after a sure wrong answer. A guess or don't-know response can signal a gap, so do not attribute a misconception to it. For a wrong guess, explain the case and the contrast; for don't know, explain the answer. In today's Studio feedback, make the case explanation useful without assuming the learner's confidence or reasoning.
+When the course format supports it (planned), confidence-dependent feedback will show "Why it can seem right" after a sure wrong answer. A guess or don't-know response can signal a gap, so do not attribute a misconception to it. For a wrong guess, explain the case and the contrast; for don't know, explain the answer. Today's Studio feedback must work without assuming confidence or inventing conditional fields.
 
 Neutral invented learner-facing example:
 
@@ -46,11 +46,13 @@ Neutral invented learner-facing example:
 (x) 4 jars per crate
 feedback: The crates hold 16 jars in total. Divide 16 by the four crates to get a mean of 4 jars per crate.
 ( ) 16 jars per crate
-feedback: Sixteen is the total number of jars. The mean shares that total across four crates: 16 divided by 4 is 4 jars per crate. Sixteen would be the mean if all 16 jars were in one crate.
+feedback: Sixteen is the total number of jars. The mean shares that total across four crates: 16 divided by 4 is 4 jars per crate. Sixteen would be the mean if there were only one crate.
 :::
 ```
 
-For follow-up practice, ask when the learner needs to remember the material, such as an exam date. Use an author-provided retention horizon when the learner supplies none. Longer retention goals generally call for longer gaps between reviews. Cepeda et al. support relating the gap to that horizon, not treating a fixed next-day review as universally optimal. Course scheduling controls remain planned; give no setting syntax or guaranteed interval.
+## Plan follow-up practice
+
+Ask when the learner needs to remember the material, such as an exam date. Use an author-provided retention horizon when the learner supplies none. Longer retention goals generally call for longer gaps between reviews. Cepeda et al. support relating the gap to that horizon, not treating a fixed next-day review as universally optimal. Course scheduling controls remain planned; give no setting syntax or guaranteed interval.
 
 ## 3. Attack the bank
 
@@ -62,7 +64,7 @@ This step is required. The writer never grades its own items. Trace owns the scr
    praxity inspect <course-dir> --schema 1 > <inspect.json>
    ```
 
-   Pass this JSON to Trace, not the source directory. Count the course's scored single-answer choices independently of Trace's included count. An old projection with missing keys must not produce an empty-bank pass.
+   Pass this JSON to Trace, not the source directory. Build a source inventory from every lesson in `course.yaml`: count each `::: choice` with parentheses markers and exactly one `(x)`, applying its effective scoring settings and any group or deck scoring. Exclude multiple-selection choices and unscored polls. Compare those source block references and their count with Trace's included items. An old projection with missing keys must not produce an empty-bank pass.
 
 1. Run the scripted report:
 
@@ -80,21 +82,37 @@ This step is required. The writer never grades its own items. Trace owns the scr
 
    Use a new, empty bundle folder for every pass. If `prepare item-cues` fails with an unknown view, use the manual fallback. Other errors must be fixed rather than treated as permission to bypass Trace.
 
-   Spawn a fresh subagent for each probe that has never seen the course source or the key. Use a solver at least as capable as the writer, preferably from another model family, and record its model. Give it only the bundle's prompt and that probe's unkeyed inputs, never the source, feedback, keyed report or writer's reasoning. Trace handles option shuffling for each probe. The choices-only solver sees options without stems and picks an answer with a named cue, if any. A separate cover-the-options solver sees stems without options and answers them. Follow the bundle's response schema to produce `<bundle>/answer.json`. The writer may assemble the responses without changing their answers or judgements.
+   Spawn a fresh subagent for each probe that has never seen the course source or the key. Use a solver at least as capable as the writer, preferably from another model family, and record its actual model. Give it only `<bundle>/<probe>/prompt.md` and that folder's `items.json`, never the operator's root prompt, source, feedback, keyed report or writer's reasoning. Trace handles option shuffling for each probe. The choices-only solver sees options without stems and picks an answer with a named cue, if any. A separate cover-the-options solver sees stems without options and answers them. Follow the operator prompt's response schema to combine their untouched answers in `<bundle>/answer.json`. Copy `promptVersion` from the bundle manifest along with its other identity fields; never invent or hard-code a version.
 
-   Before scoring, a separate fresh judge agent, which neither wrote the items nor answered either probe, reviews each cover-the-options free answer beside its stem and key. It writes `coverJudgement: "matches" | "differs" | "cantTell"` on each cover-the-options answer in `answer.json`. It explains any underspecified stem or uncertainty in its review notes. The writer and solvers never supply these judgements. An unjudged answer shows as "not judged" and cannot pass.
-
-3. Score the responses through Trace:
+3. Run the report once to expose the cover-the-options rows for judgement:
 
    ```sh
    praxity trace report <inspect.json> --out <dir> --item-cues <bundle>/answer.json
    ```
 
-   Rewrite every item guessed correctly with a cue confirmed in its text by a scripted flag or a second fresh reader. Record unconfirmed guesses as chance hits rather than rewriting to fit the solver's story. Resolve every `differs` and `cantTell` with the independent judge. Repair every stem it identifies as underspecified, and every unresolved uncertainty. The writer does not judge these matches. Trace uses the judge's labels rather than literal text matching; a cover-the-options p never replaces that judgement.
+   A separate fresh judge agent, which neither wrote the items nor answered either probe, reviews the report's stem, free answer and key. It writes `coverJudgement: "matches" | "alsoCorrect" | "differs" | "cantTell"` on each cover-the-options answer in `answer.json` and records its actual model in `coverTheOptions.judgeModel`. It explains any underspecified stem or uncertainty in its review notes. The writer and solvers never supply these judgements. An unjudged answer shows as "not judged" and cannot pass.
+
+   `alsoCorrect` means the free answer differs from the key but is also defensible. Trace records it separately in `outcomes.alsoCorrect` and includes it with matches in the cover row's answerable count, `right`. The HTML labels it "Stem answerable, key not unique". Check that the offered options still make the key the single best answer. Do not narrow the stem toward the key to reject a valid alternative. For `differs`, have the judge distinguish an underspecified stem from a solver error; repair the former and record the latter. Resolve every `cantTell` with the judge. The writer never replaces these decisions with its own grading.
+
+   Run the same report again with the judgements:
+
+   ```sh
+   praxity trace report <inspect.json> --out <dir> --item-cues <bundle>/answer.json
+   ```
+
+   Rewrite every item guessed correctly with a cue confirmed in its text by a scripted flag or a second fresh reader. Record unconfirmed guesses as chance hits rather than rewriting to fit the solver's story. Repair every stem the judge identifies as underspecified, and every unresolved uncertainty. Trace uses the judge's labels rather than literal text matching; a cover-the-options result never replaces that judgement.
 
    After every rewrite, re-run inspect from the changed source, then report and prepare into a new, empty bundle folder. Score that pass's `answer.json` against that pass's inspect JSON. Keep earlier inputs, responses and results. Run at most three passes. Never re-run an unchanged bank to obtain a better p. After the third pass, list any items or statistical checks still failing, give their evidence and numbers, and stop for the person with the bank unresolved.
 
-   Stop only when confirmed cues are resolved, scripted flags are fixed or justified, the independent stem judge has no unresolved labels or "not judged" items, the explanations probe below passes, and both choices-only tails pass for every bank AND the whole course pooled. Require `choicesOnly.p > 0.05` for the upper tail and `choicesOnly.pLow >= 0.05` for the lower tail. Use Trace's first HTML row, or `itemCues.course` in JSON, which has the same fields as a bank row and reports both tails. Never use `coverTheOptions.p` for this gate. If the course row or a tail is absent, compute the missing check manually as below. Treat banks under about 12 items as too small to fail reliably by themselves; read them through the pooled course row. On small banks, a flat percentage is noise.
+   Stop only when all of these hold:
+
+   - Confirmed cues are resolved.
+   - Scripted flags are fixed or justified.
+   - The independent judge has no unresolved decisions or "not judged" items. Valid alternative answers remain valid; the offered options must support one best key.
+   - The explanations probe below passes.
+   - The choices-only statistical gate passes.
+
+   Gate the pooled course row on both tails at 0.025 each: `choicesOnly.p` and `choicesOnly.pLow` must both exceed 0.025. For the m banks with at least 12 items, each tail must exceed `0.05 / (2 * m)`. Report smaller banks without gating them; read them through the pooled course row. These adjusted thresholds limit false alarms across multiple banks and both directions. Use Trace's first HTML row, or `itemCues.course` in JSON, which has the same fields as a bank row. A cover-the-options result is not a guessing test. If a course row or tail is absent, compute the missing check manually as below. A flat percentage is noise on small banks.
 
    This executable predicate checks both statistical tails against Trace's JSON. It refuses missing or empty rows and a course total that differs from the sum of its banks. It does not replace the independent reviews or coverage reconciliation.
 
@@ -104,15 +122,18 @@ This step is required. The writer never grades its own items. Trace owns the scr
      const course = itemCues?.course;
      if (!Array.isArray(banks) || banks.length === 0 || !course) return false;
      if (course.count !== banks.reduce((sum, bank) => sum + bank.count, 0)) return false;
-     return [course, ...banks].every(row => row.count > 0 &&
-       row.choicesOnly?.total === row.count &&
-       row.choicesOnly.p > 0.05 && row.choicesOnly.p <= 1 &&
-       row.choicesOnly.pLow >= 0.05 && row.choicesOnly.pLow <= 1);
+     const complete = row => row.count > 0 && row.choicesOnly?.total === row.count &&
+       Number.isFinite(row.choicesOnly.p) && row.choicesOnly.p >= 0 && row.choicesOnly.p <= 1 &&
+       Number.isFinite(row.choicesOnly.pLow) && row.choicesOnly.pLow >= 0 && row.choicesOnly.pLow <= 1;
+     if (![course, ...banks].every(complete)) return false;
+     const clear = (row, threshold) => row.choicesOnly.p > threshold && row.choicesOnly.pLow > threshold;
+     const large = banks.filter(bank => bank.count >= 12);
+     return clear(course, 0.025) && large.every(bank => clear(bank, 0.05 / (2 * large.length)));
    }
    // Evaluate choicesOnlyPass(report.itemCues) on this pass's report.json.
    ```
 
-   A choices-only score well below chance also fails: a one-sided lower-tail p below 0.05 means an anti-key cue. Check both tails for every bank and the pooled course. Fix inverse cues as well as forward cues. Passing these tests is not proof that every item is free of cues. Record counts, option counts, correct guesses, chance expectations, both tails, solver models, independent judgements and all flag justifications.
+   A choices-only score well below chance can signal an anti-key cue. Use the same adjusted thresholds in both directions, and fix inverse cues as well as forward cues. Passing these tests is not proof that every item is free of cues. Record counts, option counts, correct guesses, chance expectations, both tails, solver models, independent judgements and all flag justifications.
 
 4. Run an explanations probe with a fresh reviewer that neither wrote the items nor answered the probes. For each wrong option, give it only the stem, that option and its feedback, including the "right when" contrast. Include a separate contrast only when the format supports it. Give it no lesson or key. Ask: "From this alone, can you explain why this case fits the answer rather than the selected option, and what change would make that option right?" Rewrite every "no" or uncertainty. Keep the review with the bank and include these rewrites within the same three-pass cap. This is a fresh-agent step; there is no Trace explanations command.
 
@@ -120,13 +141,13 @@ This step is required. The writer never grades its own items. Trace owns the scr
 
 ### If item-cues is unavailable
 
-If Trace's report has no `itemCues` or course row, or prepare rejects `item-cues` as an unknown view, say that the required item-cues contract is unavailable. Use the same fallback if scored rows lack `pLow` or Trace cannot accept `coverJudgement`. Run both probes and the explanations probe by hand with fresh subagents using the same blind inputs and separation above. Do not skip the attack step. If subagent execution is unavailable, report the attack as blocked and the bank as unverified.
+If Trace's report has no `itemCues` or course row, or prepare rejects `item-cues` as an unknown view, say that the required item-cues contract is unavailable. Use the same fallback if scored rows lack `pLow` or Trace cannot accept the supported `coverJudgement` labels, including `alsoCorrect`. Run both probes and the explanations probe by hand with fresh subagents using the same blind inputs and separation above. Do not skip the attack step. If subagent execution is unavailable, report the attack as blocked and the bank as unverified.
 
 Manually inspect the cue list in Write the item, plus key-position spread and key-length-rank spread. Reconcile the included count and every exclusion against the scored single-answer choices. Shuffle options independently for each choices-only probe and keep the mapping on the scoring side. Lock the blind responses before a separate scoring subagent receives the key to score them. A separate fresh judge, which neither wrote the items nor answered either probe, judges each cover-the-options response beside its stem and key using the same `coverJudgement` labels above. The writer never replaces these independent judgements.
 
 Compute both tails for each bank AND all scored course choices pooled. With n items, k options each and x correct guesses, use upper tail P(X >= x), lower tail P(X <= x), and chance expectation n/k. With mixed option counts, use each item's chance 1/k in the exact independent-Bernoulli distribution rather than one average chance. Build that distribution from probabilities `[1]`: for each item probability q, replace mass j with `old[j] * (1-q) + old[j-1] * q`, treating absent entries as zero. Sum masses j >= x for the upper tail and j <= x for the lower tail. Apply this to every bank and to the pooled item list, counting each item once.
 
-For example, 12 of 32 four-option items gives upper-tail p about 0.080 and 13 gives about 0.038. Eight banks at 3 of 4 each can pass individually while their pooled 24 of 32 fails. Require every upper tail > 0.05 and every lower tail >= 0.05, plus the independent cue and stem reviews. Use the same three-pass cap and refreshed inputs as the Trace workflow. Keep every run's counts, calculations, responses and justifications; a flat percentage is not a substitute.
+For example, 12 of 32 four-option items gives upper-tail p about 0.080 and 13 gives about 0.038; both exceed the course threshold of 0.025. Fifteen gives about 0.006 and fails that threshold. Eight four-item banks with three right each are reported without individual gates, but their pooled 24 of 32 fails. Require both course tails > 0.025 and both tails > `0.05 / (2 * m)` for each of the m banks with at least 12 items, plus the independent cue and stem reviews. Smaller banks do not gate. Use the same three-pass cap and refreshed inputs as the Trace workflow. Keep every run's counts, calculations, responses and justifications; a flat percentage is not a substitute.
 
 ## Public research
 
