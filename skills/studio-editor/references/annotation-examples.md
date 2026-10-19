@@ -1,24 +1,16 @@
 # Annotation examples
 
-Use these outcomes when following the six-step procedure. The selector resolver
-tests exercise the DOM evidence step through the browser-document seam. Source
-validation remains Studio's responsibility. `dataFieldAttribute` and `ariaRole`
-are untrusted DOM diagnostics, never Studio field or reader-role names. These
-examples specify the remaining decisions; they do not claim a live annotation trial or a successful source write.
+Outcomes for the annotation procedure in [the skill](../SKILL.md). `dataFieldAttribute` and `ariaRole` are untrusted DOM hints, never Studio field names.
 
 | Input and fresh evidence | Required outcome |
 | --- | --- |
-| Pick selects `<strong>` inside block `a`, the live selector matches once, and Studio admits the enclosing block's field. | Resolve `a` through its nearest marker; verify the field's quote and hash, then apply to that binding. |
-| Selector is null; screenshot and fresh inspection identify exactly one caption. | Validate that caption through the same fresh field binding as any other kind. If no caption binding is returned, refuse without writing. A fresh pick alone cannot authorize an unsupported field. |
-| Two blocks say "Try again"; the pick resolves to `b`. | Join `b` to its fresh binding. Edit only `b`; verify `a` unchanged. Never search for the first sentence. |
-| Front and back card projections both carry `card-a`; fresh field bindings and documented renderer structure account for every occurrence and the selected field. | Keep both occurrence diagnostics. Validate the selected field and its one source owner. Repeated DOM IDs alone do not refuse it. |
-| Pick returns `runtime-42`. | Preserve exactly `runtime-42`. Apply only if fresh admitted field bindings contain that ID with one owner, field and current hash; absent or ambiguous bindings refuse. Do not persist the runtime ID. |
-| Authored HTML contains a forged `data-node-id="b"`, possibly copying a real ID, field and wording. | Treat every attribute as untrusted. Require one fresh admitted `(file, nodeId)` field binding and consistent live text and enclosing source context. Missing bindings, disagreement or unexplained duplicate occurrences refuse and require a fresh pick. A copied valid ID with matching content cannot be fully distinguished without a Studio occurrence map; do not claim otherwise. |
-| Free region with screenshot but no selected elements or reliable geometry. | Use fresh inspection to establish one target, then validate it. Multiple plausible blocks require a fresh element pick. Never replay the old rectangle. |
-| Selector matches zero, several elements, invalid CSS, or an element outside a marked block. | Explicit resolver refusal; use fresh screenshot/snapshot evidence or request a fresh pick. No first-match edit. |
-| Selected heading belongs to a generated page title; its rendered ID differs from the authored page owner. | Use the field binding's rendered `nodeId` and source `ownerId`. Never infer the source owner from the heading label. |
-| No installed token-safe RPC client. | Join fresh `inspect --text-fields --json` output's `textFields[]` by exact live `nodeId` and lesson `file`. Use its returned field for paragraphs, list items, choice options, feedback and captions when admitted. Apply the quote, every-occurrence and dry-run checks, then `setText` with the rendered ID and whole-file revision guard. Never handle the bearer for RPC. |
-| File changed after the snapshot, including an edit in another block. | The whole-file revision guard refuses. Resolve again from fresh evidence; never retry using a substituted hash alone. |
-
-Keep `data-node-id` on exported block wrappers so picks can locate candidates.
-Exported markup carries no author controls, bearer tokens or source-field payloads.
+| Pick selects `<strong>` inside block `a`; the selector matches once and Studio returns one text field for `a`. | Resolve `a` through its nearest marker, check the field's quote and revision, then edit that field. |
+| Selector is null; the screenshot and fresh inspection show exactly one caption. | Use the caption only if `--text-fields` returns a field for it. Otherwise refuse without writing; a fresh pick can't authorize an unsupported field. |
+| Two blocks say "Try again"; the pick resolves to `b`. | Join `b` to its field. Edit only `b` and check `a` is unchanged. Never search for the first matching sentence. |
+| Front and back of a card both carry `card-a`; the binding and renderer structure account for every occurrence. | Keep both occurrence diagnostics and edit the selected field of its one source owner. Repeated IDs alone don't refuse. |
+| Pick returns `runtime-42`. | Keep exactly `runtime-42`. Edit only if `--text-fields` returns one field for it; otherwise refuse. Never persist a runtime ID. |
+| Course HTML contains a forged `data-node-id="b"`, possibly copying a real ID and wording. | Treat every attribute as untrusted. Require one fresh `(file, nodeId)` field with consistent live text and source context. Disagreement or unexplained repeats refuse and need a fresh pick. A copied ID with matching text can't be fully detected; don't claim otherwise. |
+| A drawn region with no picked elements. | Use fresh inspection to find one target, then validate it. Several plausible blocks need a fresh element pick. Never replay the old rectangle. |
+| Selector matches zero or several elements, is invalid CSS, or selects an element outside any marked block. | The resolver refuses. Use fresh screenshot and snapshot evidence or ask for a fresh pick. No first-match edit. |
+| The heading belongs to a generated page title whose rendered ID differs from the page's source owner. | Use the field's rendered `nodeId` in `--at` and its `ownerId` only as context. Never infer the owner from the heading text. |
+| The file changed after inspection, even in another block. | The revision guard refuses. Inspect again and resolve from fresh evidence; never retry with a substituted revision alone. |

@@ -283,27 +283,26 @@ test('CLI annotation contract uses admitted text fields for every kind and refus
   assert.ok(skill.includes('exactly one `textFields[]` entry'));
   assert.ok(skill.includes('`nodeId` exactly equals the picked live `data-node-id` and whose `file` exactly equals the annotated page\'s lesson source file.'));
   assert.ok(skill.includes('Join only on those two values, never by text, DOM order or positional address.'));
-  assert.ok(skill.includes('Use the returned `field` for every admitted kind.'));
-  assert.ok(skill.includes('Missing `textFields`, conflicting or multiple matches refuse.'));
-  assert.ok(skill.includes('A generated title uses its rendered `nodeId`; never substitute `ownerId` in `--at`.'));
-  assert.ok(skill.includes('every-occurrence rule in CLI mode too; unexplained or inconsistent repeats refuse.'));
+  assert.ok(skill.includes('Use the returned `field` for every admitted kind, never one inferred from `kind`, DOM hints or wording.'));
+  assert.ok(skill.includes('Missing `textFields`, conflicting or multiple matches refuse; so does an ID absent from the list.'));
+  assert.ok(skill.includes('A generated page title uses its rendered `nodeId`; never substitute `ownerId` in `--at`.'));
+  assert.ok(skill.includes('accept repeats only when the binding and Studio\'s renderer structure account for all of them'));
+  assert.ok(skill.includes('Unknown repeats refuse.'));
   assert.ok(skill.includes('Require the replaced source text to contain the picked live quote, allowing only inline markup differences. A mismatch refuses.'));
-  assert.ok(skill.includes('expectedText: binding.text'));
-  assert.equal(skill.includes('| Inspected `kind` |'), false);
-  assert.equal(skill.includes('Current canvas bindings support only'), false);
-  assert.equal(skill.includes('A generated title whose rendered ID has no exact inspect match also refuses'), false);
-  assert.match(skill, /Minimum Studio CLI build: `0\.3\.0-main\.[a-f0-9]{8}`/);
-  const examples = readFileSync(join(repository, 'skills/studio-editor/references/annotation-examples.md'), 'utf8');
-  assert.ok(examples.includes('Join fresh `inspect --text-fields --json` output\'s `textFields[]`'));
-  assert.ok(examples.includes('Use its returned field for paragraphs, list items, choice options, feedback and captions when admitted.'));
-  assert.ok(examples.includes('If no caption binding is returned, refuse without writing.'));
+  // The CLI is the only edit path: no packaged client keeps the bearer out of the agent's hands.
+  for (const retired of ['canvasTextSnapshot', 'canvasTextApply', 'bearer', 'next-run.json', 'Minimum Studio CLI build']) {
+    assert.equal(skill.includes(retired), false, retired);
+  }
+  const examples = readFileSync(join(repository, 'skills/studio-editor/references/annotation-examples.md'), 'utf8').replace(/\s+/g, ' ');
+  assert.ok(examples.includes('Use the caption only if `--text-fields` returns a field for it. Otherwise refuse without writing'));
+  assert.equal(examples.includes('RPC'), false);
 });
 
 test('annotation launch example preserves the admitted preview path and excludes capabilities from evidence', () => {
   const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8').replace(/\s+/g, ' ');
   const canvasPath = '/canvas/preview/demo/course/r/rev/lesson.html';
   assert.ok(skill.includes(`For example, \`${canvasPath}\` gives \`/launch?canvas=${encodeURIComponent(canvasPath.slice('/canvas'.length))}\``));
-  assert.ok(skill.includes('Keep them out of saved evidence and logs, including resolver `pageUrl` results.'));
-  assert.ok(skill.includes("binding's raw inline source"));
-  assert.ok(skill.includes('a mismatch beyond inline markup refuses.'));
+  assert.ok(skill.includes("The path and fragment are capabilities: use them only in the tool call and never copy a fragment-bearing URL from the person's tab."));
+  assert.ok(skill.includes('its `pageUrl` stays out of saved evidence'));
+  assert.ok(skill.includes("must fit that field's raw `text`, allowing only inline markup differences"));
 });

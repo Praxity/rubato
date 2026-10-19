@@ -1,57 +1,38 @@
 ---
 name: install-praxity
-description: Install or recover Rubato, then check its tools and install the selected host adapter.
+description: Install, update or repair Rubato, the pack that provides the `praxity` command, Praxity's tools and their agent skills. Use when `praxity` is missing or reports an unknown command, doctor fails, skills need installing for a host, or a course needs T3 actions.
 ---
 
-Use the reviewed Rubato checkout and its `pack.json`. The first supported path
-is local T3 desktop on Apple Silicon macOS. If the checkout or reviewed bootstrap
-is unavailable, stop and obtain it from the owner. Do not invent a download URL.
+# Install and maintain Rubato
 
-1. Read the checkout's README and manifest. Show the pack version, each published
-   download's purpose, version, URL and licence, and the unpublished tool reasons.
-   Explain the per-user version directory and launchers. Obtain consent for these
-   concrete downloads before running `sh /absolute/path/to/rubato/install.sh`.
-2. Read the result. On failure, use the reported recovery command. Do not change
-   installation steps, escalate privileges or disable OS protections. A manifest
-   override is a trust decision; use only the user's reviewed manifest.
-3. Run `~/.praxity/bin/praxity setup` for installed tools. Each tool owns optional
-   component consent. Let its prompts reach the user. Never pass `--yes` silently.
-   Respect a refusal and report the unavailable capability.
-4. Run `~/.praxity/bin/praxity doctor --json`. Explain failed, not-installed and
-   partial items separately from declined components. Report fixes from doctor.
-5. Ask which host and scope the user uses if unknown. Run
-   `~/.praxity/bin/praxity skills install --host t3 --scope user`, replacing only
-   the host and scope with the user's choice. `t3` and `claude` share plain Claude
-   skills. Add the `codex` adapter for T3's Codex provider or Codex CLI; both
-   adapters may coexist. Preserve files the installer does not own. Plain Claude
-   skills need no plugin flag. Restart the host and verify invocation as well as
-   picker visibility.
-6. For a course opened in T3, run `~/.praxity/bin/praxity init <course-folder>`.
-   The folder must contain `course.yaml` or `.prax` lessons. It merges five
-   course actions into `t3.json`, preserving other keys and scripts. Commit that
-   file with the course. Studio's port is stable; its private registry stays in
-   `~/.praxity/toolkit-state/t3-actions.json`.
-   Before every export, run `~/.praxity/bin/praxity identity init <course-folder>`;
-   it records page and block identity for hand-written or newly added blocks and
-   changes nothing when there is nothing new.
-   Export HTML to `course-html.zip`
-   before running Check accessibility. Automatic editor preview needs T3 desktop
-   and a Studio build supporting `--port` and `/launch`. The actions call
-   `"$HOME/.praxity/bin/praxity"`, so they work before PATH is set. Refused JSON stays
-   unchanged; resolve the reported error and rerun init.
+Rubato installs per user under `~/.praxity/`. Its launcher is `~/.praxity/bin/praxity`; call it by that path when `praxity` is not on PATH. The launcher sends `praxity check`, `trace`, `print` and `import` to those tools and every other command to Studio. Tools run locally; the host and model provider control what leaves the machine.
 
-Never pass `--rederive` unless the person has confirmed in this conversation that
-no version of the course was published.
+## Install or recover
 
-Use the absolute launcher when PATH is stale. Show the printed PATH line for the
-user to add; never edit shell profiles or AGENTS files. Praxity tools run locally;
-the host and model provider control what they transmit.
+Rubato supports macOS on Apple Silicon and Intel. Work from the reviewed Rubato checkout and its `pack.json`. If the person has neither, stop and ask for them; never invent a download URL.
+
+1. Read the checkout's README and `pack.json`. Show the person the pack version, each published download's purpose, version, URL and licence, and the reason for each unpublished tool. Explain the per-user version folder and launcher. Get consent for those downloads, then run `sh /absolute/path/to/rubato/install.sh`.
+2. On failure, run the recovery command the installer reports. Never change installation steps, escalate privileges or disable OS protections. A manifest override is a trust decision; use only the person's reviewed manifest.
+3. Run `~/.praxity/bin/praxity setup`. Each tool asks consent for its own optional components. Let those prompts reach the person and never pass `--yes` for them. Respect a refusal and report what stays unavailable.
+4. Run `~/.praxity/bin/praxity doctor --json`. Report failed, not-installed and partial items apart from declined components, with doctor's fixes.
+5. Ask which host and scope the person uses if you don't know, then run `~/.praxity/bin/praxity skills install --host <t3|claude|codex> --scope <user|project>`. `t3` and `claude` share the Claude adapter in `.claude/skills`. Add `codex` for Codex CLI or T3's Codex provider, in `.agents/skills`; both adapters can coexist. The installer leaves files it doesn't own alone. Restart the host and check that a skill can be invoked, not only listed.
+6. If the launcher's folder is not on PATH, show the person the PATH line the installer printed. Never edit shell profiles or AGENTS files yourself.
 
 Recovery commands, after resolving the reported cause:
 
 - Retry: `sh /absolute/path/to/rubato/install.sh`. Verified downloads are reused.
+- Update to the latest release: `~/.praxity/bin/praxity update`.
 - Revert an update: `~/.praxity/bin/praxity rollback`.
 - Remove Rubato: `sh /absolute/path/to/rubato/install.sh uninstall`.
 
-Close Studio and save work before switching or removing a pack. A live editor
-must finish before its runtime directory is removed.
+Ask the person to save their text and close Studio before an update, rollback or removal.
+
+## Unknown command or flag
+
+The installed pack is older than the skill you are following. Run `~/.praxity/bin/praxity version` and show the person the pack and tool versions. Ask them to update, with `praxity update` or the install command they use for internal builds. Don't work around the missing command.
+
+## Add T3 course actions
+
+Before every export, run `~/.praxity/bin/praxity identity init <course-folder>` and follow the prax-format skill's identity rule. The generated actions don't run it yet, so run it before Open in Studio too.
+
+Run `~/.praxity/bin/praxity init <course-folder>` on a folder that holds `course.yaml` or `.prax` lessons. It merges five actions into the course's `t3.json` (Open in Studio, Export HTML, Export PDF, Check accessibility, Doctor) and keeps other keys and scripts; Check accessibility reads the `course-html.zip` that Export HTML writes. Init reserves a Studio port for the course and hides `.praxity/` in VS Code settings. Commit `t3.json` with the course. If init refuses, nothing changed; fix the reported error and rerun. If T3 keeps running an old saved action, follow the repair note init prints.

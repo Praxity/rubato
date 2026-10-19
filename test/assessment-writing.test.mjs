@@ -58,9 +58,7 @@ function assertJudge(skill) {
   assert.ok(reports.length === 2 && reports[0].index < judgeAt && judgeAt < reports[1].index, 'Expose report rows before judging, then report the judgements');
   const alternative = skill.split(/\r?\n\s*\r?\n/).find(paragraph => paragraph.trimStart().startsWith('`alsoCorrect`'));
   assert.ok(alternative, 'A defensible alternative needs its own handling');
-  assert.match(alternative, /"Another valid answer"/);
-  assert.match(alternative, /stem lets more than one answer stand/);
-  assert.match(alternative, /does not establish whether the offered options have a single best answer/);
+  assert.match(alternative, /stem lets another answer stand/);
   assert.match(alternative, /Either tighten the stem so only the key fits, or accept it as a best-answer item/);
   assert.match(alternative, /make the options settle which answer is best/);
 }
@@ -145,6 +143,10 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     assert.match(worked, /^\( \) 16 jars per crate$/m);
     assert.match(worked, /Sixteen would be the mean if there were only one crate\./);
     assertPackLinks(skill, name, outputs[host]);
+    // Trace's skill and bundle prompts own the probe protocol; this skill owns the gates.
+    assert.match(skill, /follow the `praxity-trace` skill's item-cues section, and each bundle's `prompt\.md`/);
+    assert.match(skill, /The writer never solves or judges its own items\./);
+    assert.match(skill, /The prax-format skill's assessments guide owns choice syntax\./);
     for (const [, href] of skill.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
       if (/^(?:https?:|#)/.test(href)) continue;
       assert.ok(existsSync(resolve(dirname(path), href.split('#')[0])));

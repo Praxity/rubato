@@ -99,7 +99,7 @@
       "runner": "node",
       "license": "PolyForm Perimeter 1.0.1",
       "notices": "legal/LICENSING.md",
-      "skillPath": "prax-format/skill",
+      "skillPath": "prax-format",
       "archives": {
         "darwin-arm64": {
           "status": "published",
