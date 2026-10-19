@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, watch, readdirSync, unlinkSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, watch, unlinkSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync, spawn } from 'node:child_process';
@@ -175,6 +175,7 @@ for (const operation of ['migration', 'uninstall']) for (const modified of [fals
   else for (const host of ['claude', 'codex']) installSkills({ base: context.home, host, outputs });
   const preload = join(context.root, 'delete-crash.mjs');
   const removedRoot = join(context.home, operation === 'migration' ? '.claude/plugins/praxity/skills' : '.claude/skills');
+  const owned = Object.keys(readState(context.home).files).filter(name => join(context.home, name).startsWith(removedRoot));
   writeFileSync(preload, `import fs from 'node:fs'; import {syncBuiltinESMExports} from 'node:module';
     const original=fs.unlinkSync; fs.unlinkSync=function(path,...args){const result=original(path,...args); if(String(path).startsWith(${JSON.stringify(removedRoot)})) process.exit(77); return result;}; syncBuiltinESMExports();`);
   const method = operation === 'migration' ? 'installSkills' : 'uninstallSkills';
@@ -183,7 +184,7 @@ for (const operation of ['migration', 'uninstall']) for (const modified of [fals
   const killed = spawnSync(process.execPath, ['--import', pathToFileURL(preload).href, '--input-type=module', '-e', code], { encoding: 'utf8', timeout: 20_000 });
   assert.equal(killed.status, 77, killed.stderr);
   assert.equal(readState(context.home).transaction.phase, 'remove');
-  assert.equal(existsSync(join(removedRoot, 'install-praxity/SKILL.md')), false);
+  assert.equal(owned.filter(name => !existsSync(join(context.home, name))).length, 1);
   const survivor = join(removedRoot, 'studio-editor/SKILL.md');
   if (modified) {
     writeFileSync(survivor, 'PERSONAL');
@@ -230,8 +231,9 @@ for (const modified of [false, true]) test(`a journaled skill temporary ${modifi
   assert.equal(killed.status, 77, killed.stderr);
   assert.ok(existsSync(join(context.home, '.claude/skills/install-praxity/SKILL.md')));
   if (modified) {
-    const directory = join(context.home, '.agents/skills/install-praxity');
-    const temp = join(directory, readdirSync(directory).find(name => name.endsWith('.tmp')));
+    const temporaries = readState(context.home).transaction.staged.map(({ temp }) => join(context.home, temp)).filter(existsSync);
+    assert.equal(temporaries.length, 1);
+    const [temp] = temporaries;
     writeFileSync(temp, 'PERSONAL NOTES');
     assert.throws(() => installSkills({ base: context.home, host: 'codex', outputs }), /Owned adapter changed/);
     assert.equal(readFileSync(temp, 'utf8'), 'PERSONAL NOTES');
@@ -595,7 +597,7 @@ test('doctor names every missing skill and its install command even when no adap
   for (const scope of ['user', 'project']) for (const host of ['claude', 'codex']) {
     assert.deepEqual(result.items.find(item => item.id === `host.${host}.${scope}`), {
       id: `host.${host}.${scope}`, status: 'not-installed',
-      message: 'Missing skills: install-praxity, studio-editor.',
+      message: 'Missing skills: assessment-writing, install-praxity, studio-editor.',
       fix: `praxity skills install --host ${host} --scope ${scope}`,
     });
   }
