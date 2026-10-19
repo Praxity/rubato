@@ -269,6 +269,161 @@ for (const boundary of ['directory', 'pid', 'reacquired pid']) test(`skills addi
   assert.equal(existsSync(join(context.home, '.claude/skills/install-praxity/SKILL.md')), true);
   assert.equal(existsSync(join(context.home, '.praxity/toolkit-skills.lock')), false);
 });
+function assertExportProcedure(text, name) {
+  const lines = text.split('\n');
+  let previousExport = 0, exports = 0;
+  for (const [index, line] of lines.entries()) {
+    if (!/\bExport (?:HTML|PDF|a course|the course)\b/i.test(line)) continue;
+    exports++;
+    assert.match(lines.slice(previousExport, index).join('\n'), /Before every export, run `~\/\.praxity\/bin\/praxity identity init <course-folder>`/, `${name}: initialize identity before each export without flags`);
+    previousExport = index + 1;
+  }
+  return exports;
+}
+
+const rederiveRule = 'Never pass `--rederive` unless the person has confirmed in this conversation that no version of the course was published.';
+const studioStopRule = "If init reports pending identity or any block that would need `--rederive`, stop. Don't open Studio and don't run `--rederive`. Show the person what init reported and ask how to proceed.";
+
+function praxityCommands(code) {
+  // Match the launcher suffix so paths, variables, npx and shell chains share a detector.
+  return [...code.matchAll(/(?<![\w.-])praxity["']?\s+(identity\s+init|studio|export)\b([^\r\n;&|]*)/g)].map(([, operation, tail]) => ({
+    operation: operation.replace(/\s+/g, ' '),
+    args: tail.match(/"[^"]*"|'[^']*'|<[^>]*>|[^\s]+/g) ?? [],
+  }));
+}
+
+function assertCommandProcedures(text, name) {
+  const counts = { studio: 0, export: 0 }, sectionInitialized = new Set();
+  let previousEnd = 0;
+  for (const snippet of text.matchAll(/^[\t ]*(?<fence>`{3,}|~{3,})[^\n]*\n(?<block>[\s\S]*?)^[\t ]*\k<fence>[\t ]*\r?$|(?<ticks>`+)(?<inline>[\s\S]*?)\k<ticks>/gm)) {
+    if (/^#{1,6}\s+/m.test(text.slice(previousEnd, snippet.index))) sectionInitialized.clear();
+    previousEnd = snippet.index + snippet[0].length;
+    const { block, inline } = snippet.groups;
+    const code = block ?? inline;
+    // Prose spans may use an earlier instruction in their section; blocks and chains stand alone.
+    const initialized = block !== undefined || /&&|;|\n/.test(code) ? new Set() : sectionInitialized;
+    for (const { operation, args } of praxityCommands(code)) {
+      const course = args[0]?.replace(/^(?:"(.*)"|'(.*)')$/, '$1$2');
+      if (operation === 'identity init') {
+        if (course && !course.startsWith('-') && args.length === 1) initialized.add(course);
+      } else {
+        counts[operation]++;
+        assert.ok(course && !course.startsWith('-') && initialized.has(course), `${name}: initialize the same course before each ${operation} command without flags`);
+        initialized.delete(course);
+      }
+    }
+  }
+  if (counts.studio) assert.ok(text.replace(/\s+/g, ' ').includes(studioStopRule), `${name}: stop when identity is blocked`);
+  return counts;
+}
+
+function assertRederivationRule(text, required = false) {
+  const normalized = text.replace(/\s+/g, ' ');
+  if (required) assert.ok(normalized.includes(rederiveRule), 'document the publication confirmation rule');
+  assert.ok(!normalized.replaceAll(rederiveRule, '').replaceAll(studioStopRule, '').includes('--rederive'), 'only the exact confirmation and stop sentences may mention --rederive');
+}
+
+test('every course export procedure initializes identity first without flags', () => {
+  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  let exports = 0;
+  for (const [name, bytes] of outputs.codex) {
+    if (!name.endsWith('.md')) continue;
+    exports += assertExportProcedure(bytes.toString(), name);
+  }
+  assert.equal(exports, 1, 'pin the prose export procedure inventory');
+});
+
+test('skills require confirmation that no version was published before rederiving identity', () => {
+  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  for (const [name, bytes] of outputs.codex) {
+    if (!name.endsWith('.md')) continue;
+    assertRederivationRule(bytes.toString(), bytes.toString().includes('praxity identity init'));
+  }
+});
+
+test('every Studio and export command initializes the same course first, with pinned invocation totals', () => {
+  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  const totals = { studio: 0, export: 0 };
+  for (const [name, bytes] of outputs.codex) {
+    if (!name.endsWith('.md')) continue;
+    const counts = assertCommandProcedures(bytes.toString(), name);
+    totals.studio += counts.studio;
+    totals.export += counts.export;
+  }
+  assert.deepEqual(totals, { studio: 1, export: 0 });
+});
+
+test('Studio guards reject missing, late or mismatched initialization and missing stop instructions', () => {
+  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
+  const init = '~/.praxity/bin/praxity identity init .\n';
+  assert.ok(skill.includes(init));
+  const withoutInit = skill.replace(init, '');
+  assert.throws(() => assertCommandProcedures(withoutInit));
+  assert.throws(() => assertCommandProcedures(withoutInit.replace('~/.praxity/bin/praxity studio . --no-open', `~/.praxity/bin/praxity studio . --no-open\n${init}`)));
+  assert.throws(() => assertCommandProcedures(skill.replace(init, init.replace('init .', 'init ./other-course'))));
+  assert.throws(() => assertCommandProcedures(skill.replace(/If init reports pending identity[\s\S]*?how to proceed\./, '')));
+  assert.throws(() => assertCommandProcedures(skill.replace(init, init.replace('init .', 'init . --yes'))));
+  assert.throws(() => assertCommandProcedures(skill.replace('~/.praxity/bin/praxity studio . --no-open', '~/.praxity/bin/praxity studio . --no-open\n~/.praxity/bin/praxity studio . --no-open')));
+  assert.throws(() => assertCommandProcedures(`${skill}\n\`\`\`sh\n  $ praxity studio ./other-course\n\`\`\``));
+  assert.match(skill.replace(/\s+/g, ' '), /stop the old process\. Run identity init, then launch again,/);
+});
+
+for (const operation of ['studio', 'export']) test(`${operation} guards cover launcher forms, fences, chains and prose spans`, () => {
+  const wrap = code => `${studioStopRule}\n\n${code}`;
+  const variants = [
+    `"$HOME/.praxity/bin/praxity" ${operation} ./x`,
+    `praxity ${operation}`,
+    `praxity  ${operation} ./x`,
+    `cd x && praxity ${operation} ./x`,
+    `echo ready; praxity ${operation} ./x`,
+    `npx praxity ${operation} ./x`,
+    `/opt/bin/praxity ${operation} ./x`,
+    `"$BIN/praxity" ${operation} ./x`,
+    `  $ praxity\t${operation}\t./x`,
+  ];
+  for (const tag of ['', 'sh', 'text', 'console', 'anything']) for (const command of variants) {
+    const code = `\`\`\`${tag}\n${command}\n\`\`\``;
+    assert.throws(() => assertCommandProcedures(wrap(code)), /initialize the same course/, code);
+    if (command !== `praxity ${operation}`) {
+      const initialized = code.replace(`${tag}\n`, `${tag}\npraxity identity init ./x\n`);
+      assert.equal(assertCommandProcedures(wrap(initialized))[operation], 1, code);
+    }
+  }
+  for (const separator of [' && ', '; ', '\n']) {
+    const command = `praxity identity init './a course'${separator}npx praxity ${operation} "./a course"`;
+    assert.equal(assertCommandProcedures(wrap(`\`\`\`console\n${command}\n\`\`\``))[operation], 1);
+  }
+  for (const commands of [
+    `praxity ${operation} ./x\npraxity identity init ./x`,
+    `praxity identity init ./other\npraxity ${operation} ./x`,
+    `praxity identity init ./x --yes\npraxity ${operation} ./x`,
+    `praxity identity init --yes\npraxity ${operation} ./x`,
+    `praxity identity init ./x\npraxity ${operation} ./x\npraxity ${operation} ./x`,
+  ]) assert.throws(() => assertCommandProcedures(wrap(`\`\`\`\n${commands}\n\`\`\``)), /initialize the same course/);
+  const prose = `Run \`praxity identity init ./x\` first. Then \`npx praxity ${operation} ./x\`.`;
+  assert.equal(assertCommandProcedures(wrap(prose))[operation], 1);
+  assert.throws(() => assertCommandProcedures(wrap(`Use \`praxity ${operation} ./x\`.`)), /initialize the same course/);
+  assert.throws(() => assertCommandProcedures(wrap(prose.replace('first.', 'first.\n## Another section\n'))), /initialize the same course/);
+  assert.throws(() => assertCommandProcedures(wrap(prose.replace('first.', 'first.\n```sh\n') + '\n```')), /initialize the same course/);
+  assert.throws(() => assertCommandProcedures(wrap(prose.replace(`npx praxity ${operation} ./x`, `cd x && praxity ${operation} ./x`))), /initialize the same course/);
+  assert.throws(() => assertCommandProcedures(wrap(`\`praxity ${operation} ./x\`, then \`praxity identity init ./x\`.`)), /initialize the same course/);
+  assert.throws(() => assertCommandProcedures(wrap(`\`praxity identity init ./x --yes\` then \`praxity ${operation} ./x\`.`)), /initialize the same course/);
+  assert.equal(assertCommandProcedures(wrap(`~~~text\npraxity identity init ./x\npraxity ${operation} ./x\n~~~`))[operation], 1);
+});
+
+test('export guards reject misplaced or missing initialization, flags and stray rederivation', () => {
+  const skill = readFileSync(join(repository, 'skills/install-praxity/SKILL.md'), 'utf8');
+  const step = skill.match(/   Before every export,[\s\S]*?(?=   Export HTML)/)[0];
+  const withoutStep = skill.replace(step, '');
+  assert.throws(() => assertExportProcedure(withoutStep));
+  assert.throws(() => assertExportProcedure(`${withoutStep}\n${step}`));
+  for (const command of ['~/.praxity/bin/praxity identity init --yes', '~/.praxity/bin/praxity identity init <course-folder> --yes']) {
+    assert.throws(() => assertExportProcedure(skill.replace('~/.praxity/bin/praxity identity init <course-folder>', command)));
+  }
+  assert.throws(() => assertRederivationRule(`${skill}\nUse --rederive.\n`, true));
+  assert.throws(() => assertRederivationRule(skill.replace(/Never pass `--rederive`[\s\S]*?published\./, ''), true));
+});
+
 test('canonical adapter generation matches reviewed golden files', t => {
   const { context } = fixture(t);
   const outputs = outputsFor(context);

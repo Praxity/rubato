@@ -30,11 +30,18 @@ is unavailable, stop and obtain it from the owner. Do not invent a download URL.
    The folder must contain `course.yaml` or `.prax` lessons. It merges five
    course actions into `t3.json`, preserving other keys and scripts. Commit that
    file with the course. Studio's port is stable; its private registry stays in
-   `~/.praxity/toolkit-state/t3-actions.json`. Export HTML to `course-html.zip`
+   `~/.praxity/toolkit-state/t3-actions.json`.
+   Before every export, run `~/.praxity/bin/praxity identity init <course-folder>`;
+   it records page and block identity for hand-written or newly added blocks and
+   changes nothing when there is nothing new.
+   Export HTML to `course-html.zip`
    before running Check accessibility. Automatic editor preview needs T3 desktop
    and a Studio build supporting `--port` and `/launch`. The actions call
    `"$HOME/.praxity/bin/praxity"`, so they work before PATH is set. Refused JSON stays
    unchanged; resolve the reported error and rerun init.
+
+Never pass `--rederive` unless the person has confirmed in this conversation that
+no version of the course was published.
 
 Use the absolute launcher when PATH is stale. Show the printed PATH line for the
 user to add; never edit shell profiles or AGENTS files. Praxity tools run locally;
