@@ -8,6 +8,8 @@ import { spawnSync, spawn } from 'node:child_process';
 import { buildAdapters, installSkills, uninstallSkills } from '../src/skills.mjs';
 import { runCli } from '../src/cli.mjs';
 import { doctor } from '../src/doctor.mjs';
+import { courseActions } from '../src/t3-actions.mjs';
+import { initCourse } from '../src/init.mjs';
 import { fixture, fakeTool, repository } from './helpers.mjs';
 
 const outputsFor = context => buildAdapters({ source: join(context.root, 'skills'), packVersion: context.pack.version });
@@ -410,6 +412,34 @@ test('review port guard rejects an omitted or invented reserved port', () => {
   for (const replacement of ['--review --no-open', '--review --port 4311 --no-open']) {
     assert.throws(() => assertReservedReviewPort(section.replace('--review --port N --no-open', replacement)), /uses the reserved port/);
   }
+});
+
+test('documented reserved-port forms round trip generated actions and the init matcher', t => {
+  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
+  const section = skill.split('## Open for review\n')[1].split('\n## ')[0];
+  assertReservedReviewPort(section);
+  const form = section.match(/`(studio \. --port N)`/)[1];
+  const action = courseActions(4311).find(action => action.name === 'Open in Studio');
+  assert.equal(action.command, `"$HOME/.praxity/bin/praxity" ${form.replace('N', '4311')} --no-open`);
+  for (const launcher of ['praxity', '"$HOME/.praxity/bin/praxity"']) {
+    const command = action.command.replace('"$HOME/.praxity/bin/praxity"', launcher);
+    assert.equal(Number(command.match(/ --port (\d+)(?: --no-open)?$/)[1]), 4311);
+    // Exercise studioCommand through init's public interface, using a port in its reservation range.
+    const { context } = fixture(t);
+    writeFileSync(join(context.cwd, 'course.yaml'), 'title: A course\n');
+    writeFileSync(join(context.cwd, 't3.json'), JSON.stringify({ scripts: [{ name: action.name, command: command.replace('4311', '41811') }] }));
+    assert.equal(initCourse({ folder: context.cwd, home: context.home }).port, 41811);
+    const saved = JSON.parse(readFileSync(join(context.cwd, 't3.json'), 'utf8')).scripts.find(script => script.name === action.name);
+    assert.equal(Number(saved.command.match(/ --port (\d+)(?: --no-open)?$/)[1]), 41811);
+  }
+});
+
+test('busy review reservation reports the collision and requires consent before dropping the port', () => {
+  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
+  const section = skill.split('## Open for review\n')[1].split('\n## ')[0].replace(/\s+/g, ' ');
+  assert.match(section, /reserved port is busy, report Studio's message/);
+  assert.match(section, /Never stop another course's Studio/);
+  assert.match(section, /Ask before launching without `--port`, because unsent drafts will not carry over/);
 });
 
 test('review launch obeys the same identity guard, including every generated adapter', () => {

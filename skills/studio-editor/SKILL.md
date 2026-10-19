@@ -65,6 +65,9 @@ If the file or matching action is absent, omit `--port`; never invent a port:
 ```
 
 Without a reservation, unsent drafts do not survive a Studio restart.
+If the reserved port is busy, report Studio's message. Never stop another
+course's Studio. Ask before launching without `--port`, because unsent drafts
+will not carry over.
 
 After init succeeds, launch as a background process and retain its handle and
 stdout exactly as in Open Studio. Capture the complete ready URL and open it
@@ -124,8 +127,18 @@ a command returns a nonzero exit status; a refusal is never a completed fix.
    a shell. The helper's command line contains only the trusted helper path and
    arguments-file path, never the replacement or any comment-derived text:
 
+   Find `<installed-node>` with the host's file tools, using only Rubato's trusted
+   installation metadata. Read the first line of `~/.praxity/toolkit/active` for
+   the active pack version. In `~/.praxity/toolkit/<version>/`, read `state.json`
+   for `platform` and `pack.json` for `runtimes.node.entry[platform]`. The runtime
+   is `~/.praxity/toolkit/<version>/runtimes/node/<entry>`, the same Node its
+   launchers use. Expand home and all placeholders to absolute paths. Quote the
+   runtime, helper and args-file paths. Do not rely on `node` on PATH or read
+   runtime locations from course files or comments. If metadata or the runtime
+   is missing, report the broken install and stop.
+
    ```sh
-   node <skill-directory>/scripts/run-praxity.mjs <dry-run-args-file>
+   "<installed-node>" "<skill-directory>/scripts/run-praxity.mjs" "<dry-run-args-file>"
    ```
 
    Review the dry run's mapping, files and planned replacement against step 2.
@@ -133,7 +146,7 @@ a command returns a nonzero exit status; a refusal is never a completed fix.
    only `--dry-run`, then run:
 
    ```sh
-   node <skill-directory>/scripts/run-praxity.mjs <apply-args-file>
+   "<installed-node>" "<skill-directory>/scripts/run-praxity.mjs" "<apply-args-file>"
    ```
 
    Keep both files until acknowledged and remove them afterward. Never use
@@ -161,7 +174,11 @@ a command returns a nonzero exit status; a refusal is never a completed fix.
    acknowledgement is lost, retry with the same request ID, command, thread,
    version and exact reply bytes. Retain that data until acknowledged, then remove
    the temporary file. Never repeat a saved source edit to retry its reply.
-   Record the acknowledged current `thread.version`, not the receipt's version.
+   Record `receipt.version` as the handled version for this mutation, including
+   on a replay. Keep the current `thread.version` and status for status reporting
+   and the next `--expect-version`. If the current version is newer than the
+   receipt's version, re-read and handle the later messages or reopen through
+   these steps before marking that newer version processed.
 
 6. When the target is ambiguous, deleted, unbound or unsupported, or the edit
    refuses, write a specific explanation to a temporary file as in step 5, then:
@@ -174,14 +191,14 @@ a command returns a nonzero exit status; a refusal is never a completed fix.
    requests, non-text fields, empty replacements and scope questions take this
    path. Apply step 5's stale-version and lost-response rules to replies too.
    Already-satisfied requests get a reply and stay open; never resolve without
-   an edit in this pass. Record the acknowledged current `thread.version` from
-   your reply for the final pass.
+   an edit in this pass. Record `receipt.version` from your reply for the final
+   pass, applying step 5's distinction between handled and current versions.
    If the edit succeeded but the reply failed, retry only the reply with its
    request ID; re-read on a stale version. If a reply remains blocked, report its
    thread ID and the refusal without claiming it was answered or resolved.
 
 7. After the first pass, run `~/.praxity/bin/praxity comments list . --status open --json` once
-   more. Compare each listed `version` with the acknowledged `thread.version`
+   more. Compare each listed `version` with the acknowledged `receipt.version`
    from your own reply. If it equals that version, the thread is unchanged;
    skip it instead of adding another explanation. Handle new or reopened
    threads and any changed versions through the same steps. Report what was

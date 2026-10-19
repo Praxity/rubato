@@ -134,7 +134,7 @@ test('real Studio fixes one text comment and replies to an unsupported request w
 
   const remaining = cli(['comments', 'list', '.', '--status', 'open', '--json']);
   assert.deepEqual(remaining.threads.map(thread => thread.id), [unsupported.id]);
-  const ownReplyVersions = new Map([[explained.thread.id, explained.thread.version]]);
+  const ownReplyVersions = new Map([[explained.thread.id, explained.receipt.version], [resolved.thread.id, resolved.receipt.version]]);
   assert.deepEqual(remaining.threads.filter(thread => thread.version !== ownReplyVersions.get(thread.id)), [],
     'unchanged open threads are skipped rather than answered again');
   const final = cli(['comments', 'list', '.', '--json']);
@@ -148,12 +148,32 @@ test('real Studio fixes one text comment and replies to an unsupported request w
   assert.equal(leftOpen.messages.length, 2);
   assert.equal(leftOpen.messages[1].body, openReply);
 
+  // The original resolve succeeded but its acknowledgement was lost. New feedback
+  // arrives before the identical retry: current facts must not advance the handled watermark.
+  const reopened = cli(['comments', 'reopen', '.', supported.id,
+    '--expect-version', String(resolved.thread.version), '--request-id', randomUUID(), '--json']);
+  const correctionFile = join(root, 'correction.txt');
+  writeFileSync(correctionFile, 'The replacement needs a further correction.');
+  const corrected = cli(['comments', 'reply', '.', supported.id, '--text-file', correctionFile,
+    '--expect-version', String(reopened.thread.version), '--request-id', randomUUID(), '--json']);
+  const replayed = cli(resolution);
+  assert.equal(replayed.replayed, true);
+  assert.equal(replayed.receipt.version, resolved.receipt.version);
+  assert.equal(replayed.thread.version, corrected.thread.version);
+  assert.ok(replayed.thread.version > replayed.receipt.version);
+  assert.equal(replayed.thread.status, 'open');
+  assert.equal(replayed.thread.messages.at(-1).body, 'The replacement needs a further correction.');
+  ownReplyVersions.set(replayed.thread.id, replayed.receipt.version);
+  const afterReplay = cli(['comments', 'list', '.', '--status', 'open', '--json']);
+  assert.deepEqual(afterReplay.threads.filter(thread => thread.version !== ownReplyVersions.get(thread.id)).map(thread => thread.id),
+    [supported.id], 'the final pass selects later feedback even when it arrived before lost-response replay');
+
   const newerFile = join(root, 'newer-feedback.txt');
   writeFileSync(newerFile, 'Please clarify which text edits are supported.');
   cli(['comments', 'reply', '.', unsupported.id, '--text-file', newerFile,
     '--expect-version', String(explained.thread.version), '--request-id', randomUUID(), '--json']);
   const next = cli(['comments', 'list', '.', '--status', 'open', '--json']);
   assert.deepEqual(next.threads.filter(thread => thread.version !== ownReplyVersions.get(thread.id)).map(thread => thread.id),
-    [unsupported.id], 'new feedback requires another read even on a thread already answered');
+    [supported.id, unsupported.id], 'new feedback requires another read even on a thread already answered');
   assert.equal(readFileSync(lesson, 'utf8'), source.replace('Original heading', 'Revised heading'));
 });
