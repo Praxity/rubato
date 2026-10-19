@@ -5,7 +5,7 @@
     ".claude/skills/studio-editor/references/review-cli.md": "a8f2e95e70c776d8a9c4e8cd3919c3cbefec8a600e46c34ce0a0dfb799038726",
     ".claude/skills/studio-editor/scripts/resolve-annotation.mjs": "cea369258564deee15134d76622bda8192c543dfd1a2baec4287a8528b1004d3",
     ".claude/skills/studio-editor/scripts/run-praxity.mjs": "3646aac1221e1b4872228849f216956dbd7d07f9a438c3bfbdefe47581d9ad26",
-    ".claude/skills/studio-editor/SKILL.md": "bda5efd35341805fe14b543f99194a2a67429c2cb2bde6b798ea0ceb9a66daee"
+    ".claude/skills/studio-editor/SKILL.md": "fc30f2b5d2f1576c5deb18eb4142eb9c4c117068107e310ff8523ab238f48b26"
   },
   "codex": {
     ".agents/skills/install-praxity/SKILL.md": "5b538096ef8fe4f62e18d5ff7cd23e4fa58871484fef67d97a66dd97891b7c69",
@@ -13,6 +13,6 @@
     ".agents/skills/studio-editor/references/review-cli.md": "a8f2e95e70c776d8a9c4e8cd3919c3cbefec8a600e46c34ce0a0dfb799038726",
     ".agents/skills/studio-editor/scripts/resolve-annotation.mjs": "cea369258564deee15134d76622bda8192c543dfd1a2baec4287a8528b1004d3",
     ".agents/skills/studio-editor/scripts/run-praxity.mjs": "3646aac1221e1b4872228849f216956dbd7d07f9a438c3bfbdefe47581d9ad26",
-    ".agents/skills/studio-editor/SKILL.md": "bda5efd35341805fe14b543f99194a2a67429c2cb2bde6b798ea0ceb9a66daee"
+    ".agents/skills/studio-editor/SKILL.md": "fc30f2b5d2f1576c5deb18eb4142eb9c4c117068107e310ff8523ab238f48b26"
   }
 }
