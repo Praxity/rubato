@@ -9,61 +9,124 @@ Models often write a convincing key beside distractors that reveal why they are 
 
 ## 1. Before the item
 
-Name the one idea being tested and the decision the stem asks for. List the misconceptions a partly prepared learner might hold before writing options. Source them from learner answers and comments, published research on the topic, the course's confused-with topics, or older versions of the relevant standard. Label an author's judgement as a hypothesis to check with learners. Use fewer options when the format allows it rather than inventing a misconception to fill a slot.
+Name the one idea being tested and the decision the stem asks for. List the misconceptions a partly prepared learner might hold before writing options. Use sources in this order: learner answers and comments, published research on the topic, the course's confused-with topics, older versions of the relevant standard, then the author's judgement. A model's judgement alone is not evidence of a learner misconception; label it as a hypothesis to check with learners. Use fewer options when the format allows it rather than inventing a misconception to fill a slot.
 
 ## 2. Write the item
 
 - Put the deciding detail in the stem. Someone who knows the topic should be able to answer with the options covered.
 - Make distractors plausible and misconception-based. Each distractor targets a different misconception. Prefer statements or actions that are reasonable in a neighbouring case but do not answer this stem, such as the definition of a neighbouring concept or a partial solution.
-- Keep options parallel in length, grammar, register and kind. If the key uses textbook wording, give the distractors the same register. Inspect the key's length rank across the bank; always making it second-shortest creates another cue.
+- Keep options parallel in length, grammar, register and kind. If the key uses textbook wording, give the distractors the same register. Inspect the key's length rank across the bank, aiming for each rank about n/k times for n items with k options. Always making it second-shortest creates another cue.
 - No option names its own flaw. Put the deciding scope or condition in the stem instead of giving a distractor a conspicuously wrong qualifier. Vary which option is hedged; certainty or caution must not identify the key.
 - When options vary on two elements, consider all four combinations so the key is not the option sharing the most elements with all the others. Check for convergence, shared leads, duplicates, stem words echoed only in the key and absolutes confined to distractors.
 - Keep all options respectful and person-centred. The key must win on the tested content rather than being the only considerate answer. Make wrong options credible, without jokes or cartoonishly unsafe actions.
 - Match the target exam's format, including option count, number of best answers and stem style. Follow its rules for negative stems and all/none-of-the-above options. When no exam constrains the format, prefer a positive stem and one best answer with functioning distractors.
-- Give each distractor feedback that names its misconception, explains why it is wrong here, and says when it would be right. Keep feedback separate from the option text so it cannot disclose the answer before submission.
-- Predict items must not copy later checks. Ask for a prediction about a different case; preserve the later check's need for retrieval and judgement.
+- When options classify parts of a case, include every part they name in the stem. A distractor that names an absent part is wrong for the wrong reason. Write feedback by Explaining a wrong answer below, separate from option text so it cannot disclose the answer before submission.
+- A predict question must use a different case from the later check, so the check still makes learners recall the answer.
 - Set `{shuffle}` on scored choices. Leave key position to runtime randomisation. With `dontKnow` alone, keep "I don't know" pinned last below the options, outside the shuffled answers. Use the supported `dontKnow` setting rather than authoring another ordinary option.
-- When confidence and `dontKnow` are both on, use a segmented submit control: "Submit: Sure of my answer / I guessed / Don't know". "Don't know" sits in the submit control, not the option list. Preserve the target exam's option count. Check that the installed renderer supports this combination before using it; if it does not, report that limitation and keep confidence off rather than inventing syntax or claiming the control exists.
+- When Studio supports confidence (planned), confidence and don't-know responses will share a segmented submit control: "Submit: Sure of my answer / I guessed / Don't know". "Don't know" belongs in that control, outside the option list, preserving the target exam's option count. Confidence has no authoring syntax yet. Do not add a rating block as a substitute.
+
+## Explaining a wrong answer
+
+Teach why this case fits one concept and not the tempting alternative. A category name or a verdict alone leaves the learner to work out the difference.
+
+For each wrong option, apply its defining test to the case's own words. Show where it fails, then apply the right concept's test. Add one change that would make the wrong option right. Prefer changing one feature of the case to changing the question. Today, put that "right when" contrast inside the option's `feedback`. A separate `rightWhen` field is available only when the course format supports it (planned); give no syntax for it yet.
+
+The key's `feedback` also applies its defining test to this case. Let the UI supply the verdict. Expand acronyms and use the course glossary where supported, since feedback may appear apart from the lesson.
+
+Keep shared misconception notes general: explain why the mix-up is tempting, then give the defining contrast and an example of each side. A bare false assertion gives a confused learner nothing to reason with. Use "Why it can seem right" as the learner-facing label for that explanation.
+
+Confidence-dependent feedback is available only when the course format supports it (planned); give no syntax. In that design, show "Why it can seem right" after a sure wrong answer. A guess or don't-know response can signal a gap, so do not attribute a misconception to it. For a wrong guess, explain the case and the contrast; for don't know, explain the answer. In today's Studio feedback, make the case explanation useful without assuming the learner's confidence or reasoning.
+
+Neutral invented learner-facing example:
+
+```prax
+# Find the mean
+
+::: choice Four crates hold 2, 3, 4 and 7 jars. What is the mean number of jars per crate? {shuffle}
+(x) 4 jars per crate
+feedback: The crates hold 16 jars in total. Divide 16 by the four crates to get a mean of 4 jars per crate.
+( ) 16 jars per crate
+feedback: Sixteen is the total number of jars. The mean shares that total across four crates: 16 divided by 4 is 4 jars per crate. Sixteen would be the mean if all 16 jars were in one crate.
+:::
+```
+
+For follow-up practice, ask when the learner needs to remember the material, such as an exam date. Use an author-provided retention horizon when the learner supplies none. Longer retention goals generally call for longer gaps between reviews. Cepeda et al. support relating the gap to that horizon, not treating a fixed next-day review as universally optimal. Course scheduling controls remain planned; give no setting syntax or guaranteed interval.
 
 ## 3. Attack the bank
 
 This step is required. The writer never grades its own items. Trace owns the scripted cue rules and scores the independent responses against the key.
 
-1. Run the scripted report first:
+0. Inspect the current course source, including its keys:
 
    ```sh
-   praxity trace report <course> --out <dir>
+   praxity inspect <course-dir> --schema 1 > <inspect.json>
    ```
 
-   Its item-cues section must show no flagged cues, or each flag must be fixed or justified with item-specific evidence. Inspect key-position spread and key-length-rank spread across the bank as well as individual cues.
+   Pass this JSON to Trace, not the source directory. Count the course's scored single-answer choices independently of Trace's included count. An old projection with missing keys must not produce an empty-bank pass.
+
+1. Run the scripted report:
+
+   ```sh
+   praxity trace report <inspect.json> --out <dir>
+   ```
+
+   Check that the included item count equals the course's scored single-answer choices. Reconcile any extra included practice items separately. Every entry in `itemCues.excluded` must be fixed or justified; a missing scored key is a blocker. The item-cues section must show no flagged cues, or each flag must be fixed or justified with item-specific evidence. Inspect key-position spread and key-length-rank spread across the bank as well as individual cues. A missing `report.json.itemCues` or `itemCues.course` triggers the manual fallback below, never a pass.
 
 2. Prepare the blind probes:
 
    ```sh
-   praxity trace prepare item-cues <course> --out <bundle>
+   praxity trace prepare item-cues <inspect.json> --out <bundle>
    ```
 
-   Spawn a fresh subagent for each probe that has never seen the course source or the key. Give it only the bundle's prompt and that probe's unkeyed inputs, never the source, feedback, keyed report or writer's reasoning. The choices-only solver sees options without stems and picks an answer with a named cue, if any. A separate cover-the-options solver sees stems without options and answers them. Follow the bundle's response schema to produce `<bundle>/answer.json`. The writer may assemble the responses without changing their answers or judgements.
+   Use a new, empty bundle folder for every pass. If `prepare item-cues` fails with an unknown view, use the manual fallback. Other errors must be fixed rather than treated as permission to bypass Trace.
+
+   Spawn a fresh subagent for each probe that has never seen the course source or the key. Use a solver at least as capable as the writer, preferably from another model family, and record its model. Give it only the bundle's prompt and that probe's unkeyed inputs, never the source, feedback, keyed report or writer's reasoning. Trace handles option shuffling for each probe. The choices-only solver sees options without stems and picks an answer with a named cue, if any. A separate cover-the-options solver sees stems without options and answers them. Follow the bundle's response schema to produce `<bundle>/answer.json`. The writer may assemble the responses without changing their answers or judgements.
+
+   Before scoring, a separate fresh judge agent, which neither wrote the items nor answered either probe, reviews each cover-the-options free answer beside its stem and key. It writes `coverJudgement: "matches" | "differs" | "cantTell"` on each cover-the-options answer in `answer.json`. It explains any underspecified stem or uncertainty in its review notes. The writer and solvers never supply these judgements. An unjudged answer shows as "not judged" and cannot pass.
 
 3. Score the responses through Trace:
 
    ```sh
-   praxity trace report <course> --out <dir> --item-cues <bundle>/answer.json
+   praxity trace report <inspect.json> --out <dir> --item-cues <bundle>/answer.json
    ```
 
-   Rewrite every item the choices-only solver got right with a named cue. Repair stems that the cover-the-options solver cannot answer because the deciding detail is missing; distinguish that from a solver's lack of subject knowledge. After changes, regenerate the bundle and repeat with new, unexposed subagents.
+   Rewrite every item guessed correctly with a cue confirmed in its text by a scripted flag or a second fresh reader. Record unconfirmed guesses as chance hits rather than rewriting to fit the solver's story. Resolve every `differs` and `cantTell` with the independent judge. Repair every stem it identifies as underspecified, and every unresolved uncertainty. The writer does not judge these matches. Trace uses the judge's labels rather than literal text matching; a cover-the-options p never replaces that judgement.
 
-   Stop when all named cues on correctly guessed items are resolved, all scripted flags are fixed or justified, the stems pass the cover-the-options review, and the bank's one-sided binomial p is above 0.05. The bank is then not distinguishable from guessing by this test; that is not proof that every item is free of cues. On small banks, treat a flat percentage as noise. Record item count, option count, correct guesses, chance expectation and p with the bank, plus the responses and any flag justifications.
+   After every rewrite, re-run inspect from the changed source, then report and prepare into a new, empty bundle folder. Score that pass's `answer.json` against that pass's inspect JSON. Keep earlier inputs, responses and results. Run at most three passes. Never re-run an unchanged bank to obtain a better p. After the third pass, list any items or statistical checks still failing, give their evidence and numbers, and stop for the person with the bank unresolved.
 
-4. Treat plausibility judgements as hints, never gates. Ask which distractor a partly prepared learner might choose and why. Check those hypotheses against actual learner responses when available. Review distractors that attract very few responses, accounting for sample size and the learners' preparation.
+   Stop only when confirmed cues are resolved, scripted flags are fixed or justified, the independent stem judge has no unresolved labels or "not judged" items, the explanations probe below passes, and both choices-only tails pass for every bank AND the whole course pooled. Require `choicesOnly.p > 0.05` for the upper tail and `choicesOnly.pLow >= 0.05` for the lower tail. Use Trace's first HTML row, or `itemCues.course` in JSON, which has the same fields as a bank row and reports both tails. Never use `coverTheOptions.p` for this gate. If the course row or a tail is absent, compute the missing check manually as below. Treat banks under about 12 items as too small to fail reliably by themselves; read them through the pooled course row. On small banks, a flat percentage is noise.
+
+   This executable predicate checks both statistical tails against Trace's JSON. It refuses missing or empty rows and a course total that differs from the sum of its banks. It does not replace the independent reviews or coverage reconciliation.
+
+   ```js
+   function choicesOnlyPass(itemCues) {
+     const banks = itemCues?.banks;
+     const course = itemCues?.course;
+     if (!Array.isArray(banks) || banks.length === 0 || !course) return false;
+     if (course.count !== banks.reduce((sum, bank) => sum + bank.count, 0)) return false;
+     return [course, ...banks].every(row => row.count > 0 &&
+       row.choicesOnly?.total === row.count &&
+       row.choicesOnly.p > 0.05 && row.choicesOnly.p <= 1 &&
+       row.choicesOnly.pLow >= 0.05 && row.choicesOnly.pLow <= 1);
+   }
+   // Evaluate choicesOnlyPass(report.itemCues) on this pass's report.json.
+   ```
+
+   A choices-only score well below chance also fails: a one-sided lower-tail p below 0.05 means an anti-key cue. Check both tails for every bank and the pooled course. Fix inverse cues as well as forward cues. Passing these tests is not proof that every item is free of cues. Record counts, option counts, correct guesses, chance expectations, both tails, solver models, independent judgements and all flag justifications.
+
+4. Run an explanations probe with a fresh reviewer that neither wrote the items nor answered the probes. For each wrong option, give it only the stem, that option and its feedback, including the "right when" contrast. Include a separate contrast only when the format supports it. Give it no lesson or key. Ask: "From this alone, can you explain why this case fits the answer rather than the selected option, and what change would make that option right?" Rewrite every "no" or uncertainty. Keep the review with the bank and include these rewrites within the same three-pass cap. This is a fresh-agent step; there is no Trace explanations command.
+
+5. Treat plausibility judgements as hints, never gates. Ask which distractor a partly prepared learner might choose and why. Check those hypotheses against actual learner responses when available. Review distractors that attract very few responses, accounting for sample size and the learners' preparation.
 
 ### If item-cues is unavailable
 
-If Trace's item-cues is not installed yet, say so and run both probes by hand with fresh subagents using the same blind inputs and separation above. Do not skip the attack step. If subagent execution is unavailable, report the attack as blocked and the bank as unverified.
+If Trace's report has no `itemCues` or course row, or prepare rejects `item-cues` as an unknown view, say that the required item-cues contract is unavailable. Use the same fallback if scored rows lack `pLow` or Trace cannot accept `coverJudgement`. Run both probes and the explanations probe by hand with fresh subagents using the same blind inputs and separation above. Do not skip the attack step. If subagent execution is unavailable, report the attack as blocked and the bank as unverified.
 
-Manually inspect the scripted cues listed in step 2 of writing, plus key-position spread and key-length-rank spread. Record each flag and its fix or justification. Lock the blind responses before a separate scoring subagent receives the key to score them; the writer does not substitute its own judgement for independent grading.
+Manually inspect the cue list in Write the item, plus key-position spread and key-length-rank spread. Reconcile the included count and every exclusion against the scored single-answer choices. Shuffle options independently for each choices-only probe and keep the mapping on the scoring side. Lock the blind responses before a separate scoring subagent receives the key to score them. A separate fresh judge, which neither wrote the items nor answered either probe, judges each cover-the-options response beside its stem and key using the same `coverJudgement` labels above. The writer never replaces these independent judgements.
 
-For a bank of n single-answer items with k options each and x correct guesses, compute the one-sided binomial tail P(X >= x) with chance 1/k. Chance expectation is n/k. Separate banks with different option counts rather than applying one binomial rate to all items. For example, 12 of 32 four-option items gives p about 0.080 and 13 gives p about 0.038. Apply the same rewrite and stopping rules as the Trace workflow. Keep the counts, calculation, responses and justifications with the bank; a flat percentage is not a substitute.
+Compute both tails for each bank AND all scored course choices pooled. With n items, k options each and x correct guesses, use upper tail P(X >= x), lower tail P(X <= x), and chance expectation n/k. With mixed option counts, use each item's chance 1/k in the exact independent-Bernoulli distribution rather than one average chance. Build that distribution from probabilities `[1]`: for each item probability q, replace mass j with `old[j] * (1-q) + old[j-1] * q`, treating absent entries as zero. Sum masses j >= x for the upper tail and j <= x for the lower tail. Apply this to every bank and to the pooled item list, counting each item once.
+
+For example, 12 of 32 four-option items gives upper-tail p about 0.080 and 13 gives about 0.038. Eight banks at 3 of 4 each can pass individually while their pooled 24 of 32 fails. Require every upper tail > 0.05 and every lower tail >= 0.05, plus the independent cue and stem reviews. Use the same three-pass cap and refreshed inputs as the Trace workflow. Keep every run's counts, calculations, responses and justifications; a flat percentage is not a substitute.
 
 ## Public research
 
@@ -71,3 +134,11 @@ For a bank of n single-answer items with k options each and x correct guesses, c
 - [Gierl, Bulut, Guo and Zhang, 2017, Developing, analyzing, and using distractors for multiple-choice tests in education](https://doi.org/10.3102/0034654317726529) reviews distractor development and analysis.
 - [Balepur, Ravichander and Rudinger, 2024, Artifacts or Abduction: How Do LLMs Answer Multiple-Choice Questions Without the Question?](https://aclanthology.org/2024.acl-long.555/) motivates the choices-only attack.
 - [Tarrant, Ware and Mohammed, 2009, An assessment of functioning and non-functioning distractors](https://doi.org/10.1186/1472-6920-9-40) uses learner response data to identify distractors that do not function.
+- [NBME, 2024, Item-writing guide, sixth edition](https://www.nbme.org/sites/default/files/2021-02/NBME_Item%20Writing%20Guide_R_6.pdf) describes the cover-the-options rule for focused stems.
+- [Rodriguez, 2005, Three options are optimal for multiple-choice items](https://doi.org/10.1111/j.1745-3992.2005.00006.x) supports fewer functioning options when the target format permits them.
+- [Koff, Zhang, Leinonen and Denny, 2026, Predicting multiple-choice question difficulty and distractor selection with large language models](https://ceur-ws.org/Vol-4287/paper3.pdf) motivates treating model predictions of distractor choice as hints to check against learner data.
+- [Van der Kleij, Feskens and Eggen, 2015, Effects of feedback in a computer-based learning environment on students' learning outcomes](https://doi.org/10.3102/0034654314564881) supports explanations beyond a verdict or correct answer alone.
+- [Kendeou and O'Brien, 2014, The Knowledge Revision Components framework: processes and mechanisms](https://experts.umn.edu/en/publications/the-knowledge-revision-components-krec-framework-processes-and-me/) explains how competing ideas and a causal explanation support knowledge revision.
+- [Merrill and Tennyson, 1977, Teaching concepts: an instructional design guide](https://eric.ed.gov/?id=ED143337) uses matched examples and nonexamples to isolate the defining feature.
+- [Butterfield and Metcalfe, 2001, Errors committed with high confidence are hypercorrected](https://pubmed.ncbi.nlm.nih.gov/11713883/) supports attending to confidence when correcting errors; it does not establish what any individual learner was thinking.
+- [Cepeda, Vul, Rohrer, Wixted and Pashler, 2008, Spacing effects in learning: a temporal ridgeline of optimal retention](https://doi.org/10.1111/j.1467-9280.2008.02209.x) relates review spacing to the intended retention interval.
