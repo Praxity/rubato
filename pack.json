@@ -127,7 +127,8 @@
     },
     {
       "id": "check",
-      "version": "0.6.0-main.993069cc",
+      "version": "0.6.0-alpha.c61b1cb3c",
+      "sourceRevision": "c61b1cb3ce3a4e7afb0a44f3dd70e82a52c1154d",
       "entry": "lib/cli.js",
       "runner": "node",
       "setup": [
@@ -143,15 +144,15 @@
       "archives": {
         "darwin-arm64": {
           "status": "published",
-          "url": "https://github.com/Praxity/praxity-toolkit/releases/download/v0.1.1/praxity-check-0.6.0-main.993069cc-portable.tar.gz",
-          "sha256": "80e4631abdd5f3514bbb748c8ad6b00e4de080d10375df239a3bd16e0040383b",
+          "url": "https://github.com/Praxity/praxity-check/releases/download/v0.6.0-alpha.c61b1cb3c/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz",
+          "sha256": "77fd9a2c8d9cdf1041341eef6b0bc564c0e560279b3bc520d95ec23fc42f79eb",
           "format": "tar.gz",
           "stripComponents": 1
         },
         "darwin-x64": {
           "status": "published",
-          "url": "https://github.com/Praxity/praxity-toolkit/releases/download/v0.1.1/praxity-check-0.6.0-main.993069cc-portable.tar.gz",
-          "sha256": "80e4631abdd5f3514bbb748c8ad6b00e4de080d10375df239a3bd16e0040383b",
+          "url": "https://github.com/Praxity/praxity-check/releases/download/v0.6.0-alpha.c61b1cb3c/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz",
+          "sha256": "77fd9a2c8d9cdf1041341eef6b0bc564c0e560279b3bc520d95ec23fc42f79eb",
           "format": "tar.gz",
           "stripComponents": 1
         },
@@ -167,7 +168,8 @@
     },
     {
       "id": "trace",
-      "version": "0.1.1",
+      "version": "0.1.1-experimental.09fcaaf76",
+      "sourceRevision": "09fcaaf76841175d150210ec29c66d7ebab05cc3",
       "entry": "src/cli.ts",
       "runner": "node",
       "license": "PolyForm Perimeter 1.0.1",
@@ -176,15 +178,15 @@
       "archives": {
         "darwin-arm64": {
           "status": "published",
-          "url": "https://github.com/Praxity/praxity-toolkit/releases/download/v0.1.1/praxity-trace-0.1.1-darwin-arm64.tar.gz",
-          "sha256": "52bc5aa82d29892e5570fdb88ec65bd29c728b29b890c9b7aba49bf3f48c5dbb",
+          "url": "https://github.com/Praxity/praxity-trace/releases/download/v0.1.1-experimental.09fcaaf76/praxity-trace-0.1.1-experimental.09fcaaf76-portable.tar.gz",
+          "sha256": "d5f8ef48f9277505996888322e11aa9f019d890e5f2a2052f590728925710265",
           "format": "tar.gz",
           "stripComponents": 1
         },
         "darwin-x64": {
           "status": "published",
-          "url": "https://github.com/Praxity/praxity-toolkit/releases/download/v0.1.1/praxity-trace-0.1.1-darwin-arm64.tar.gz",
-          "sha256": "52bc5aa82d29892e5570fdb88ec65bd29c728b29b890c9b7aba49bf3f48c5dbb",
+          "url": "https://github.com/Praxity/praxity-trace/releases/download/v0.1.1-experimental.09fcaaf76/praxity-trace-0.1.1-experimental.09fcaaf76-portable.tar.gz",
+          "sha256": "d5f8ef48f9277505996888322e11aa9f019d890e5f2a2052f590728925710265",
           "format": "tar.gz",
           "stripComponents": 1
         },

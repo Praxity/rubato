@@ -33,15 +33,38 @@ test('real pack validates and every published archive has a complete contract', 
   }
 });
 
-test('real pack preserves every published tool archive URL from v0.1.1', () => {
+test('real pack preserves the unchanged tool archive URLs from v0.1.1', () => {
   const pack = realPack();
   const prefix = `https://github.com/Praxity/praxity-toolkit/releases/download/v${pack.version}/`;
   for (const tool of pack.tools) {
+    if (['check', 'trace'].includes(tool.id)) continue;
     for (const archive of Object.values(tool.archives)) {
       if (archive.status === 'published') assert.ok(archive.url.startsWith(prefix), tool.id);
     }
   }
 });
+
+test('macOS installation plans select the reviewed Check and Trace prereleases', () => {
+  const pack = realPack();
+  const candidates = [
+    { id: 'check', version: '0.6.0-alpha.c61b1cb3c', revision: 'c61b1cb3ce3a4e7afb0a44f3dd70e82a52c1154d',
+      url: 'https://github.com/Praxity/praxity-check/releases/download/v0.6.0-alpha.c61b1cb3c/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz' },
+    { id: 'trace', version: '0.1.1-experimental.09fcaaf76', revision: '09fcaaf76841175d150210ec29c66d7ebab05cc3',
+      url: 'https://github.com/Praxity/praxity-trace/releases/download/v0.1.1-experimental.09fcaaf76/praxity-trace-0.1.1-experimental.09fcaaf76-portable.tar.gz' },
+  ];
+  for (const candidate of candidates) {
+    const tool = pack.tools.find(tool => tool.id === candidate.id);
+    assert.equal(tool.version, candidate.version);
+    assert.equal(tool.sourceRevision, candidate.revision);
+    for (const platform of ['darwin-arm64', 'darwin-x64']) {
+      const archive = installationPlan(pack, platform).find(entry => entry.id === candidate.id);
+      assert.equal(archive.url, candidate.url);
+      assert.equal(archive.format, 'tar.gz');
+      assert.equal(archive.stripComponents, 1);
+    }
+  }
+});
+
 test('unpublished fixture tools are omitted from the installation plan', () => {
   const pack = examplePack();
   assert.deepEqual(validateManifest(pack), []);
