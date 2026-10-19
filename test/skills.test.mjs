@@ -269,19 +269,32 @@ for (const boundary of ['directory', 'pid', 'reacquired pid']) test(`skills addi
   assert.equal(existsSync(join(context.home, '.claude/skills/install-praxity/SKILL.md')), true);
   assert.equal(existsSync(join(context.home, '.praxity/toolkit-skills.lock')), false);
 });
+function assertExportProcedure(text, name) {
+  const lines = text.split('\n');
+  let previousExport = 0, exports = 0;
+  for (const [index, line] of lines.entries()) {
+    if (!/praxity\S* export\b|\bExport (?:HTML|PDF|a course|the course)\b/i.test(line)) continue;
+    exports++;
+    assert.match(lines.slice(previousExport, index).join('\n'), /Before every export, run `~\/\.praxity\/bin\/praxity identity init <course-folder>`/, `${name}: initialize identity before each export without flags`);
+    previousExport = index + 1;
+  }
+  return exports;
+}
+
+const rederiveRule = 'Never pass `--rederive` unless the person has confirmed in this conversation that no version of the course was published.';
+
+function assertRederivationRule(text, required = false) {
+  const normalized = text.replace(/\s+/g, ' ');
+  if (required) assert.ok(normalized.includes(rederiveRule), 'document the publication confirmation rule');
+  assert.ok(!normalized.replaceAll(rederiveRule, '').includes('--rederive'), 'only the exact publication confirmation sentence may mention --rederive');
+}
+
 test('every course export procedure initializes identity first without flags', () => {
   const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
   let exports = 0;
   for (const [name, bytes] of outputs.codex) {
     if (!name.endsWith('.md')) continue;
-    const lines = bytes.toString().split('\n');
-    let previousExport = 0;
-    for (const [index, line] of lines.entries()) {
-      if (!/praxity\S* export\b|\bExport (?:HTML|PDF|a course|the course)\b/i.test(line)) continue;
-      exports++;
-      assert.match(lines.slice(previousExport, index).join('\n'), /`(?:~\/\.praxity\/bin\/)?praxity identity init [^`\s]+`/, `${name}: initialize identity before each export`);
-      previousExport = index + 1;
-    }
+    exports += assertExportProcedure(bytes.toString(), name);
   }
   assert.ok(exports > 0, 'cover at least one course export procedure');
 });
@@ -290,11 +303,21 @@ test('skills require confirmation that no version was published before rederivin
   const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
   for (const [name, bytes] of outputs.codex) {
     if (!name.endsWith('.md')) continue;
-    for (const paragraph of bytes.toString().split(/\r?\n\s*\r?\n/)) {
-      if (!paragraph.includes('--rederive')) continue;
-      assert.match(paragraph.replace(/\s+/g, ' '), /confirm\w*.*no version (?:was|has been) published/i, `${name}: require publication confirmation for --rederive`);
-    }
+    assertRederivationRule(bytes.toString(), name.endsWith('/install-praxity/SKILL.md'));
   }
+});
+
+test('export guards reject misplaced or missing initialization, flags and stray rederivation', () => {
+  const skill = readFileSync(join(repository, 'skills/install-praxity/SKILL.md'), 'utf8');
+  const step = skill.match(/   Before every export,[\s\S]*?(?=   Export HTML)/)[0];
+  const withoutStep = skill.replace(step, '');
+  assert.throws(() => assertExportProcedure(withoutStep));
+  assert.throws(() => assertExportProcedure(`${withoutStep}\n${step}`));
+  for (const command of ['~/.praxity/bin/praxity identity init --yes', '~/.praxity/bin/praxity identity init <course-folder> --yes']) {
+    assert.throws(() => assertExportProcedure(skill.replace('~/.praxity/bin/praxity identity init <course-folder>', command)));
+  }
+  assert.throws(() => assertRederivationRule(`${skill}\nUse --rederive.\n`, true));
+  assert.throws(() => assertRederivationRule(skill.replace(/Never pass `--rederive`[\s\S]*?published\./, ''), true));
 });
 
 test('canonical adapter generation matches reviewed golden files', t => {
