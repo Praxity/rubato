@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { repository } from './helpers.mjs';
 
 // Run: PRAXITY_BIN=/path/to/praxity.mjs node --test test/studio-review-e2e.test.mjs
 // PRAXITY_BIN is one real Studio launcher or packaged .mjs/.js CLI path, not shell text.
@@ -93,9 +94,19 @@ test('real Studio fixes one text comment and replies to an unsupported request w
   assert.equal(binding.text, supported.anchor.quote.exact);
   const edit = ['edit', '.', 'setText', '--at', binding.nodeId, '--rendered', '--arg', `field=${binding.field}`,
     '--arg', `text=${JSON.stringify('Revised heading')}`, '--expect-revision', binding.fileRevision];
-  cli([...edit, '--dry-run', '--json']);
+  const editArgsFile = join(root, 'edit-args.json');
+  function guardedEdit(args) {
+    writeFileSync(editArgsFile, JSON.stringify(args));
+    const result = spawnSync(process.execPath, [join(repository, 'skills/studio-editor/scripts/run-praxity.mjs'), editArgsFile, bin], {
+      cwd: course, encoding: 'utf8', timeout: 20_000,
+    });
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    return JSON.parse(result.stdout);
+  }
+  guardedEdit([...edit, '--dry-run', '--json']);
   assert.equal(readFileSync(lesson, 'utf8'), source, 'dry run preserves source');
-  cli([...edit, '--json']);
+  guardedEdit([...edit, '--json']);
   const saved = cli(['inspect', '.', '--text-fields', '--json']).textFields
     .filter(field => field.nodeId === binding.nodeId && field.file === binding.file);
   assert.equal(saved.length, 1);

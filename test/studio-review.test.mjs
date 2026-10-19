@@ -18,14 +18,14 @@ test('review fixes collect feedback before guarded edits, reply atomically and c
   for (const evidence of ['lessonId', 'pageId', 'nodeId', 'blockId', 'quote', 'ownerId', 'field']) {
     assert.ok(steps[1].includes(evidence), `target checks ${evidence}`);
   }
-  const edits = steps[2].split('\n').map(line => line.trim()).filter(line => line.startsWith('praxity edit '));
-  assert.equal(edits.length, 2);
-  for (const command of edits) {
-    assert.match(command, /setText --at <rendered-node-id> --rendered --arg field=<field> --arg text=<json-string> --expect-revision <fileRevision>/);
-    assert.doesNotMatch(command, /--find|--page|--block|--line/);
-  }
-  assert.match(edits[0], /--dry-run --json$/);
-  assert.equal(edits[1], edits[0].replace(' --dry-run', ''));
+  const args = JSON.parse(steps[2].match(/```json\n([\s\S]*?)\n\s*```/)[1]);
+  assert.deepEqual(args, ['edit', '.', 'setText', '--at', '<rendered-node-id>', '--rendered', '--arg',
+    'field=<field>', '--arg', 'text=<json-string>', '--expect-revision', '<fileRevision>', '--dry-run', '--json']);
+  assert.match(steps[2], /Never pass comment text on the command line\./);
+  assert.match(steps[2], /execFileSync.*without\s+a shell/s);
+  const calls = [...steps[2].matchAll(/node <skill-directory>\/scripts\/run-praxity.mjs <([^>]+)>/g)].map(match => match[1]);
+  assert.deepEqual(calls, ['dry-run-args-file', 'apply-args-file']);
+  assert.match(steps[2], /omitting\s+only `--dry-run`/);
   assert.match(steps[3], /exact saved text/);
   assert.match(steps[3], /neighbouring source/);
   const resolve = steps[4].match(/praxity comments resolve[^\n]+/)[0];

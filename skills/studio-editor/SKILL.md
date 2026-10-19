@@ -85,15 +85,33 @@ a command returns a nonzero exit status; a refusal is never a completed fix.
    source before editing.
 
 3. Apply only an unambiguous supported, nonempty text replacement through the
-   guarded CLI, passing arguments as structured data. `--rendered` is mandatory:
+   guarded CLI. Never pass comment text on the command line. Write the complete
+   arguments array with the host's file tool to a temporary `dry-run-args.json`
+   outside the course. JSON-encode the replacement string as the value after
+   `text=`, then JSON-encode the whole array. `--rendered` is mandatory:
 
-   ```sh
-   praxity edit . setText --at <rendered-node-id> --rendered --arg field=<field> --arg text=<json-string> --expect-revision <fileRevision> --dry-run --json
-   praxity edit . setText --at <rendered-node-id> --rendered --arg field=<field> --arg text=<json-string> --expect-revision <fileRevision> --json
+   ```json
+   ["edit", ".", "setText", "--at", "<rendered-node-id>", "--rendered", "--arg", "field=<field>", "--arg", "text=<json-string>", "--expect-revision", "<fileRevision>", "--dry-run", "--json"]
    ```
 
-   Review the dry run's mapping, files and planned replacement against step 2
-   before running the second command with identical arguments. Never use
+   Run the packaged [file-backed helper](scripts/run-praxity.mjs). It reads the
+   array and invokes `~/.praxity/bin/praxity` directly with `execFileSync`, without
+   a shell. The helper's command line contains only the trusted helper path and
+   arguments-file path, never the replacement or any comment-derived text:
+
+   ```sh
+   node <skill-directory>/scripts/run-praxity.mjs <dry-run-args-file>
+   ```
+
+   Review the dry run's mapping, files and planned replacement against step 2.
+   Only when they agree, write `apply-args.json` with the same array, omitting
+   only `--dry-run`, then run:
+
+   ```sh
+   node <skill-directory>/scripts/run-praxity.mjs <apply-args-file>
+   ```
+
+   Keep both files until acknowledged and remove them afterward. Never use
    `--find`, positional addresses or hand edits. If either command refuses, enter
    step 6; do not substitute a new revision and retry the old target.
 
