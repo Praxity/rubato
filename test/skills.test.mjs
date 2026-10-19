@@ -350,7 +350,7 @@ test('every Studio and export command initializes the same course first, with pi
     totals.studio += counts.studio;
     totals.export += counts.export;
   }
-  assert.deepEqual(totals, { studio: 1, export: 0 });
+  assert.deepEqual(totals, { studio: 2, export: 0 });
 });
 
 test('Studio guards reject missing, late or mismatched initialization and missing stop instructions', () => {
@@ -366,6 +366,27 @@ test('Studio guards reject missing, late or mismatched initialization and missin
   assert.throws(() => assertCommandProcedures(skill.replace('~/.praxity/bin/praxity studio . --no-open', '~/.praxity/bin/praxity studio . --no-open\n~/.praxity/bin/praxity studio . --no-open')));
   assert.throws(() => assertCommandProcedures(`${skill}\n\`\`\`sh\n  $ praxity studio ./other-course\n\`\`\``));
   assert.match(skill.replace(/\s+/g, ' '), /stop the old process\. Run identity init, then launch again,/);
+});
+
+test('review launch obeys the same identity guard, including every generated adapter', () => {
+  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  for (const [host, files] of Object.entries(outputs)) {
+    const skill = [...files].find(([name]) => name.endsWith('/studio-editor/SKILL.md'))[1].toString();
+    const section = skill.split('## Open for review\n')[1]?.split('\n## ')[0];
+    assert.ok(section, `${host}: review launch procedure exists`);
+    assert.match(section, /Open Studio.*identity/s);
+    assert.match(section, /praxity identity init \.\npraxity studio \. --review --no-open/);
+    assert.equal(assertCommandProcedures(skill, host).studio, 2);
+    const init = 'praxity identity init .\n';
+    for (const replacement of ['', 'praxity identity init ./other-course\n']) {
+      assert.throws(() => assertCommandProcedures(skill.replace(section, section.replace(init, replacement)), host));
+    }
+    assert.match(section, /already running.*review enabled/s);
+    assert.match(section, /without review.*restart/s);
+    assert.match(section, /background process/);
+    assert.match(section, /preview_open.*preview_navigate/s);
+    assert.match(section, /open: true/);
+  }
 });
 
 for (const operation of ['studio', 'export']) test(`${operation} guards cover launcher forms, fences, chains and prose spans`, () => {

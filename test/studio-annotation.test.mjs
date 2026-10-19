@@ -255,7 +255,8 @@ for (const args of [['--other'], ['--expression', 'extra']]) {
 }
 
 test('annotation CLI examples bind rendered field, JSON text and whole-file revision', () => {
-  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
+  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8')
+    .split('## Turn a preview annotation into a source edit\n')[1];
   const commands = skill.split('\n').filter(line => line.startsWith('praxity edit '));
   assert.equal(commands.length, 2, 'document both the dry run and guarded write');
   for (const command of commands) {
