@@ -7,7 +7,8 @@ description: Open or restart Praxity Studio in a browser or preview, and resolve
 
 Use the local project folder as the working directory. Before every open or
 restart, run identity init for that folder. If init reports pending identity or
-retired or replaced IDs, stop and ask the person before opening Studio.
+any block that would need `--rederive`, stop. Don't open Studio and don't run
+`--rederive`. Show the person what init reported and ask how to proceed.
 Never pass `--rederive` unless the person has confirmed in this conversation that
 no version of the course was published.
 
@@ -33,8 +34,9 @@ its origin checks. Remote hosts need their own supported loopback access.
 
 Keep the editor process alive while the user works. On cancellation, process
 death or a failed preview, report the error and preserve the course files. Before
-an intentional restart, let the user save and stop the old process. Launch again,
-capture a fresh URL, and navigate again with `open: true`. Discard the old URL.
+an intentional restart, let the user save and stop the old process. Run identity
+init, then launch again, capture a fresh URL, and navigate again with `open: true`.
+Discard the old URL.
 Stop the owned process when the user is done. Use Studio's packaged format skill
 for course syntax and guarded CLI operations.
 
