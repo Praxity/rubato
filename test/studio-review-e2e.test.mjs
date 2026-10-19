@@ -41,7 +41,7 @@ test('real Studio fixes one text comment and replies to an unsupported request w
   cli(['identity', 'init', '.']);
   const inspected = cli(['inspect', '.', '--text-fields', '--json']);
   // Fixture setup identifies its sole authored heading; fixing later joins only on anchor IDs.
-  const fields = inspected.textFields.filter(field => field.kind === 'heading' && field.file === 'lesson.prax');
+  const fields = inspected.textFields.filter(field => field.kind === 'heading');
   assert.equal(fields.length, 1);
   const target = fields[0];
   assert.equal(target.text, 'Original heading');
@@ -85,9 +85,13 @@ test('real Studio fixes one text comment and replies to an unsupported request w
   assert.equal(open.threads.length, 2);
   const supported = open.threads.find(thread => thread.id === supportedId);
   const unsupported = open.threads.find(thread => thread.id === unsupportedId);
+  const inventory = JSON.parse(cli(['inspect', '.', '--schema', '1']));
+  const lessons = inventory.lessons.filter(lesson => lesson.id === supported.anchor.lessonId);
+  assert.equal(lessons.length, 1, 'anchor identifies exactly one lesson');
+  const mappedLesson = lessons[0];
+  assert.equal(mappedLesson.pages.filter(page => page.id === supported.anchor.pageId).length, 1, 'page belongs to mapped lesson');
   const fresh = cli(['inspect', '.', '--text-fields', '--json']);
-  const admitted = fresh.textFields.filter(field => field.nodeId === supported.anchor.nodeId && field.file === 'lesson.prax'
-    && field.lessonId === supported.anchor.lessonId && field.pageId === supported.anchor.pageId);
+  const admitted = fresh.textFields.filter(field => field.nodeId === supported.anchor.nodeId && field.file === mappedLesson.file);
   assert.equal(admitted.length, 1);
   const binding = admitted[0];
   assert.equal(binding.ownerId, supported.anchor.blockId);
@@ -125,11 +129,14 @@ test('real Studio fixes one text comment and replies to an unsupported request w
   const resolved = cli(resolution);
   assert.equal(resolved.ok, true);
   assert.equal(cli(resolution).replayed, true, 'lost response retry does not append another reply');
-  cli(['comments', 'reply', '.', unsupported.id, '--text-file', unsupportedFile,
+  const explained = cli(['comments', 'reply', '.', unsupported.id, '--text-file', unsupportedFile,
     '--expect-version', String(unsupported.version), '--request-id', randomUUID(), '--json']);
 
   const remaining = cli(['comments', 'list', '.', '--status', 'open', '--json']);
   assert.deepEqual(remaining.threads.map(thread => thread.id), [unsupported.id]);
+  const ownReplyVersions = new Map([[explained.thread.id, explained.thread.version]]);
+  assert.deepEqual(remaining.threads.filter(thread => thread.version !== ownReplyVersions.get(thread.id)), [],
+    'unchanged open threads are skipped rather than answered again');
   const final = cli(['comments', 'list', '.', '--json']);
   assert.equal(final.threads.length, 2);
   const fixed = final.threads.find(thread => thread.id === supported.id);
@@ -140,4 +147,13 @@ test('real Studio fixes one text comment and replies to an unsupported request w
   assert.equal(leftOpen.status, 'open');
   assert.equal(leftOpen.messages.length, 2);
   assert.equal(leftOpen.messages[1].body, openReply);
+
+  const newerFile = join(root, 'newer-feedback.txt');
+  writeFileSync(newerFile, 'Please clarify which text edits are supported.');
+  cli(['comments', 'reply', '.', unsupported.id, '--text-file', newerFile,
+    '--expect-version', String(explained.thread.version), '--request-id', randomUUID(), '--json']);
+  const next = cli(['comments', 'list', '.', '--status', 'open', '--json']);
+  assert.deepEqual(next.threads.filter(thread => thread.version !== ownReplyVersions.get(thread.id)).map(thread => thread.id),
+    [unsupported.id], 'new feedback requires another read even on a thread already answered');
+  assert.equal(readFileSync(lesson, 'utf8'), source.replace('Original heading', 'Revised heading'));
 });

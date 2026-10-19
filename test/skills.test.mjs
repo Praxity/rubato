@@ -303,6 +303,7 @@ function assertCommandProcedures(text, name) {
     // Prose spans may use an earlier instruction in their section; blocks and chains stand alone.
     const initialized = block !== undefined || /&&|;|\n/.test(code) ? new Set() : sectionInitialized;
     for (const { operation, args } of praxityCommands(code)) {
+      if (operation === 'studio' && args.length === 1 && args[0] === '--help') continue;
       const course = args[0]?.replace(/^(?:"(.*)"|'(.*)')$/, '$1$2');
       if (operation === 'identity init') {
         if (course && !course.startsWith('-') && args.length === 1) initialized.add(course);
@@ -368,17 +369,23 @@ test('Studio guards reject missing, late or mismatched initialization and missin
   assert.match(skill.replace(/\s+/g, ' '), /stop the old process\. Run identity init, then launch again,/);
 });
 
+function assertReviewLaunch(section) {
+  const text = section.replace(/\s+/g, ' ');
+  assert.ok(text.includes("Follow Open Studio's identity initialization step and its stop-and-ask rule before every open or restart"), 'review launch follows the exact identity stop rule');
+  assert.doesNotMatch(text, /\b(?:exempt|exception|does not apply|may skip|can skip|skip identity|skip initialization|without identity|bypass|ignore (?:the )?(?:identity|stop))\b/i, 'review launches have no identity exemption');
+}
+
 test('review launch obeys the same identity guard, including every generated adapter', () => {
   const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
   for (const [host, files] of Object.entries(outputs)) {
     const skill = [...files].find(([name]) => name.endsWith('/studio-editor/SKILL.md'))[1].toString();
     const section = skill.split('## Open for review\n')[1]?.split('\n## ')[0];
     assert.ok(section, `${host}: review launch procedure exists`);
-    assert.match(section, /Open Studio.*identity/s);
-    assert.match(section, /praxity identity init \.\npraxity studio \. --review --no-open/);
+    assertReviewLaunch(section);
+    assert.ok(section.includes('~/.praxity/bin/praxity identity init .\n~/.praxity/bin/praxity studio . --review --no-open'));
     assert.equal(assertCommandProcedures(skill, host).studio, 2);
-    const init = 'praxity identity init .\n';
-    for (const replacement of ['', 'praxity identity init ./other-course\n']) {
+    const init = '~/.praxity/bin/praxity identity init .\n';
+    for (const replacement of ['', '~/.praxity/bin/praxity identity init ./other-course\n']) {
       assert.throws(() => assertCommandProcedures(skill.replace(section, section.replace(init, replacement)), host));
     }
     assert.match(section, /already running.*review enabled/s);
@@ -386,7 +393,22 @@ test('review launch obeys the same identity guard, including every generated ada
     assert.match(section, /background process/);
     assert.match(section, /preview_open.*preview_navigate/s);
     assert.match(section, /open: true/);
+    assert.match(section.replace(/\s+/g, ' '), /If a Studio you did not start may be serving this folder, ask the person to save and stop it, or to confirm none is running/);
+    assert.match(section, /Never start a second one\./);
   }
+});
+
+test('review identity guard rejects both a replacement exemption and an appended exemption', () => {
+  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
+  const section = skill.split('## Open for review\n')[1].split('\n## ')[0];
+  assertReviewLaunch(section);
+  assert.throws(() => assertReviewLaunch(section.replace(/Follow Open Studio's identity[\s\S]*?every open or restart\./,
+    "Open Studio's identity stop-and-ask rule does not apply to review launches.")), /exact identity stop rule/);
+  assert.throws(() => assertReviewLaunch(section + '\nReview launches are exempt from identity initialization.'), /no identity exemption/);
+});
+
+test('read-only Studio help does not need identity initialization', () => {
+  assert.deepEqual(assertCommandProcedures('`~/.praxity/bin/praxity studio --help`'), { studio: 0, export: 0 });
 });
 
 for (const operation of ['studio', 'export']) test(`${operation} guards cover launcher forms, fences, chains and prose spans`, () => {

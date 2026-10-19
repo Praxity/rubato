@@ -15,7 +15,8 @@ current thread, so read current status and version from `thread`.
 | 4–5 | `not_found`, `forbidden` | Leave unresolved and report the missing thread or permission refusal. |
 | 6–7 | `request_id_reused`, `wrong_review` | Stop this mutation; check the request data and course/review scope. |
 | 8 | `invalid_input` | Explain the refused input; do not bypass admission. |
-| 9–10 | `snapshot_changed`, `invalid_cursor` | Retry listing from the beginning; never act on a partial snapshot. |
+| 9 | `snapshot_changed` | Retry listing once from the beginning; if it refuses again, report and stop. Never act on a partial snapshot. |
+| 10 | `invalid_cursor` | Not emitted by list, which restarts collection itself; report an unexpected cursor refusal. |
 | 11–17 | `text-file-missing`, `text-file-unreadable`, `invalid-utf8`, `empty-text`, `whitespace-only`, `text-too-large`, `lone-surrogate` | Correct the reply file before a new request; keep exact bytes for an unacknowledged retry. |
 | 18 | `list-too-large` | Stop and report that the full queue could not be collected. |
 | 19–25 | `corrupt-json`, `invalid-state`, `newer-schema`, `unsafe-path`, `read-only`, `disk-error`, `interrupted-write` | Stop and report the storage refusal; preserve review data. |
