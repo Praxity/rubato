@@ -33,6 +33,8 @@ function assertRefresh(skill) {
   assert.ok(refresh, 'Each rewrite needs its own refresh instruction');
   assert.ok(refresh.indexOf('inspect') >= 0 && refresh.indexOf('inspect') < refresh.indexOf('prepare'), 'Inspect the rewritten source before preparing');
   assert.match(refresh, /new,?\s+empty bundle/);
+  // Trace refuses a non-empty preparation folder, so reports need their own destination.
+  assert.match(refresh, /report into a new `<dir>`/);
   assert.match(refresh, /that pass's `answer\.json`.*that pass's inspect JSON/);
 }
 
@@ -77,84 +79,99 @@ function section(skill, heading) {
 const paragraphs = text => text.split(/\r?\n\s*\r?\n/);
 
 function assertDistractorTension(skill) {
-  assert.match(skill, /^- Each distractor targets a different misconception and is true or right somewhere else[^\n]*See Distractors that need the stem below\./m);
   const tension = section(skill, '## Distractors that need the stem');
   assert.ok(tension, 'Teach why misconception distractors must be true elsewhere');
-  assert.match(tension, /"Misconception-based" and "right in a neighbouring case" pull against each other/);
-  assert.match(tension, /picks the one true option without reading the stem/);
-  assert.match(tension, /true or defensible statement that answers a neighbouring question, or the right answer for a changed case\. Never write a statement that is false everywhere\./);
-  assert.match(tension, /The misconception lives in the link between that statement and this stem/);
+  assert.match(tension, /pull against each other/);
+  assert.match(tension, /Never write a statement that is false everywhere\./);
   const examples = tension.split(/^(?=Example \d)/m).slice(1).map(example => example.split(/^Numeric items/m)[0]);
-  assert.equal(examples.length, 2, 'Two worked statement examples');
+  assert.deepEqual(examples.map(example => example.match(/^Example \d, an? (\w+) item/)?.[1]), ['explanation', 'classification', 'action'], 'Worked examples cover explanation, classification and action items');
   for (const example of examples) {
     assert.match(example, /Stem: "[^"]+"/);
     assert.match(example, /Key: "[^"]+"/);
     assert.match(example, /^- False everywhere/m);
-    assert.match(example, /^- True elsewhere/m);
+    const trueElsewhere = example.match(/^- True elsewhere[^\n]*/m)?.[0];
+    assert.ok(trueElsewhere);
+    // Each true-elsewhere distractor carries the reason this stem rules it out.
+    const notes = [...trueElsewhere.matchAll(/" \(([^)]*)\)/g)].map(([, note]) => note);
+    assert.equal(notes.length, 3, 'Every true-elsewhere distractor has a note');
+    for (const note of notes) assert.match(note, /ruled out by|doesn't|would make|not radiation|nothing in/);
   }
   const numeric = paragraphs(tension).find(paragraph => paragraph.startsWith('Numeric items'));
   assert.ok(numeric, 'Show the numeric-distractor pattern');
-  assert.match(numeric, /result of a tempting wrong method on the stem's numbers, or the right answer for a changed case/);
   // The worked numbers must hold: each wrong value comes from a named wrong method.
   const [price, quantity] = numeric.match(/raises the price of a loaf by (\d+)% and then sells (\d+)% fewer/).slice(1).map(Number);
-  const change = Math.round(((1 + price / 100) * (1 - quantity / 100) - 1) * 100);
-  assert.equal(change, -12);
-  assert.ok(numeric.includes(`Key: "Falls by ${-change}%"`));
-  for (const [value, method] of [[`Falls by ${quantity - price}%`, 'subtracts the percentages'], [`Rises by ${price}%`, 'price change only'], [`Falls by ${quantity}%`, 'quantity change only']]) {
-    assert.ok(numeric.includes(`"${value}" (${method})`), `${value} comes from: ${method}`);
-  }
+  const percent = (up, down) => Math.round(((1 + up / 100) * (1 - down / 100) - 1) * 100);
+  const key = percent(price, quantity);
+  assert.equal(key, -12);
+  const strong = [[quantity - price, 'subtracts the percentages'], [-percent(quantity, price), 'swaps the two changes'], [quantity, 'quantity change only']];
+  assert.deepEqual(strong.map(([value]) => value), [10, -8, 20]);
+  assert.ok(numeric.includes(`Key: "Falls by ${-key}%"`));
+  for (const [value, method] of strong) assert.ok(numeric.includes(`"${value < 0 ? `Rises by ${-value}` : `Falls by ${value}`}%" (${method}`), method);
+  // No option is the odd one out by being, alone, a non-multiple of ten.
+  const magnitudes = [-key, ...strong.map(([value]) => Math.abs(value))];
+  assert.notEqual(magnitudes.filter(value => value % 10 !== 0).length, 1);
+}
+
+// One key per item: the writer notes what rules out each distractor, and a fresh judge without the key checks.
+function assertKeyCheck(skill) {
+  const tension = section(skill, '## Distractors that need the stem') ?? '';
+  assert.match(tension, /the detail in this stem that rules it out\. If no detail rules it out, it is a second key/);
+  assert.match(tension, /Another guideline, jurisdiction or older standard for the same case is not a neighbouring case\./);
+  const attack = skill.split('## 3. Attack the bank')[1] ?? '';
+  const check = paragraphs(attack).find(paragraph => paragraph.includes('Run the key check'));
+  assert.ok(check, 'A fresh judge checks for second keys');
+  assert.match(check, /never seen the key/);
+  assert.match(check, /stem from `cover-the-options\/items\.json` and its options from `choices-only\/items\.json`, matched by `ref`/);
+  assert.match(check, /marks every option that correctly answers the stem/);
+  assert.match(check, /Rewrite every item with more than one mark, or with the key unmarked\./);
+  const notes = paragraphs(attack).find(paragraph => paragraph.includes("the writer's note for each distractor"));
+  assert.ok(notes, 'The judge, not the writer, confirms plain-probe exemptions');
+  assert.match(notes, /The writer never decides which items skip a rewrite\./);
+  assert.match(attack, /Rewrite every item the plain solver got right unless the key check confirmed every one of its distractor notes\./);
+  assert.match(attack, /^   - The key check marked exactly one option, the key, on every item\./m);
 }
 
 function assertProbeRoles(skill) {
   const attack = skill.split('## 3. Attack the bank')[1];
   assert.ok(attack);
-  assert.match(attack, /^- Masked: can a learner who doesn't know the subject guess the key\? The solver sees the stem and options[^\n]*This is the guessing-cue gate\./m);
-  assert.match(attack, /^- Plain choices-only: does the stem matter\?[^\n]*A high plain score with a low masked score means the items test general knowledge, not this stem[^\n]*Rewrite those items as true-elsewhere items/m);
+  assert.match(attack, /^- Masked: [^\n]*stem and options[^\n]*This is the guessing-cue gate\./m);
+  assert.match(attack, /^- Plain choices-only: does the stem matter\?[^\n]*high plain score with a low masked score[^\n]*true-elsewhere items/m);
   assert.match(attack, /^- Cover-the-options: /m);
   assert.match(attack, /^- Explanations, step 4 below: /m);
-  assert.match(attack, /- The masked gate below returns `"pass"`\./);
-  assert.match(attack, /Rewrite every item the plain solver got right unless each of its distractors is right for a named neighbouring question or case\./);
-  const byHand = section(skill, '### The masked probe by hand');
-  assert.ok(byHand, 'Keep the masked fallback for an older Trace without item-cues');
-  assert.match(byHand, /^\s*Stopgap: delete this subsection once every supported Trace prepares item-cues with the masked probe\. Use it only in the older-Trace case above, and only for an English course\./);
-  assert.match(byHand, /fresh agent that has never seen the course source or the key copies each scored item's stem and options/);
-  assert.match(byHand, /made-up word of the same length, the same way throughout one item, and every digit with another digit/);
-  assert.match(byHand, /keeps function words, hedges[^.]*absolutes[^.]*only, just and merely/);
-  assert.match(byHand, /second fresh solver[^.]*sees only the masked items/);
-  assert.match(byHand, /separate scoring agent then receives the key/);
+  assert.match(attack, /^   - The masked gate below returns `"pass"`\./m);
+  assert.match(attack, /`masked` status has `applies: false`, its folder holds no items: run no masked solver/);
 }
 
-// Explicit refusals and small populations stop for the person; only an older Trace without item-cues falls back by hand.
+// A gate stop finishes the pass and asks; the pinned Trace makes any hand fallback unnecessary.
 function assertStopRules(skill) {
   const attack = skill.split('## 3. Attack the bank')[1]?.split('### If item-cues')[0];
   assert.ok(attack);
-  assert.match(attack, /The gate can only pass on a scored masked result: `masked\.applies` is `true`, and `tooFewItems` and `tooFewItemsLow` are both `false`/);
+  assert.match(attack, /^   The bank is done only when all of these hold:/m);
+  assert.doesNotMatch(attack, /Stop only when/);
   const stop = paragraphs(attack).find(paragraph => paragraph.includes('On `"stop"`'));
   assert.ok(stop, 'Say what a stopped gate means');
-  assert.match(stop, /the gate can't pass\. Tell the person why and ask how to proceed\./);
-  for (const reason of ['language-unconfirmed', 'language', 'mask-space']) assert.ok(stop.includes(`\`"${reason}"\``), reason);
-  assert.match(stop, /Don't compute tails by hand, don't mask items by hand, and don't treat the plain choices-only score as a substitute\./);
-  assert.doesNotMatch(attack, /compute the missing check manually|Until Trace (?:also )?prepares the masked probe/);
+  assert.match(stop, /Finish the other probes, the key check, the judgements and their rewrites within the pass cap\. Then report all of their results, mark the bank unverified, give the stop reason and ask the person/);
+  assert.match(stop, /Don't compute tails by hand, don't mask items by hand/);
+  assert.doesNotMatch(skill, /^### The masked probe by hand/m);
   const fallback = section(skill, '### If item-cues is unavailable');
   assert.ok(fallback);
-  assert.match(fallback, /^\s*This section applies only to an older Trace without item-cues: `prepare` rejects `item-cues` as an unknown view, or the report has no `itemCues` at all\./);
-  assert.match(fallback, /reports a masked result with `applies: false`, or no `masked` field, is not this case: the gate stops as above\./);
-  assert.match(fallback, /that population is too small: stop and ask, as for `tooFewItems`\. It never passes\./);
-  assert.doesNotMatch(fallback, /scored rows lack `pLow`/);
+  assert.match(fallback, /Update Rubato's tools with the install-praxity skill and retry\./);
+  assert.match(fallback, /report the attack as blocked and the bank as unverified/);
+  assert.doesNotMatch(fallback, /Run the [^.]*probes by hand|upper tail P\(X >= x\)/);
 }
 
 // Combined answers and judge notes live in Trace's sibling review folder, never in the solver bundle.
 function assertReviewFolder(skill) {
   const attack = skill.split('## 3. Attack the bank')[1];
-  assert.match(attack, /Trace also creates the review folder `<review>`, named `<bundle>-review\/`, beside it, for everything written after solving\. Its `operator\.json` holds the seed and option order/);
+  assert.match(attack, /review folder `<review>`, named `<bundle>-review\/`, beside it/);
+  assert.match(attack, /`operator\.json` holds the seed and option order/);
   assert.match(attack, /Combine their untouched answers in `<review>\/answer\.json`/);
-  assert.match(attack, /Each answer echoes its `bundleId` and `probe` unchanged\. Never write combined answers, reports or judge notes inside the bundle\./);
-  assert.doesNotMatch(skill, /<bundle>\/(?:answer\.json|judge-notes)/);
+  assert.match(attack, /Never write combined answers, reports or judge notes inside the bundle\./);
+  assert.doesNotMatch(skill, /<bundle>\/(?:answer\.json|judge-notes|key-check)/);
 }
 
 function assertSolverStrength(skill) {
-  assert.match(skill, /^Every solver must be a model at least as strong as the writer\. A weaker solver misses cues the writer can see, so its low score proves nothing\./m);
-  assert.match(section(skill, '### The masked probe by hand') ?? '', /solver, at least as strong as the writer/);
+  assert.match(skill, /^Every solver must be a model at least as strong as the writer\. A weaker solver misses cues the writer can see/m);
 }
 
 const scored = (count, p, pLow) => ({ applies: true, right: 0, total: count, chanceExpected: count / 4, p, pLow, tooFewItems: false, tooFewItemsLow: false });
@@ -187,18 +204,31 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
       assert.notEqual(stripped, skill);
       assert.throws(() => assertJudge(stripped));
     });
-    await t.test('distractors are true elsewhere, with two worked examples and the numeric pattern', () => {
+    await t.test('distractors are true elsewhere, with three worked examples and the numeric pattern', () => {
       assertDistractorTension(skill);
       for (const stripped of [
         skill.replace(/^## Distractors that need the stem\r?\n[\s\S]*?(?=^## )/m, ''),
         skill.replace(' Never write a statement that is false everywhere.', ''),
-        skill.replace(/\r?\n\r?\nExample 2[^\n]*(?:\r?\n\r?\n- [^\n]*)*/, ''),
-        skill.replace(/^- False everywhere: "Wind[^\n]*\r?\n/m, ''),
+        skill.replace(/\r?\n\r?\nExample 3[^\n]*(?:\r?\n\r?\n- [^\n]*)*/, ''),
+        skill.replace(' (right for why a metal lid loosens under hot water; nothing in the drawer is heated)', ''),
         skill.replace(/\r?\n\r?\nNumeric items[^\n]*/, ''),
-        skill.replace('"Falls by 10%" (subtracts the percentages)', '"Falls by 40%"'),
+        skill.replace('"Rises by 8%" (swaps the two changes: 1.20 × 0.90 = 1.08)', '"Rises by 10%" (price change only)'),
       ]) {
         assert.notEqual(stripped, skill);
         assert.throws(() => assertDistractorTension(stripped));
+      }
+    });
+    await t.test('a fresh judge without the key catches second keys and confirms exemptions', () => {
+      assertKeyCheck(skill);
+      for (const stripped of [
+        skill.replace(' If no detail rules it out, it is a second key: rewrite it.', ''),
+        skill.replace(/^   Run the key check[^\n]*\r?\n/m, ''),
+        skill.replace(' The writer never decides which items skip a rewrite.', ''),
+        skill.replace('unless the key check confirmed every one of its distractor notes.', 'unless each of its distractors is right for a named neighbouring question or case.'),
+        skill.replace(/^   - The key check marked exactly one option, the key, on every item\.\r?\n/m, ''),
+      ]) {
+        assert.notEqual(stripped, skill);
+        assert.throws(() => assertKeyCheck(stripped));
       }
     });
     await t.test('each probe names what it tests, and the masked probe is the guessing gate', () => {
@@ -206,21 +236,22 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
       for (const stripped of [
         skill.replace(' This is the guessing-cue gate.', ''),
         skill.replace(/^- Plain choices-only: [^\n]*\r?\n/m, ''),
-        skill.replace(/^### The masked probe by hand\r?\n[\s\S]*?(?=^## )/m, ''),
         skill.replace('   - The masked gate below returns `"pass"`.', '   - The choices-only statistical gate passes.'),
+        skill.replace(' its folder holds no items: run no masked solver, and', ''),
       ]) {
         assert.notEqual(stripped, skill);
         assert.throws(() => assertProbeRoles(stripped));
       }
     });
-    await t.test('unscored masked results and small populations stop for the person', () => {
+    await t.test('a stopped gate finishes the pass, then asks; nothing is computed or masked by hand', () => {
       assertStopRules(skill);
       for (const stripped of [
         skill.replace(/^   On `"fail"`[^\n]*\r?\n/m, ''),
+        skill.replace(' Finish the other probes, the key check, the judgements and their rewrites within the pass cap.', ''),
         skill.replace(" Don't compute tails by hand, don't mask items by hand,", ''),
-        skill.replace('This section applies only to an older Trace without item-cues', 'This section applies when Trace lacks masked results'),
-        skill.replace(' It never passes.', ''),
-        skill.replace('A flat percentage is noise on small banks.', 'If a course row or tail is absent, compute the missing check manually as below. A flat percentage is noise on small banks.'),
+        skill.replace('   The bank is done only when all of these hold:', '   Stop only when all of these hold:'),
+        skill.replace("Update Rubato's tools with the install-praxity skill and retry.", 'Run the plain choices-only, cover-the-options and masked probes by hand.'),
+        skill.replace('## Plan follow-up practice', '### The masked probe by hand\n\nMask each item.\n\n## Plan follow-up practice'),
       ]) {
         assert.notEqual(stripped, skill);
         assert.throws(() => assertStopRules(stripped));
@@ -281,8 +312,9 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     const withMasked = masked => ({ banks: [{ ...row(32, 0.5), masked }], course: { ...row(32, 0.5), masked } });
     const noApplies = scored(32, 0.5, 0.5); delete noApplies.applies;
     const noMasked = row(32, 0.5); delete noMasked.masked;
-    const ignoresApplies = mutant("row.masked?.applies === true && ", "row.masked && ");
-    for (const report of [...['language-unconfirmed', 'language', 'mask-space'].map(reason => withMasked(unavailable(reason))), withMasked(noApplies)]) {
+    const ignoresApplies = mutant('row.masked?.applies === true && ', 'row.masked && ');
+    // Any refusal stops, including a reason Trace adds later.
+    for (const report of [...['language-unconfirmed', 'language', 'mask-space', 'a-reason-added-later'].map(reason => withMasked(unavailable(reason))), withMasked(noApplies)]) {
       assert.equal(gate(report), 'stop', `${report.course.masked.reason ?? 'missing applies'} with finite tails stops`);
       assert.equal(ignoresApplies(report), 'pass', 'Without the applies rule the injected tails would pass');
     }
@@ -291,20 +323,55 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     assert.equal(gate({ banks: [row(32, 0.5)], course: row(32, 0.5, 0.5, plainFails) }), 'pass', 'A masked pass passes even when the plain probe fails');
     assert.equal(gate({ banks: [row(32, 0.000001, 0.5, scored(32, 0.5, 0.5))], course: row(32, 0.5) }), 'fail', 'A masked bank fail fails even when the plain probe passes');
     assert.equal(gate({ banks: [row(32, 0.5)], course: row(32, 0.000001) }), 'fail', 'A masked course fail fails even when the plain probe passes');
-    const readsPlain = mutant("const clear = (row, threshold) => row.masked.p", "const clear = (row, threshold) => row.choicesOnly.p");
+    const readsPlain = mutant('row.masked.p <= limit', 'row.choicesOnly.p <= limit');
     assert.equal(readsPlain({ banks: [row(32, 0.5)], course: row(32, 0.5, 0.5, plainFails) }), 'fail', 'Reading the plain probe would change the result');
+
+    // Small banks still need a scored, complete masked result, though their tails and flags don't gate.
+    const smallBank = masked => ({ banks: [{ count: 3, ...(masked && { masked }) }, row(29, 0.5)], course: row(32, 0.5) });
+    const largeOnly = mutant('if (![course, ...banks].every(row => row.masked?.applies', 'if (![course, ...banks.filter(bank => bank.count >= 12)].every(row => row.masked?.applies');
+    for (const [label, report] of [
+      ['an explicit refusal', smallBank({ applies: false, reason: 'language-unconfirmed' })],
+      ['a missing masked status', smallBank(undefined)],
+      ['an incomplete total', smallBank({ ...scored(3, 0.5, 0.5), total: 2 })],
+    ]) {
+      assert.equal(gate(report), 'stop', `A three-item bank with ${label} stops`);
+      assert.equal(largeOnly(report), 'pass', `Checking only large banks would pass ${label}`);
+    }
+    assert.equal(gate(smallBank({ ...scored(3, 0.015625, 1), tooFewItems: true, tooFewItemsLow: true })), 'pass', 'A fully scored small bank reads through the course row');
+
+    // Item counts are validated, never coerced.
+    const counted = (bankCount, courseCount = bankCount, total = bankCount) => ({
+      banks: [{ ...row(32, 0.5), count: bankCount, masked: { ...scored(32, 0.5, 0.5), total } }],
+      course: { ...row(32, 0.5), count: courseCount, masked: { ...scored(32, 0.5, 0.5), total: courseCount } },
+    });
+    const coerces = mutant('Number.isSafeInteger(row.count) && row.count > 0', 'row.count > 0');
+    for (const [label, report] of [['string counts', counted('32', '032', '32')], ['fractional counts', counted(32.5)], ['infinite counts', counted(Infinity)]]) {
+      assert.equal(gate(report), 'stop', `${label} stop`);
+      assert.equal(coerces(report), 'pass', `Coercing ${label} would pass`);
+    }
+    assert.equal(gate({ banks: [null, row(32, 0.5)], course: row(32, 0.5) }), 'stop', 'A null bank stops rather than throwing');
+
+    // A demonstrated fail is a fail, even when the other tail is underpowered.
+    const eightOfEight = { ...row(8, 0.25 ** 8, 1), masked: { ...scored(8, 0.25 ** 8, 1), tooFewItemsLow: true } };
+    const report8 = { banks: [eightOfEight], course: eightOfEight };
+    assert.equal(gate(report8), 'fail', 'Eight of eight right fails though the lower tail cannot');
+    const flagsLine = predicate.match(/^.*tooFewItems === false.*\r?\n/m)[0];
+    const failLine = predicate.match(/^.*return 'fail';\r?\n/m)[0];
+    const flagsFirst = loadGate(predicate.replace(flagsLine, '').replace(failLine, flagsLine + failLine));
+    assert.equal(flagsFirst(report8), 'stop', 'Checking the flags first would hide the fail');
+
     const small = (flag, where) => {
       const tooFew = { ...row(32, 0.5), masked: { ...scored(32, 0.5, 0.5), [flag]: true } };
       return where === 'course' ? { banks: [row(32, 0.5)], course: tooFew } : { banks: [tooFew], course: row(32, 0.5) };
     };
-    const ignoresSmall = mutant("if (![course, ...large].every(enough)) return 'stop';", '');
+    const ignoresSmall = mutant('row.masked.tooFewItems === false && row.masked.tooFewItemsLow === false', 'true');
     for (const flag of ['tooFewItems', 'tooFewItemsLow']) for (const where of ['course', 'bank']) {
       assert.equal(gate(small(flag, where)), 'stop', `${flag} on the ${where} stops`);
       assert.equal(ignoresSmall(small(flag, where)), 'pass');
     }
     const noFlags = row(32, 0.5); delete noFlags.masked.tooFewItemsLow;
     assert.equal(gate({ banks: [row(32, 0.5)], course: noFlags }), 'stop', 'Missing small-sample flags stop');
-    assert.equal(gate({ banks: [row(3, 0.015625, 1, scored(3, 0.5, 0.5))].map(bank => ({ ...bank, masked: { ...bank.masked, tooFewItems: true, tooFewItemsLow: true } })).concat(row(29, 0.5)), course: row(32, 0.5) }), 'pass', 'A small bank reads through the course row');
+    assert.match(predicate, /ponytail: lower tail unfailable below ~13 four-option items until Trace reports the attainable minimum/);
 
     assert.doesNotMatch(skill, /\b[A-Z]:[\\/]|\/Users\/|\/home\/|file:\/\//i);
     assert.match(skill, /fresh subagent.*never seen.*course source.*key/);

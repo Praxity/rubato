@@ -1,13 +1,13 @@
 {
   "claude": {
-    ".claude/skills/assessment-writing/SKILL.md": "7756c61e98cd56beff29125b49d116c8040bd15da1ec6b34c9457875e70b1fc8",
+    ".claude/skills/assessment-writing/SKILL.md": "e6819a2b1bb78a0a76c582ea164a58ba8e2c128e564c6bd57fa82156fc032427",
     ".claude/skills/install-praxity/SKILL.md": "85b15d9e716afd95ec959c4f5946248d035805e760bb585f1181e8f20548569c",
     ".claude/skills/studio-editor/references/annotation-examples.md": "f2fb3bdcea363192e69a29baf901d7865098575d7b8ec2acbe5d00adbc1982ef",
     ".claude/skills/studio-editor/scripts/resolve-annotation.mjs": "cea369258564deee15134d76622bda8192c543dfd1a2baec4287a8528b1004d3",
     ".claude/skills/studio-editor/SKILL.md": "79a4dca7771e28657d5990b3db4e233fb7e2d3d0b623c79120c9c4967ff0b354"
   },
   "codex": {
-    ".agents/skills/assessment-writing/SKILL.md": "7756c61e98cd56beff29125b49d116c8040bd15da1ec6b34c9457875e70b1fc8",
+    ".agents/skills/assessment-writing/SKILL.md": "e6819a2b1bb78a0a76c582ea164a58ba8e2c128e564c6bd57fa82156fc032427",
     ".agents/skills/install-praxity/SKILL.md": "85b15d9e716afd95ec959c4f5946248d035805e760bb585f1181e8f20548569c",
     ".agents/skills/studio-editor/references/annotation-examples.md": "f2fb3bdcea363192e69a29baf901d7865098575d7b8ec2acbe5d00adbc1982ef",
     ".agents/skills/studio-editor/scripts/resolve-annotation.mjs": "cea369258564deee15134d76622bda8192c543dfd1a2baec4287a8528b1004d3",
