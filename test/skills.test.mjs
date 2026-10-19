@@ -351,7 +351,7 @@ test('every Studio and export command initializes the same course first, with pi
     totals.studio += counts.studio;
     totals.export += counts.export;
   }
-  assert.deepEqual(totals, { studio: 2, export: 0 });
+  assert.deepEqual(totals, { studio: 3, export: 0 });
 });
 
 test('Studio guards reject missing, late or mismatched initialization and missing stop instructions', () => {
@@ -375,6 +375,43 @@ function assertReviewLaunch(section) {
   assert.doesNotMatch(text, /\b(?:exempt|exception|does not apply|may skip|can skip|skip identity|skip initialization|without identity|bypass|ignore (?:the )?(?:identity|stop))\b/i, 'review launches have no identity exemption');
 }
 
+function assertReservedReviewPort(section) {
+  const text = section.replace(/\s+/g, ' ');
+  assert.match(text, /course root's `t3\.json`/);
+  assert.match(text, /`scripts\[\]` entry named `Open in Studio`/);
+  assert.match(text, /`command`.*executable `praxity` or `"\$HOME\/\.praxity\/bin\/praxity"`, followed by `studio \. --port N` and optionally `--no-open`, with no other arguments/);
+  assert.match(text, /Copy only the decimal port/);
+  assert.match(text, /never invent a port/i);
+  assert.match(text, /Without a reservation, unsent drafts do not survive a Studio restart\./);
+  assert.ok(section.includes('~/.praxity/bin/praxity identity init .\n~/.praxity/bin/praxity studio . --review --port N --no-open'), 'review launch uses the reserved port after identity init');
+  assert.ok(section.includes('~/.praxity/bin/praxity identity init .\n~/.praxity/bin/praxity studio . --review --no-open'), 'unreserved review launch omits the port after identity init');
+}
+
+test('review launch takes its port from the reserved Studio action in every adapter', () => {
+  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  for (const [host, files] of Object.entries(outputs)) {
+    const skill = [...files].find(([name]) => name.endsWith('/studio-editor/SKILL.md'))[1].toString();
+    const section = skill.split('## Open for review\n')[1].split('\n## ')[0];
+    assertReservedReviewPort(section);
+    assertReviewLaunch(section);
+    assert.equal(assertCommandProcedures(skill, host).studio, 3);
+    // Both reservation branches must independently initialize the course.
+    for (const launch of ['--review --port N --no-open', '--review --no-open']) {
+      const commands = `~/.praxity/bin/praxity identity init .\n~/.praxity/bin/praxity studio . ${launch}`;
+      assert.throws(() => assertCommandProcedures(skill.replace(commands, commands.split('\n')[1]), host), /initialize the same course/);
+    }
+  }
+});
+
+test('review port guard rejects an omitted or invented reserved port', () => {
+  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
+  const section = skill.split('## Open for review\n')[1].split('\n## ')[0];
+  assertReservedReviewPort(section);
+  for (const replacement of ['--review --no-open', '--review --port 4311 --no-open']) {
+    assert.throws(() => assertReservedReviewPort(section.replace('--review --port N --no-open', replacement)), /uses the reserved port/);
+  }
+});
+
 test('review launch obeys the same identity guard, including every generated adapter', () => {
   const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
   for (const [host, files] of Object.entries(outputs)) {
@@ -383,7 +420,7 @@ test('review launch obeys the same identity guard, including every generated ada
     assert.ok(section, `${host}: review launch procedure exists`);
     assertReviewLaunch(section);
     assert.ok(section.includes('~/.praxity/bin/praxity identity init .\n~/.praxity/bin/praxity studio . --review --no-open'));
-    assert.equal(assertCommandProcedures(skill, host).studio, 2);
+    assert.equal(assertCommandProcedures(skill, host).studio, 3);
     const init = '~/.praxity/bin/praxity identity init .\n';
     for (const replacement of ['', '~/.praxity/bin/praxity identity init ./other-course\n']) {
       assert.throws(() => assertCommandProcedures(skill.replace(section, section.replace(init, replacement)), host));

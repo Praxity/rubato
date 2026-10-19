@@ -43,12 +43,28 @@ for course syntax and guarded CLI operations.
 ## Open for review
 
 Follow Open Studio's identity initialization step and its stop-and-ask rule before
-every open or restart. Use the course folder as the working directory:
+every open or restart. Use the course folder as the working directory.
+
+Read the course root's `t3.json`. Use the first `scripts[]` entry named
+`Open in Studio`. Its `command` must have the generated
+form: executable `praxity` or `"$HOME/.praxity/bin/praxity"`, followed by
+`studio . --port N` and optionally `--no-open`, with no other arguments.
+Copy only the decimal port from `--port N`; do not execute the action's command.
+If this reserved action exists, replace `N` below with that port:
+
+```sh
+~/.praxity/bin/praxity identity init .
+~/.praxity/bin/praxity studio . --review --port N --no-open
+```
+
+If the file or matching action is absent, omit `--port`; never invent a port:
 
 ```sh
 ~/.praxity/bin/praxity identity init .
 ~/.praxity/bin/praxity studio . --review --no-open
 ```
+
+Without a reservation, unsent drafts do not survive a Studio restart.
 
 After init succeeds, launch as a background process and retain its handle and
 stdout exactly as in Open Studio. Capture the complete ready URL and open it
@@ -57,7 +73,7 @@ capability-handling rules. The person does not need to paste a command.
 If Studio is already running for this folder with review enabled, reuse it.
 If it is running without review, follow Open Studio's deliberate-restart procedure,
 letting the person save before stopping it, then initialize and launch with the
-review command above. Reuse only a process known to serve this course in review mode.
+applicable review command above. Reuse only a process known to serve this course in review mode.
 If a Studio you did not start may be serving this folder, ask the person to save
 and stop it, or to confirm none is running, before launching with `--review`.
 Never start a second one.
