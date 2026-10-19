@@ -1,6 +1,6 @@
 ---
 name: studio-editor
-description: Open Praxity Studio so a person can read a course as learners see it or fix its text by hand, turn T3 preview annotations into guarded source edits, and read Studio review comments. Use to show or restart Studio, when the person points at something on the page to change, or to fix comments left in Studio's review mode (Trace report comments belong to praxity-trace).
+description: Open Praxity Studio so a person can read a course as learners see it or fix its text by hand, turn T3 preview annotations into guarded source edits, and read Studio review comments. Use to show or restart Studio, enable review mode or leave comments, when the person points at something on the page to change, or to fix comments left in Studio's review mode (Trace report comments belong to praxity-trace).
 ---
 
 Course syntax, validation, identity and export belong to the prax-format skill. Use the course folder as the working directory. `praxity` below means `~/.praxity/bin/praxity` whenever `praxity` is not on PATH.
@@ -60,7 +60,7 @@ praxity edit . setText --at <rendered-nodeId> --rendered --arg field=<field> --a
 praxity edit . setText --at <rendered-nodeId> --rendered --arg field=<field> --arg text=<json-string> --expect-revision <fileRevision> --json
 ```
 
-For annotation edits, forbid `--find`, `--page`, `--block` and `--line`, and positional addresses in `--at`. Check the dry run's `mapping`, `files` and planned change against the target, lesson and field. Require the replaced source text to contain the picked live quote, allowing only inline markup differences. A mismatch refuses. Write only when they agree, with the same arguments minus `--dry-run`. A stale or refused result needs fresh inspection and a fresh target, not just a new revision. Never rewrite the file by other means.
+For annotation and comment edits, forbid `--find`, `--page`, `--block` and `--line`, and positional addresses in `--at`. Check the dry run's `mapping`, `files` and planned change against the target, lesson and field. Require the replaced source text to contain the picked live quote, allowing only inline markup differences. A mismatch refuses. Write only when they agree, with the same arguments minus `--dry-run`. A stale or refused result needs fresh inspection and a fresh target, not just a new revision. Never rewrite the file by other means.
 
 ### Structural change
 

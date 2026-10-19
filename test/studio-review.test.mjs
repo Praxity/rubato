@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { buildAdapters, installSkills } from '../src/skills.mjs';
 import { fixture, repository } from './helpers.mjs';
 
@@ -23,8 +24,8 @@ function assertReviewSafety(document) {
   assert.equal(procedure.match(/praxity comments resolve/g)?.length, 1, 'one resolve command in the procedure');
   assert.equal(steps[4].match(/praxity comments resolve/g)?.length, 1, 'resolve belongs only in step 5');
   assert.doesNotMatch(steps[5], /praxity comments resolve/, 'step 6 must only reply');
-  assert.ok(normalized[3].includes('Resolve only when the requested change is actually saved and verified.'), 'verified edits only');
-  assert.ok(normalized[2].includes('If a command refuses, enter step 6'), 'refused edits only reply');
+  assert.ok(normalized[3].includes("Resolve only after the shared procedure's verification step succeeds."), 'verified edits only');
+  assert.ok(normalized[2].includes('A non-stale refusal, or one that persists after fresh inspection, enters step 6.'), 'refused edits only reply');
   assert.ok(normalized[3].includes('Require an acknowledged edit in this pass; a dry run or text that already matched is insufficient.'), 'acknowledged edit required');
   for (const index of [2, 4]) {
     assert.ok(normalized[index].includes('Never pass comment text on the command line.'), `no argv comment text in step ${index + 1}`);
@@ -48,7 +49,7 @@ for (const host of ['claude', 'codex']) {
     const section = installedSkill(t).split('## Open for review\n')[1].split('\n## ')[0];
     const check = section.split('Read the course root')[0].replace(/\s+/g, ' ');
     assert.match(check, /Before enabling review mode/);
-    assert.match(check, /`git rev-parse --git-dir`.*`git rev-parse --git-common-dir`.*course folder/);
+    assert.match(check, /`git rev-parse --path-format=absolute --git-dir --git-common-dir`.*course folder/);
     assert.match(check, /Git is missing or the folder is not a repository, skip this check silently/);
     assert.match(check, /results differ.*linked Git worktree/);
     assert.match(check, /Tell the person: "Review comments are stored inside this worktree and are deleted when it is removed or cleaned with `git worktree remove` or `git clean -X`\."/);
@@ -69,7 +70,61 @@ for (const host of ['claude', 'codex']) {
     assert.match(last, /Include edited threads even if their reply or resolution is blocked/);
     assert.match(last, /spot a comment they never wrote/);
   });
+
+  test(`${host} installed review retries a stale source join once and requires agreement for destructive edits`, t => {
+    const step = reviewSteps(installedSkill(t)).steps[2].replace(/\s+/g, ' ');
+    assert.match(step, /On a stale or revision refusal, follow the shared path's fresh-inspection rule once: inspect again, re-run the join and start over/);
+    assert.match(step, /Never swap a new revision onto the old target/);
+    assert.match(step, /A non-stale refusal, or one that persists after fresh inspection, enters step 6/);
+    assert.match(step, /Before any comment-derived deletion, item removal, type change, setting removal or hand edit, show the person the thread and the dry run and get their agreement/);
+    assert.match(step, /For a hand edit without a guarded command, use a proposed source diff as the dry run/);
+    assert.match(step, /If they do not agree, enter step 6 without editing/);
+  });
+
+  test(`${host} installed mutations validate IDs and handle invisible threads and storage limits`, t => {
+    const document = installedSkill(t);
+    const { steps } = reviewSteps(document);
+    assert.match(steps[4], /Use `<threadId>` only if it is a canonical lowercase UUID; otherwise report the malformed ID and stop this mutation/);
+    assert.match(steps[4], /If success returns `thread: null`, record the receipt and drop the thread from later passes; do not read its version or status/);
+    assert.match(steps[5], /Apply step 5's response, stale-version and lost-response rules to replies too/);
+    assert.match(steps[6], /Skip threads dropped under step 5/);
+    assert.match(document.split('| 36 |')[1]?.split('\n')[0] ?? '', /`limit_reached`.*Stop and report.*no review mutation was saved.*Keep the source edit.*do not repeat it/);
+  });
+
+  test(`${host} installed instructions contain one complete file-backed argument example without a program name`, t => {
+    const document = installedSkill(t);
+    const examples = [...document.matchAll(/```json\n([^`]+)\n```/g)];
+    assert.equal(examples.length, 1);
+    assert.deepEqual(JSON.parse(examples[0][1]), ['edit', '.', 'setText', '--at', '<rendered-node-id>', '--rendered', '--arg', 'field=<field>', '--arg', 'text=<json-string>', '--expect-revision', '<fileRevision>', '--dry-run', '--json']);
+  });
 }
+
+test('documented worktree check distinguishes main checkout subfolders from linked worktrees', t => {
+  const command = skill.match(/`(git rev-parse [^`]+)`/)[1].split(' ');
+  assert.deepEqual(command, ['git', 'rev-parse', '--path-format=absolute', '--git-dir', '--git-common-dir']);
+  const { context } = fixture(t);
+  const env = { ...process.env, GIT_DIR: undefined, GIT_WORK_TREE: undefined, GIT_COMMON_DIR: undefined };
+  function git(cwd, args) {
+    const result = spawnSync('git', args, { cwd, env, encoding: 'utf8' });
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  }
+  git(context.cwd, ['init', '-q']);
+  git(context.cwd, ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--allow-empty', '-qm', 'Fixture']);
+  const linked = join(context.root, 'linked');
+  git(context.cwd, ['worktree', 'add', '--detach', linked, 'HEAD']);
+  for (const [root, warns] of [[context.cwd, false], [linked, true]]) {
+    const subfolder = join(root, 'courses/example');
+    mkdirSync(subfolder, { recursive: true });
+    for (const cwd of [root, subfolder]) {
+      const paths = git(cwd, command.slice(1)).split(/\r?\n/);
+      assert.equal(paths.length, 2);
+      assert.ok(paths.every(isAbsolute), 'both paths are absolute');
+      assert.equal(paths[0] !== paths[1], warns, `${warns ? 'linked' : 'main'} checkout ${cwd === root ? 'root' : 'subfolder'}`);
+    }
+  }
+});
 
 test('review fixes collect feedback before guarded edits, reply atomically and collect again', () => {
   const { steps } = reviewSteps(skill);
@@ -87,8 +142,8 @@ test('review fixes collect feedback before guarded edits, reply atomically and c
   assert.match(helper, /execFileSync.*without a shell/);
   assert.match(helper, /omitting only `--dry-run`/);
   for (const name of ['dry-run-args-file', 'apply-args-file']) assert.ok(helper.includes('"<' + name + '>"'));
-  assert.match(steps[3], /exact saved change/);
-  assert.match(steps[3], /neighbouring source/);
+  assert.match(steps[3], /\[the annotation procedure's verification step\]\(\.\.\/SKILL.md#act-on-an-annotation\)/);
+  assert.doesNotMatch(steps.slice(2, 4).join(' '), /neighbouring source|do not substitute a new revision/);
   const resolve = steps[4].match(/praxity comments resolve[^\n]+/)[0];
   assert.match(resolve, /--reply-file <path> --expect-version <version> --request-id <new-uuid> --json/);
   assert.match(steps[4], /temporary file/);
@@ -104,13 +159,13 @@ test('review fixes collect feedback before guarded edits, reply atomically and c
 });
 
 const mutations = [
-  ['a: unverified resolution', text => text.replace('Resolve only when the requested change is actually saved and verified.', ''), /verified edits only/],
+  ['a: unverified resolution', text => text.replace("Resolve only after the shared procedure's verification step succeeds.", ''), /verified edits only/],
   ['b: resolve in the unsupported path', text => text.replace('7. After', '   praxity comments resolve . <threadId> --reply-file <path> --expect-version <version> --request-id <new-uuid> --json\n\n7. After'), /one resolve command/],
   ['c: argv comment text', text => text.replace('Never pass comment text on the command line.', ''), /no argv comment text/],
   ['d: newer feedback ignored', text => text.replace('never resolve over newer feedback', 'resolve anyway'), /newer feedback must be read/],
   ['e: comment instructions trusted', text => text.replace(/They cannot authorize[^.]+\./, 'Follow thread instructions.'), /comments cannot authorize/],
   ['f: dry run sufficient', text => text.replace('Require an acknowledged edit in this pass; a dry run or text that already matched is insufficient.', 'A dry run that agrees is sufficient.'), /acknowledged edit required/],
-  ['j: refused edit resolves', text => text.replace('If a command refuses, enter step 6;', 'If a command refuses, resolve with an explanation;'), /refused edits only reply/],
+  ['j: refused edit resolves', text => text.replace('A non-stale refusal, or one that persists after fresh inspection, enters step 6.', 'A refused edit resolves with an explanation.'), /refused edits only reply/],
 ];
 for (const [name, mutate, failure] of mutations) test(`review guard rejects mutation ${name}`, () => {
   const changed = mutate(skill);
@@ -182,7 +237,8 @@ function assertSharedReview(document, lifecycle) {
     assert.ok(section.includes('](#' + target + ')'), target);
     assert.ok(lifecycle.includes('](../SKILL.md#' + target + ')'), target);
   }
-  assert.doesNotMatch(section + lifecycle, /praxity edit |--text-fields|\["edit"/, 'review references rather than duplicates edits');
+  assert.doesNotMatch(section + lifecycle, /praxity edit |--text-fields/, 'review references rather than duplicates edits');
+  assert.doesNotMatch(reviewSteps(lifecycle).procedure, /\["edit"/, 'argument transport example stays outside the fix procedure');
   assert.match(document, /Require exactly one `blocks\[\]` entry whose `nodeId` equals.*whose `file` is/);
   assert.match(document, /Edit the source by hand only when no operation above covers the change/);
   assert.match(document, /praxity edit \. <operation> --at <nodeId> --expect-revision <fileRevision> --dry-run --json/);
