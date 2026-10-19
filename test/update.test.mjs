@@ -250,9 +250,11 @@ test('extraction and installer launch errors leave the old pack active', async t
 test('update takes no URL or digest arguments and version reports a legacy Studio SHA', async t => {
   const f = fixture(t);
   await assert.rejects(runCli(['update', '--manifest', 'https://example.com/pack.json'], f.context), /Usage: praxity update/);
+  // A manifest without sourceRevision falls back to the SHA in the version suffix.
+  delete f.context.pack.tools.find(tool => tool.id === 'studio').sourceRevision;
   const lines = [];
   await runCli(['version'], f.context, { print: line => lines.push(line) });
-  assert.equal(JSON.parse(lines[0]).studioSha, '92e21573');
+  assert.equal(JSON.parse(lines[0]).studioSha, 'abaf1f3f');
 });
 
 test('process inspection errors refuse before network access', async t => {

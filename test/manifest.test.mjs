@@ -37,16 +37,20 @@ test('real pack preserves the unchanged tool archive URLs from v0.1.1', () => {
   const pack = realPack();
   const prefix = `https://github.com/Praxity/praxity-toolkit/releases/download/v${pack.version}/`;
   for (const tool of pack.tools) {
-    if (['check', 'trace'].includes(tool.id)) continue;
+    if (['studio', 'check', 'trace'].includes(tool.id)) continue;
     for (const archive of Object.values(tool.archives)) {
       if (archive.status === 'published') assert.ok(archive.url.startsWith(prefix), tool.id);
     }
   }
 });
 
-test('macOS installation plans select the reviewed Check and Trace prereleases', () => {
+test('macOS installation plans select the reviewed Studio, Check and Trace prereleases', () => {
   const pack = realPack();
   const candidates = [
+    // Studio's admitted CLI candidate 39336016757 includes the root prax-format skill (praxity-studio#1804).
+    { id: 'studio', version: '0.3.0-main.abaf1f3f', revision: 'abaf1f3f876ac32a610886fecd3d709513bf5bb5',
+      urls: { 'darwin-arm64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.3/praxity-studio-cli-0.3.0-main.abaf1f3f-darwin-arm64.tar.gz',
+        'darwin-x64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.3/praxity-studio-cli-0.3.0-main.abaf1f3f-darwin-x64.tar.gz' } },
     { id: 'check', version: '0.6.0-alpha.c61b1cb3c', revision: 'c61b1cb3ce3a4e7afb0a44f3dd70e82a52c1154d',
       url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz' },
     { id: 'trace', version: '0.1.1-experimental.09fcaaf76', revision: '09fcaaf76841175d150210ec29c66d7ebab05cc3',
@@ -58,7 +62,7 @@ test('macOS installation plans select the reviewed Check and Trace prereleases',
     assert.equal(tool.sourceRevision, candidate.revision);
     for (const platform of ['darwin-arm64', 'darwin-x64']) {
       const archive = installationPlan(pack, platform).find(entry => entry.id === candidate.id);
-      assert.equal(archive.url, candidate.url);
+      assert.equal(archive.url, candidate.urls?.[platform] ?? candidate.url);
       assert.equal(archive.format, 'tar.gz');
       assert.equal(archive.stripComponents, 1);
     }
@@ -76,7 +80,7 @@ for (const platform of ['darwin-arm64', 'darwin-x64']) test(`installation plan s
   const pack = realPack();
   const plan = installationPlan(pack, platform);
   assert.equal(plan.find(entry => entry.id === 'node').url, `https://nodejs.org/dist/v24.21.0/node-v24.21.0-${platform}.tar.gz`);
-  assert.equal(plan.find(entry => entry.id === 'studio').url, `https://github.com/Praxity/praxity-toolkit/releases/download/v0.1.1/praxity-studio-cli-0.3.0-main.92e21573-${platform}.tar.gz`);
+  assert.equal(plan.find(entry => entry.id === 'studio').url, `https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.3/praxity-studio-cli-0.3.0-main.abaf1f3f-${platform}.tar.gz`);
 });
 
 test('every declared platform requires every tool archive', () => {
