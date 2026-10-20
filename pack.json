@@ -169,8 +169,8 @@
     },
     {
       "id": "trace",
-      "version": "0.1.1-experimental.97e6de33b",
-      "sourceRevision": "97e6de33b3c30e67d44e7db6d0f1856bf358d3ef",
+      "version": "0.1.1-experimental.53ee25cc6",
+      "sourceRevision": "53ee25cc620fcbc669e0f00508962156f21bdce5",
       "entry": "src/cli.ts",
       "runner": "node",
       "license": "PolyForm Perimeter 1.0.1",
@@ -179,15 +179,15 @@
       "archives": {
         "darwin-arm64": {
           "status": "published",
-          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.4/praxity-trace-0.1.1-experimental.97e6de33b-portable.tar.gz",
-          "sha256": "2204cbb49f7ed666cef941a83ff26d6a76611008fec6f10ca1fd5002820177fe",
+          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.5/praxity-trace-0.1.1-experimental.53ee25cc6-portable.tar.gz",
+          "sha256": "7596c94314fb587bbe414ed46daa5ed460af9aa009f282d6d17568a4def57aa2",
           "format": "tar.gz",
           "stripComponents": 1
         },
         "darwin-x64": {
           "status": "published",
-          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.4/praxity-trace-0.1.1-experimental.97e6de33b-portable.tar.gz",
-          "sha256": "2204cbb49f7ed666cef941a83ff26d6a76611008fec6f10ca1fd5002820177fe",
+          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.5/praxity-trace-0.1.1-experimental.53ee25cc6-portable.tar.gz",
+          "sha256": "7596c94314fb587bbe414ed46daa5ed460af9aa009f282d6d17568a4def57aa2",
           "format": "tar.gz",
           "stripComponents": 1
         },
