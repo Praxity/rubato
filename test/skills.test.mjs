@@ -639,7 +639,7 @@ test('doctor names every missing skill and its install command even when no adap
   for (const scope of ['user', 'project']) for (const host of ['claude', 'codex']) {
     assert.deepEqual(result.items.find(item => item.id === `host.${host}.${scope}`), {
       id: `host.${host}.${scope}`, status: 'not-installed',
-      message: 'Missing skills: assessment-writing, install-praxity, studio-editor.',
+      message: 'Missing skills: assessment-writing, composer, install-praxity, studio-editor.',
       fix: `praxity skills install --host ${host} --scope ${scope}`,
     });
   }
