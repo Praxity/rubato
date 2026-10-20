@@ -9,7 +9,7 @@ You turn a brief into a course that changes what people do. You own four things:
 
 Write the outline to `outline.md` beside the course's `course.yaml`, starting from [outline-template.md](outline-template.md). Pattern facts are in [patterns.md](patterns.md). The later steps run the `praxity` command; when it's missing, use the install-praxity skill first.
 
-For a lesson added to an existing outline, use prax-format directly. A draft is not ready to export and is marked in `outline.md` and the report as needing an independent review.
+For a lesson added to an existing outline, use prax-format directly. For an unfinished course, use the single label "Draft" in `outline.md` and the report, followed by the specific blocking reason or reasons. A draft is not ready to ship; step 8.3 still exports it temporarily for checking. Clear each reason and remove Draft before producing a deliverable export.
 
 ## 1. Read the brief
 
@@ -80,26 +80,27 @@ Show the person the behaviour, barriers, fixes outside the course, selection and
 1. Write the course from outline.md with the prax-format skill, following steps 1 to 6 of its build list; export comes in step 8 below. It owns syntax, block details, validation and identity. For two languages, keep one outline and build one course folder per language, side by side, with the same lessons in the same order.
 2. Write every keyed single-answer choice, scored or practice, with the assessment-writing skill, including its attack, before any export. Hand it the Items section. When Trace is missing, follow that skill's fallback. When no fresh agent can run its probes, mark the bank unverified and keep the course a draft.
 
-   Trace's masked gate covers English only. For a French or other non-English bank, run the plain choices-only and cover-the-options probes, report the masked gate as "not applicable", mark the bank unverified, keep the course a draft, and ask the person how to proceed. In an unattended run, stop after reporting the available probe results and the unresolved review; a fluent-reader check alone doesn't verify the bank.
+   Trace's masked gate covers English only. For any bank where it doesn't apply, including French, run the plain choices-only and cover-the-options probes, the key check and the explanations probe within assessment-writing's pass cap. Report the masked gate as "not applicable" with its reason, mark that bank unverified, and add the unverified bank as a blocking reason under Draft. Continue through steps 7.3 to 9, including the fidelity review, alignment check, accessibility check and report, even in an unattended run. Ask the person how to resolve the unverified bank at the end in step 9, rather than at this hand-off; a fluent-reader check alone doesn't verify it.
+
 3. Sort facts three ways:
    - facts the person's organisation owns (its policy, limits, steps, contacts) come only from the brief or its named sources. Where one is missing, write `[SOURCE NEEDED: what]` once per course folder, where learners first meet the fact, and add it to Questions;
    - general facts of a subject (science, common safety advice) you may write; list each one in the report for an expert to check;
    - invented details for cases and examples (names, items, prices) are fine when they agree with the first kind.
 
-   Every restatement of a rule, whether an objective, a card, a summary, a model answer or feedback, keeps all its conditions and exceptions. Feedback adds no claim that the course or the brief's sources don't support. A neighbouring-case explanation from assessment-writing is allowed when the course teaches that case or a cited source states it. Otherwise add that teaching first, or drop the option. Subject facts still need the expert check above.
+   Every restatement of a rule, whether an objective, a card, a summary, a model answer or feedback, keeps all its conditions and exceptions. Feedback adds no claim that the course or the brief's sources don't support. A neighbouring-case explanation from assessment-writing requires support for its claim and conditions in the brief's sources. Any teaching added to support feedback must itself be supported by those sources; adding a teaching page doesn't create evidence. Otherwise add teaching supported by those sources first, or drop the option. Subject facts still need the expert check above.
 
 Done when every activity in the outline exists in the course, prax-format's validation and identity steps pass for each course folder, and every `[SOURCE NEEDED]` marker is listed in Questions. Any remaining marker keeps the course a draft.
 
 ## 8. Review with fresh eyes
 
-The agent that wrote the course doesn't grade it. The fidelity reviewer also judges alignment in step 8.2. Use a fresh-context reviewer from a different model family than the writer when one is available. If no other model family is available, run a fresh-context reviewer from the same family, using a different model if one is available. Label the result "same-family review" in outline.md and the report, and keep the course a draft needing an independent review.
+The agent that wrote the course doesn't grade it. The fidelity reviewer also judges alignment in step 8.2. Use a fresh-context reviewer from a different model family than the writer when one is available. If no other model family is available, run a fresh-context reviewer from the same family, using a different model if one is available. Record the reviewer and model, and keep Draft with the blocking reason "independent review still needed because only a same-family reviewer was available".
 
-1. Fidelity. Give the fresh agent the brief, outline.md, the course and its cited sources. It checks support for every model answer, example plan, shortened rule, branch and feedback line in the course or cited sources, against the behaviour sentences and step 7.3. It flags unsupported claims and missing conditions; a supported neighbouring-case explanation may add information learners haven't yet read. It reads every language; mirror each fix in all of them.
+1. Fidelity. Give the fresh agent the brief, outline.md, the course and the brief's sources. It checks support for every model answer, example plan, shortened rule, branch and feedback line in the course or the brief's sources, against the behaviour sentences and step 7.3. It also checks every teaching page added to support feedback directly against the brief's sources, including each condition; unsourced teaching or a wrong condition goes back to the writer. It flags unsupported claims and missing conditions; a supported neighbouring-case explanation may add information learners haven't yet read. It reads every language; mirror each fix in all of them.
 2. Run the praxity-trace report, and have that fresh agent answer its alignment view. Compare the result with outline.md: each behaviour should have practice and, if scored, a check.
-3. Once no draft blocker remains, export through prax-format and run praxity-check on the export. Otherwise report that export and its checks couldn't run.
+3. Export every course, including a draft, through prax-format as HTML into a fresh temporary folder solely for checking. Run praxity-check on that export, save its findings outside the temporary folder and put the results in the report. Then delete the temporary export; never ship it. If validation or identity refuses export, record that exact failure as a blocking reason without bypassing the refusal. Produce the brief's deliverable exports only after all blocking reasons are cleared.
 4. Fix through prax-format, rerun what the fix touched, and update outline.md when an activity changes. The fidelity reviewer then rechecks every line the fixes changed; a finding counts as fixed only when the course text meets it, not when the report notes it.
 
-When no fresh reviewer can run at all, keep the course a draft labelled "not independently reviewed". Report which reviews couldn't run; the writer's own check doesn't replace them.
+When no fresh reviewer can run at all, keep Draft with the blocking reason "independent review unavailable". Report which reviews couldn't run; the writer's own check doesn't replace them. Continue the other available checks.
 
 Done when no review finding is left without a fix or a note in the report. Any unresolved finding keeps the course a draft.
 
@@ -110,7 +111,8 @@ Tell the person:
 - the files written;
 - the fixes outside the course;
 - the open questions and the defaults you took;
-- the review results;
+- the review results, including praxity-check's findings from the temporary export;
+- Draft status and each remaining blocking reason, then ask the person how to resolve the unverified banks and other open blockers;
 - what still needs a person: every fact checked against its source, subject facts checked by an expert, the second language read by a fluent reader, and any portrayal of a group checked by members of that group.
 
 ## When to ask, refuse or stop
@@ -128,4 +130,4 @@ Decline, and say what you'll do instead, when asked to:
 - copy items from a real exam or a prep bank;
 - collect learner data the brief doesn't need.
 
-Stop for an expert when the course teaches safety, health, legal or financial facts. Build the course as a draft, list the facts to check, name who should check them, and export only after that check and the other draft blockers are cleared.
+Require an expert before delivery when the course teaches safety, health, legal or financial facts. Build the course as a draft, list the facts to check, name who should check them, and record the pending expert check as a blocking reason. Continue available reviews and the temporary checking export; produce deliverable exports only after the expert check and other blocking reasons are cleared.

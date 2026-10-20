@@ -5,6 +5,9 @@ Copy this into `outline.md` beside the course's `course.yaml`. The person reads 
 ```markdown
 # <Course title>: outline
 
+## Status
+Draft. Blocking reasons: <each specific unresolved source, expert, bank or review issue>.
+
 ## Brief
 - Audience and reading level:
 - Where and when they will do the behaviour:

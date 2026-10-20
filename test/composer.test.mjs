@@ -21,29 +21,35 @@ test('composer prefers another family and still runs a labelled fresh-context re
   assert.match(skill, /fresh-context reviewer from a different model family than the writer/);
   assert.match(skill, /no other model family is available, run a fresh-context reviewer from the same family/);
   assert.match(skill, /different model if one is available/);
-  assert.match(skill, /"same-family review"/);
-  assert.match(skill, /A draft is not ready to export[^\n]*outline\.md[^\n]*report[^\n]*needing an independent review/);
+  assert.match(skill, /single label "Draft"[^\n]*outline\.md[^\n]*report[^\n]*blocking reason or reasons/);
+  assert.match(skill, /independent review still needed because only a same-family reviewer was available/);
+  assert.doesNotMatch(skill, /label(?:led)?[^\n]*"(?:same-family review|not independently reviewed)"/);
 });
 
 test('composer feedback and fidelity rules accept sourced neighbouring cases', () => {
   const skill = readFileSync(new URL('../skills/composer/SKILL.md', import.meta.url), 'utf8');
   const writing = skill.split('## 7. Hand off the writing')[1].split('## 8.')[0];
   assert.match(writing, /Feedback adds no claim that the course or the brief's sources don't support/);
-  assert.match(writing, /neighbouring-case explanation[^\n]*course teaches that case or a cited source states it/);
-  assert.match(writing, /Otherwise add that teaching first, or drop the option/);
+  assert.match(writing, /neighbouring-case explanation[^\n]*claim and conditions in the brief's sources/);
+  assert.match(writing, /teaching added to support feedback must itself be supported by those sources/);
+  assert.match(writing, /Otherwise add teaching supported by those sources first, or drop the option/);
   const fidelity = skill.split('1. Fidelity.')[1].split('2. Run')[0];
-  assert.match(fidelity, /checks support[^\n]*course or cited sources/);
+  assert.match(fidelity, /checks support[^\n]*course or the brief's sources/);
+  assert.match(fidelity, /every teaching page added to support feedback directly against the brief's sources/);
+  assert.match(fidelity, /unsourced teaching or a wrong condition goes back to the writer/);
   assert.doesNotMatch(skill, /adds no new claims|each claim the teaching doesn't support/);
 });
 
-test('French banks run the available probes and remain unverified drafts', () => {
+test('French banks remain unverified while all available checks finish before asking the person', () => {
   const skill = readFileSync(new URL('../skills/composer/SKILL.md', import.meta.url), 'utf8');
   const attack = skill.split('2. Write every keyed')[1].split('3. Sort facts')[0];
   assert.match(attack, /masked gate covers English only/);
-  assert.match(attack, /French[^\n]*plain choices-only and cover-the-options probes/);
+  assert.match(attack, /including French[^\n]*plain choices-only and cover-the-options probes, the key check and the explanations probe/);
   assert.match(attack, /masked gate as "not applicable"/);
-  assert.match(attack, /bank unverified[^\n]*course a draft[^\n]*ask the person/);
-  assert.match(attack, /In an unattended run, stop/);
+  assert.match(attack, /bank unverified[^\n]*blocking reason/);
+  assert.match(attack, /Continue through steps 7\.3 to 9[^\n]*fidelity review[^\n]*alignment check[^\n]*report[^\n]*unattended/);
+  assert.match(attack, /Ask the person[^\n]*at the end in step 9/);
+  assert.doesNotMatch(attack, /In an unattended run, stop/);
 });
 
 test('composer routing and export order preserve the owning skills and draft gates', () => {
@@ -55,11 +61,23 @@ test('composer routing and export order preserve the owning skills and draft gat
   assert.match(skill, /When the choice is `tu`, tell the person[^\n]*mismatch[^\n]*Questions/);
   assert.match(skill, /course includes French and the register or regional variety is unstated/);
   assert.match(skill, /steps 1 to 6 of its build list; export comes in step 8/);
-  assert.match(skill, /Once no draft blocker remains, export/);
   const patterns = readFileSync(new URL('../skills/composer/patterns.md', import.meta.url), 'utf8');
   assert.match(patterns.split('### dont-know')[1].split('### knowledge-check')[0], /don't choose `dont-know`, set `dontKnow=false` on practice choices/);
   const template = readFileSync(new URL('../skills/composer/outline-template.md', import.meta.url), 'utf8');
   assert.doesNotMatch(template, /nightly check/);
+});
+
+test('drafts receive a temporary accessibility-check export with retained findings and no shipped artifact', () => {
+  const skill = readFileSync(new URL('../skills/composer/SKILL.md', import.meta.url), 'utf8');
+  const checking = skill.split('3. Export every course')[1].split('4. Fix through')[0];
+  assert.ok(checking);
+  assert.match(checking, /including a draft[^\n]*fresh temporary folder[^\n]*solely for checking/);
+  assert.match(checking, /Run praxity-check on that export/);
+  assert.match(checking, /save its findings outside the temporary folder[^\n]*results in the report/);
+  assert.match(checking, /delete the temporary export[^\n]*never ship it/);
+  assert.match(checking, /deliverable exports only after all blocking reasons are cleared/);
+  const template = readFileSync(new URL('../skills/composer/outline-template.md', import.meta.url), 'utf8');
+  assert.match(template, /## Status\nDraft\. Blocking reasons:/);
 });
 
 test('composer fixtures cover all five briefs', () => {
