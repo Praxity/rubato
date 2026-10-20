@@ -72,7 +72,9 @@ test('macOS installation plans select the reviewed Studio, Check and Trace prere
 // Trace revisions whose item-cues score the masked probe: `<bundle>-review/operator.json` (Praxity/praxity-trace#22),
 // then `status: "scored"` with `pMin` and `pLowMin` from Studio language provenance (#23). The assessment-writing
 // gate reads those fields, so an older pin stops every run: 09fcaaf has no masked probe and 92a164d holds every
-// result. Add a revision here only after checking its payload.
+// result. The gate also pools each item's `lengths` and `masked.right`, and stops without the per-row `excludedCount`
+// that Praxity/praxity-trace#24 adds; until the pin includes #24, every gate stops. Add a revision here only after
+// checking its payload.
 const maskedTraceRevisions = new Set(['97e6de33b3c30e67d44e7db6d0f1856bf358d3ef']);
 const pinsMaskedTrace = pack => maskedTraceRevisions.has(pack.tools.find(tool => tool.id === 'trace')?.sourceRevision);
 
@@ -81,7 +83,7 @@ test('the pinned Trace ships the masked item-cues contract the assessment skill 
   assert.ok(pinsMaskedTrace(pack), 'Pin a Trace revision with the masked item-cues contract');
   const skill = readFileSync(join(repository, 'skills/assessment-writing/SKILL.md'), 'utf8');
   assert.match(skill, /`<bundle>-review\/`/);
-  assert.match(skill, /row\.masked\.status === 'scored'[\s\S]*row\.masked\.pLowMin <= limit/);
+  assert.match(skill, /row\.masked\.status === 'scored'[\s\S]*row\.masked\.right[\s\S]*item\.lengths\.length/);
   const old = realPack();
   for (const revision of ['09fcaaf76841175d150210ec29c66d7ebab05cc3', '92a164dd8573ff80fd24c61614b229f62f0eff2a']) {
     old.tools.find(tool => tool.id === 'trace').sourceRevision = revision;
