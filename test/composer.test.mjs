@@ -52,6 +52,17 @@ test('French banks remain unverified while all available checks finish before as
   assert.doesNotMatch(attack, /In an unattended run, stop/);
 });
 
+// assessment-writing v3's gate matches polls by ref and can return "tooling"; composer passes on both.
+test('composer declares polls to assessment-writing and defers a tooling-limited bank to step 9', () => {
+  const skill = readFileSync(new URL('../skills/composer/SKILL.md', import.meta.url), 'utf8');
+  const attack = skill.split('2. Write every keyed')[1].split('3. Sort facts')[0];
+  assert.match(attack, /list each deliberate poll in the course by ref: its hand-in checklist declares them/);
+  const tooling = attack.split(/\r?\n\s*\r?\n/).find(paragraph => paragraph.includes('`"tooling"`'));
+  assert.ok(tooling, 'Say what a tooling-limited gate means for the course');
+  assert.match(tooling, /check pass 1's rewrites first/);
+  assert.match(tooling, /unverified because of the tooling limit, add it as a blocking reason under Draft, continue through steps 7\.3 to 9, and ask the person at the end in step 9/);
+});
+
 test('composer routing and export order preserve the owning skills and draft gates', () => {
   const skill = readFileSync(new URL('../skills/composer/SKILL.md', import.meta.url), 'utf8');
   const description = skill.match(/^description: (.*)$/m)[1];
