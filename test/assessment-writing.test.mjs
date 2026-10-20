@@ -78,6 +78,23 @@ function section(skill, heading) {
 
 const paragraphs = text => text.split(/\r?\n\s*\r?\n/);
 
+// Content words: lower case, without function words, with a plural s dropped.
+const FUNCTION_WORDS = new Set('the and for with from into than that this these those what which who whom whose how why when where while does did should could would will can has have had his her him their them they she you your its are was were been being not but nor yet still more most less some any all each every one two first after before over under out off about'.split(' '));
+const contentWords = text => new Set((text.toLowerCase().match(/[a-z]+/g) ?? []).filter(word => word.length > 2 && !FUNCTION_WORDS.has(word)).map(word => word.replace(/s$/, '')));
+
+// No option repeats a stem content word unless every option does, and no option alone ends with a period.
+function assertOptionsDontEcho(stem, options) {
+  for (const word of contentWords(stem)) {
+    const echoes = options.filter(option => contentWords(option).has(word));
+    assert.ok(echoes.length === 0 || echoes.length === options.length, `"${word}" from the stem is in only some options: ${echoes.join(' | ')}`);
+  }
+  const periods = options.filter(option => option.endsWith('.')).length;
+  assert.ok(periods === 0 || periods === options.length, 'Options end with a period all together or not at all');
+}
+
+// The key and true-elsewhere options of a worked example.
+const exampleOptions = example => [example.match(/Key: "([^"]+)"/)?.[1], ...[...(example.match(/^- True elsewhere[^\n]*/m)?.[0] ?? '').matchAll(/"([^"]+)" \(/g)].map(([, text]) => text)];
+
 function assertDistractorTension(skill) {
   const tension = section(skill, '## Distractors that need the stem');
   assert.ok(tension, 'Teach why misconception distractors must be true elsewhere');
@@ -96,6 +113,7 @@ function assertDistractorTension(skill) {
     assert.equal(notes.length, 3, 'Every true-elsewhere distractor has a note');
     // Structure, not wording: the case it is right for, then why this stem rules it out.
     for (const note of notes) assert.match(note, /^right for [^;]+; \S.+/);
+    assertOptionsDontEcho(example.match(/Stem: "([^"]+)"/)[1], exampleOptions(example));
   }
   const numeric = paragraphs(tension).find(paragraph => paragraph.startsWith('Numeric items'));
   assert.ok(numeric, 'Show the numeric-distractor pattern');
@@ -136,8 +154,13 @@ function assertKeyCheck(skill) {
   assert.ok(notes.indexOf('without the writer\'s case') < notes.indexOf('Only then does it see the writer\'s note'));
   const control = paragraphs(attack).find(paragraph => paragraph.includes('positive control'));
   assert.ok(control, 'Every key check carries a planted double key');
-  assert.match(control, /Plant one double-key item in every key check as a positive control/);
-  assert.match(control, /If the judge doesn't mark both of its keys, its marks are no evidence: run the key check again with a new fresh judge\./);
+  assert.match(control, /Plant one double-key item in every key check as a positive control\. The orchestrating step plants it, not the writer/);
+  assert.match(control, /a single-answer stem, never a best-answer stem/);
+  assert.match(control, /a ref under the reserved prefix `0\.`/);
+  assert.match(control, /The control is exempt from every rewrite rule and from the one-mark item in the done list\./);
+  assert.match(control, /run the key check once more with a new fresh judge\. If that judge misses it too, report the key check as unverified and ask the person\./);
+  assert.match(attack, /^   - No key-check control remains in the course\. Before shipping, `grep -rnF '<control stem>' <course-dir>` prints nothing, and no ref in a fresh `<inspect\.json>` starts with `0\.`\./m);
+  assert.match(check, /The judge also names each item's headline answer[^.]*, and reports how many of those items key it\./);
   assert.match(notes, /The writer never decides which items skip a rewrite\./);
   assert.match(attack, /Rewrite every item the plain solver got right unless the key check confirmed every one of its distractor notes\./);
   assert.match(attack, /^   - The key check marked exactly one option, the key, on every item, and flagged none\./m);
@@ -177,8 +200,11 @@ function assertStopRules(skill) {
   }
   assert.match(stopText, /give that row's item count: even pooled across three runs it is too small to test/);
   assert.match(stopText, /When `itemCues\.course\.count` differs from `scoredChoices`[^\n]*Never change the declared count to match\./);
-  assert.match(stopText, /When `excludedByReason` has a code other than `multiple-select`, or more `no-key-or-poll` than declared polls/);
-  assert.match(stopText, /When an item's shuffle is unknown, give the sum of `spreads\[\]\.unknownCount`: the position check didn't cover those items\./);
+  assert.match(stopText, /When `excludedByReason` has a code other than `multiple-select`, or `no-key-or-poll` refs differ from the declared polls/);
+  assert.match(stopText, /On `"tooling"` with no exclusion accounting: the installed Trace predates Praxity\/praxity-trace#24\./);
+  assert.match(stopText, /On `"tooling"` with unknown shuffle: give the sum of `spreads\[\]\.unknownCount`, since the position check didn't cover those items\./);
+  assert.match(stop, /On `"tooling"`, the installed tools can't supply what the gate needs\. That is a tooling limit, not a fault in the bank, and another pass can't change it\.[^\n]*but don't spend passes 2 and 3 on it\.[^\n]*tell the person which limit it was\./);
+  assert.match(attack, /a clear statistical fail is `"fail"` before any other stop/);
   assert.match(stopText, /Don't compute tails by hand, don't mask items by hand/);
   assert.doesNotMatch(skill, /^### The masked probe by hand/m);
   const fallback = section(skill, '### If item-cues is unavailable');
@@ -199,7 +225,8 @@ function assertReviewFolder(skill) {
 }
 
 function assertSolverStrength(skill) {
-  assert.match(skill, /^Every solver must be a model at least as strong as the writer\. A weaker solver misses cues the writer can see/m);
+  assert.match(skill, /^Every solver and judge must be a model at least as strong as the writer\. A weaker solver misses cues the writer can see/m);
+  assert.match(skill, /The explanations reviewer in step 4 may be any model\./);
   // A Haiku solver passed banks a Sonnet solver failed, so the skill names the masked solver.
   assert.match(skill, /Name the masked solver's model before the first run, and use it in all three runs: the writer's own model or a stronger one, so a Sonnet writer gets at least a Sonnet solver, never Haiku\./);
 }
@@ -210,25 +237,32 @@ function assertSeededRuns(skill) {
   assert.match(attack, /the gate pools all three/);
   assert.match(attack, /The run count is fixed before any run is solved: never prepare a fourth run in a pass, re-run a solver, or leave a run out to get a pass\./);
   assert.match(attack, /Gate the masked probe on its hits pooled across the three runs\./);
+  assert.match(attack, /Seeds 2 and 3 add masked evidence only\.[^\n]*nothing reads their answers: any model may give them, their cover answers need no judge, and those rows never block done\./);
+  assert.match(attack, /The cover judge, the key check, the explanations probe and the plain-hit rewrites below use seed 1's run only\./);
 }
 
 // The v2 eval's keys were the longest option on 29 of 53 items, and usually the headline answer.
 function assertLengthAndHeadline(skill) {
   const write = section(skill, '## 2. Write the item') ?? '';
-  assert.match(write, /^- Give every option the same sentence shape\. When the key carries the case's condition or a second step, each distractor carries its own case clause or second step too\./m);
-  assert.match(write, /^- After writing the distractors, run the key-length-rank check on the bank: the key may be the strictly longest option on at most n\/k of its n items\./m);
-  assert.match(write, /Make some stems the neighbouring case, so the headline answer becomes a distractor[^\n]*it should be the key about one time in k, as often as each other option\./);
-  assert.match(skill, /In each bank's `spreads`, `keyLongest` must not exceed `longestExpected`/);
-  // Example 4: every option is "<action>, as <the casualty's state>", the key is not the longest, and the headline answer is a distractor.
+  assert.match(write, /^- Give every option the same shape and similar length through detail of its own action or claim[^\n]*Never get there through the case's condition\. No option may restate or contradict a condition from the stem/m);
+  assert.match(write, /^- No option repeats a content word or phrase from the stem unless every option does\./m);
+  assert.match(write, /Step 1 runs `keyLongestCue` on Trace's report: it flags a bank only when the key is the longest option, ties included as Trace counts them, on more items than chance allows at one-sided 0\.05\./);
+  assert.match(write, /The neighbouring case must test the same objective\. Check: the item still tests the idea named in step 1, and the course teaches this case\./);
+  assert.match(write, /it should be the key about one time in k, as often as each other option\. The key-check judge in step 3 reports this count; the writer doesn't\./);
+  assert.match(skill, /Run `keyLongestCue`, below, on the course row and each bank row/);
+  // Example 4: parity from each action's own detail; nothing restates or denies the stem.
   const example = (section(skill, '## Distractors that need the stem') ?? '').split(/^(?=Example \d)/m).find(text => text.startsWith('Example 4'));
   assert.ok(example, 'Show an item whose options all share one shape');
-  const key = example.match(/Key: "([^"]+)"/)?.[1];
-  const distractors = [...(example.match(/^- True elsewhere[^\n]*/m)?.[0] ?? '').matchAll(/"([^"]+)" \(([^)]*)\)/g)];
-  assert.equal(distractors.length, 3);
-  const options = [key, ...distractors.map(([, text]) => text)];
-  for (const option of options) assert.match(option, /^[A-Z][^,]+, as (?:he|his) [^,]+$/, option);
-  assert.ok(Math.max(...options.slice(1).map(option => option.length)) > key.length, 'The key is not the longest option');
-  assert.ok(distractors.some(([, , note]) => /the headline answer/.test(note)), 'The headline answer is a distractor');
+  const options = exampleOptions(example);
+  assert.equal(options.length, 4);
+  for (const option of options) assert.doesNotMatch(option, /,\s*(?:as|because|since) /, option);
+  assertOptionsDontEcho(example.match(/Stem: "([^"]+)"/)[1], options);
+  const lengths = options.map(option => option.length);
+  assert.ok(lengths[0] > Math.min(...lengths) && lengths[0] < Math.max(...lengths), 'The key is neither the longest nor the shortest');
+  const [, low, high] = example.match(/The options run (\d+) to (\d+) characters, none ends with a period/) ?? [];
+  assert.deepEqual([Number(low), Number(high)], [Math.min(...lengths), Math.max(...lengths)], 'The stated range matches the options');
+  assert.ok(options.every(option => !option.endsWith('.')));
+  assert.match(example, /\(right for a severe obstruction[^)]*the headline answer;/, 'The headline answer is a distractor');
 }
 
 function assertHandIn(skill) {
@@ -237,28 +271,40 @@ function assertHandIn(skill) {
   assert.match(checklist, /^- Every scored single-answer choice has exactly one `\(x\)`\./m);
   assert.match(checklist, /^- Every scored choice sets `\{shuffle\}`/m);
   assert.match(checklist, /^- The number of scored single-answer choices[^\n]*Count by the markers, not by inspect's `scored` field[^\n]*Step 1 reconciles this count with Trace's included count\./m);
-  assert.match(checklist, /^- Each deliberate poll, a choice with no key on purpose, by reference, and the number of them\./m);
-  assert.match(skill, /This count is `scoredChoices`, and the number of deliberate polls is `polls`; the gate takes both as `\{ scoredChoices, polls \}`\./);
+  assert.match(checklist, /^- Each deliberate poll, a choice with no key on purpose, by its ref\.[^\n]*The gate matches it ref for ref against Trace's `no-key-or-poll` exclusions\./m);
+  assert.match(checklist, /^- No option repeats a content word or phrase from its stem unless every option does\./m);
+  assert.match(skill, /This count is `scoredChoices`\. Find each declared poll's ref in `<inspect\.json>`; that list is `polls`\. The gate takes both as `\{ scoredChoices, polls \}`\./);
+  assert.match(skill, /`no-key-or-poll` on exactly the declared poll refs/);
   assert.match(skill, /The included item count, `itemCues\.course\.count`, must equal `scoredChoices`\./);
 }
 
-// Trace's itemCues rows for four-option items. The gate pools `masked.right` across three seeded runs.
-const items = (id, count) => Array.from({ length: count }, (_, i) => ({ ref: `${id}.${i + 1}`, lengths: [20, 20, 20, 20], shuffle: true }));
+// Trace's itemCues rows. Each bank is [count, right, option counts to cycle through]; the gate pools masked.right
+// across three seeded runs of one course.
 const codes = ['no-key-or-poll', 'multiple-select', 'insufficient-options', 'key-count', 'ineligible-stem', 'overlapping-groups', 'masked-language', 'masked-space'];
 const noReasons = () => Object.fromEntries(codes.map(code => [code, 0]));
 const scored = (count, right) => ({ applies: true, status: 'scored', model: 'solver', right, total: count });
-// One run from [count, right] per bank. The course row holds every bank's items, as Trace's does.
-const run = (...banks) => {
-  const rows = banks.map(([count, right], i) => ({ id: `lesson:${i + 1}`, count, excludedCount: 0, maskedExcludedCount: 0, excludedByReason: noReasons(), items: items(`${i + 1}`, count), masked: scored(count, right), choicesOnly: scored(count, 0) }));
+const items = (bank, count, options) => Array.from({ length: count }, (_, i) => ({ ref: `${bank}.${i + 1}`, keyPosition: 1, keyLongest: true, shuffle: true, lengths: Array(options[i % options.length]).fill(20) }));
+const itemCues = banks => {
+  const rows = banks.map(([count, right, options = [4]], i) => ({ id: `lesson:${i + 1}`, count, excludedCount: 0, maskedExcludedCount: 0, excludedByReason: noReasons(),
+    items: items(i + 1, count, options), masked: scored(count, right), choicesOnly: scored(count, 0) }));
   const count = rows.reduce((sum, row) => sum + row.count, 0);
   const right = rows.reduce((sum, row) => sum + row.masked.right, 0);
-  return { excluded: [], banks: rows, course: { id: 'course', count, excludedCount: 0, maskedExcludedCount: 0, excludedByReason: noReasons(), items: rows.flatMap(row => row.items), masked: scored(count, right), choicesOnly: scored(count, 0) } };
+  return { excludedCount: 0, excluded: [], banks: rows,
+    course: { id: 'course', count, excludedCount: 0, maskedExcludedCount: 0, excludedByReason: noReasons(), items: rows.flatMap(row => row.items.map(item => ({ ...item }))), masked: scored(count, right), choicesOnly: scored(count, 0) } };
 };
-const three = (...banks) => [run(...banks), run(...banks), run(...banks)];
-// Apply a change to every row of every run.
-const everyRow = (runs, change) => { for (const itemCues of runs) for (const row of [itemCues.course, ...itemCues.banks]) change(row); return runs; };
-// Add exclusion counts to every run's course row.
-const withReasons = (runs, counts) => everyRow(runs, row => { if (row.id === 'course') row.excludedByReason = { ...row.excludedByReason, ...counts }; });
+const run = (seed, ...banks) => ({ seed, bundleId: `bundle-${seed}`, courseHash: 'course-hash', itemCues: itemCues(banks) });
+const three = (...banks) => [1, 2, 3].map(seed => run(seed, ...banks));
+// Apply a change to every row of the given runs.
+const everyRow = (runs, change) => { for (const { itemCues } of runs) for (const row of [itemCues.course, ...itemCues.banks]) change(row); return runs; };
+// Record structural exclusions consistently, as Trace does: records, top-level, course and owning-bank counts.
+const exclude = (runs, records) => {
+  for (const { itemCues } of runs) for (const record of records) {
+    itemCues.excluded.push({ label: record.ref, reason: record.code, ...record });
+    itemCues.excludedCount++;
+    for (const row of [itemCues.course, itemCues.banks.find(bank => bank.id === record.bank)]) { row.excludedCount++; row.excludedByReason[record.code]++; }
+  }
+  return runs;
+};
 const loadGate = source => runInNewContext(`${source}\nguessingGate`);
 
 for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/skills']]) {
@@ -295,6 +341,8 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(/\r?\n\r?\nExample 3[^\n]*(?:\r?\n\r?\n- [^\n]*)*/, ''),
         skill.replace(' (right for why a metal lid loosens under hot water; nothing in the drawer is heated)', ''),
         skill.replace(/\r?\n\r?\nNumeric items[^\n]*/, ''),
+        skill.replace('Key: "Hold the burn under a cool running tap"', 'Key: "Cool the burn under cool running water"'),
+        skill.replace('Key: "Erosion by a glacier, which scours a trough as it moves"', 'Key: "Erosion by a glacier, which deepens and widens the valley it fills"'),
         skill.replace('"Rises by 8%" (swaps the two changes: 1.20 × 0.90 = 1.08)', '"Rises by 10%" (price change only)'),
       ]) {
         assert.notEqual(stripped, skill);
@@ -314,7 +362,12 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(' The judge confirms or rejects each note in `<review>/key-check.md`, and confirms only a note that matches its own blind reading.', ' The judge confirms or rejects each note in `<review>/key-check.md`.'),
         skill.replace(" first sees each distractor with the stem but without the writer's case,", ' sees each distractor with the writer\'s case,'),
         skill.replace(/\r?\n\r?\n   Plant one double-key item[^\n]*/, ''),
-        skill.replace("If the judge doesn't mark both of its keys, its marks are no evidence: run the key check again with a new fresh judge.", ''),
+        skill.replace(' The orchestrating step plants it, not the writer:', ' The writer plants it:'),
+        skill.replace('a single-answer stem, never a best-answer stem,', 'any stem'),
+        skill.replace(' The control is exempt from every rewrite rule and from the one-mark item in the done list.', ''),
+        skill.replace(' If that judge misses it too, report the key check as unverified and ask the person.', ' Repeat until a judge catches it.'),
+        skill.replace(/^   - No key-check control remains in the course\.[^\n]*\r?\n/m, ''),
+        skill.replace(/ The judge also names each item's headline answer[^.]*\./, ''),
         skill.replace(/ For a stem that asks for the best or most likely answer,[^.]*\.[^.]*\./, ''),
         skill.replace(' It may be a distractor only when the stem names the standard that rules it out, because the key check sees the stem alone.', ' Name the standard the course follows in the stem or the course.'),
         skill.replace(' The ruling detail must be one the case naturally has and the tested knowledge interprets, never a clause added only to deny that option.', ''),
@@ -345,6 +398,10 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(' Trace reports them per bank:', ''),
         skill.replace('; reword or remove it.', '.'),
         skill.replace(/^   - When a gated row can't reach its threshold[^\n]*\r?\n/m, ''),
+        skill.replace(", but don't spend passes 2 and 3 on it", ''),
+        skill.replace(' That is a tooling limit, not a fault in the bank, and another pass can\'t change it.', ''),
+        skill.replace(': a clear statistical fail is `"fail"` before any other stop', ''),
+        skill.replace(/^   - On `"tooling"` with unknown shuffle[^\n]*\r?\n/m, ''),
         skill.replace('   The bank is done only when all of these hold:', '   Stop only when all of these hold:'),
         skill.replace("Update Rubato's tools with the install-praxity skill and retry.", 'Run the plain choices-only, cover-the-options and masked probes by hand.'),
         skill.replace('## Plan follow-up practice', '### The masked probe by hand\n\nMask each item.\n\n## Plan follow-up practice'),
@@ -367,7 +424,8 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     await t.test('solvers are at least as strong as the writer', () => {
       assertSolverStrength(skill);
       for (const stripped of [
-        skill.replace(/^Every solver must be a model at least as strong as the writer\.[^\n]*\r?\n/m, ''),
+        skill.replace(/^Every solver and judge must be a model at least as strong as the writer\.[^\n]*\r?\n/m, ''),
+        skill.replace('Every solver and judge must be', 'Every solver must be'),
         skill.replace(', so a Sonnet writer gets at least a Sonnet solver, never Haiku', ''),
       ]) {
         assert.notEqual(stripped, skill);
@@ -379,6 +437,8 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
       for (const stripped of [
         skill.replace('as three runs, with seeds 1, 2 and 3:', 'once:'),
         skill.replace(' never prepare a fourth run in a pass, re-run a solver, or leave a run out to get a pass.', ' re-run as needed.'),
+        skill.replace(', their cover answers need no judge, and those rows never block done', ''),
+        skill.replace("use seed 1's run only.", 'use every run.'),
       ]) {
         assert.notEqual(stripped, skill);
         assert.throws(() => assertSeededRuns(stripped));
@@ -387,12 +447,17 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     await t.test('options share one shape, the key is not the longest, and the headline answer is sometimes a distractor', () => {
       assertLengthAndHeadline(skill);
       for (const stripped of [
-        skill.replace(/^- Give every option the same sentence shape\.[^\n]*\r?\n/m, ''),
-        skill.replace(/^- After writing the distractors, run the key-length-rank check[^\n]*\r?\n/m, ''),
-        skill.replace(' it should be the key about one time in k, as often as each other option.', ' it may be the key.'),
-        skill.replace('"Give up to five sharp back blows, as he can no longer cough or speak"', '"Give up to five sharp back blows"'),
-        skill.replace('Key: "Encourage him to keep coughing, as he can still cough and speak."', 'Key: "Encourage him to keep coughing and stay with him, as he can still cough, speak and breathe on his own."'),
-        skill.replace('(right for a severe obstruction, the headline answer;', '(right for a severe obstruction;'),
+        skill.replace(/^- Give every option the same shape[^\n]*\r?\n/m, ''),
+        skill.replace(/^- No option repeats a content word or phrase from the stem[^\n]*\r?\n/m, ''),
+        skill.replace('on more items than chance allows at one-sided 0.05.', 'on more than n/k items.'),
+        skill.replace(' The neighbouring case must test the same objective.', ''),
+        skill.replace(" The key-check judge in step 3 reports this count; the writer doesn't.", ''),
+        skill.replace('"Give five sharp back blows between his shoulder blades"', '"Give five sharp back blows, as he can no longer breathe"'),
+        skill.replace('Key: "Encourage him to keep coughing to bring the food up"', 'Key: "Encourage him to keep coughing while he can still breathe"'),
+        skill.replace('Key: "Encourage him to keep coughing to bring the food up"', 'Key: "Encourage him to keep coughing hard until he brings the food up"'),
+        skill.replace('Key: "Encourage him to keep coughing to bring the food up"', 'Key: "Encourage him to keep coughing to bring the food up."'),
+        skill.replace('The options run 49 to 54 characters', 'The options run 45 to 60 characters'),
+        skill.replace(', and the headline answer;', ';'),
       ]) {
         assert.notEqual(stripped, skill);
         assert.throws(() => assertLengthAndHeadline(stripped));
@@ -404,6 +469,9 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(/^- Every scored single-answer choice has exactly one `\(x\)`\.\r?\n/m, ''),
         skill.replace(/^- Every scored choice sets `\{shuffle\}`[^\n]*\r?\n/m, ''),
         skill.replace(/^- Each deliberate poll,[^\n]*\r?\n/m, ''),
+        skill.replace(' The gate matches it ref for ref against Trace\'s `no-key-or-poll` exclusions.', ''),
+        skill.replace(/^- No option repeats a content word or phrase from its stem[^\n]*\r?\n/m, ''),
+        skill.replace('on exactly the declared poll refs', 'up to the declared polls'),
         skill.replace(' Step 1 reconciles this count with Trace\'s included count.', ''),
         skill.replace('The included item count, `itemCues.course.count`, must equal `scoredChoices`.', 'The included item count should be close to the source count.'),
       ]) {
@@ -421,8 +489,12 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     assert.ok(predicate, 'The statistical gate must be executable');
     const gate = loadGate(predicate);
     // The hand-in declaration defaults to Trace's count with no polls.
-    const verdict = (runs, check = gate, declared = { scoredChoices: runs?.[0]?.course?.count, polls: 0 }) => check(runs, declared);
-    const mutant = (from, to) => { assert.ok(predicate.includes(from), from); return loadGate(predicate.replace(from, to)); };
+    const verdict = (runs, check = gate, declared = { scoredChoices: runs?.[0]?.itemCues?.course?.count, polls: [] }) => check(runs, declared);
+    const mutant = (...pairs) => {
+      let source = predicate;
+      for (let i = 0; i < pairs.length; i += 2) { assert.ok(source.includes(pairs[i]), pairs[i]); source = source.replace(pairs[i], pairs[i + 1]); }
+      return loadGate(source);
+    };
     const eightSmall = right => three(...Array.from({ length: 8 }, () => [4, right]));
     assert.equal(verdict(eightSmall(1)), 'pass');
     assert.equal(verdict(three([3, 3], [29, 5])), 'pass', 'Three of three in a small bank is read through the clean course');
@@ -433,71 +505,69 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     // Bank thresholds are 0.05 / (2 * m): 8 of 20 in every run (24 of 60 pooled) clears 0.005 but not 0.0125.
     assert.equal(verdict(three([20, 8], [20, 4], [20, 4], [20, 4], [20, 5])), 'pass', 'Five large banks use 0.005 per tail');
     assert.equal(verdict(three([20, 8], [80, 17])), 'fail', 'Two large banks use 0.0125 per tail');
-    for (const runs of [undefined, [], [{}, {}, {}], three([32, 8]).map(({ banks }) => ({ banks })), everyRow(three([32, 8]), row => { if (row.id === 'course') row.count = 31; })]) {
-      assert.equal(verdict(runs), 'stop', 'Missing, empty or mismatched totals stop');
+    for (const runs of [undefined, [], [{}, {}, {}], three([32, 8]).map(({ itemCues, ...run }) => ({ ...run, itemCues: { banks: itemCues.banks } })),
+      everyRow(three([32, 8]), row => { if (row.id === 'course') row.count = 31; })]) {
+      assert.equal(verdict(runs, gate, { scoredChoices: 32, polls: [] }), 'stop', 'Missing, empty or mismatched totals stop');
     }
     assert.equal(verdict(everyRow(three([32, 8]), row => { if (row.id !== 'course') row.masked.total = 31; })), 'stop');
+    // Chance is 1/k per item: 12 of 32 mixed two-, three- and four-option items per run is chance (p ≈ 0.45),
+    // but would fail at a fixed 0.25 (p ≈ 0.004).
+    const mixed = three([32, 12, [2, 3, 4]]);
+    assert.equal(verdict(mixed), 'pass');
+    assert.equal(verdict(mixed, mutant('1 / item.lengths.length', '0.25')), 'fail');
+    assert.equal(verdict(three([32, 7, [2, 3, 4]])), 'fail', 'Too few right on mixed items is an anti-key');
 
-    // Studio shows a missing (x) the same way as a poll, so the declared count finds the missing key.
-    const declare = (scoredChoices, polls = 0) => ({ scoredChoices, polls });
-    const ignoresDeclared = mutant("       if (course.count !== declared.scoredChoices) return 'stop';\n", '');
-    const noKey = withReasons(three([31, 8]), { 'no-key-or-poll': 1 });
-    assert.equal(verdict(noKey, gate, declare(32, 1)), 'stop', 'A missing key declared as scored stops, even beside a declared poll');
-    assert.equal(verdict(noKey, ignoresDeclared, declare(32, 1)), 'pass', 'Without the declared count the missing key passes as a poll');
-    assert.equal(verdict(noKey, gate, declare(31, 1)), 'pass', 'A declared poll is an expected exclusion');
-    for (const declared of [undefined, {}, declare('31', 1), declare(0, 1), declare(31, -1), { scoredChoices: 31 }]) {
-      assert.equal(verdict(noKey, gate, declared), 'stop', 'A missing or invalid declaration stops');
+    // Exactly seeds 1, 2 and 3, from distinct bundles of one course. One run can't stand in for three.
+    const anyRuns = mutant("if (!runs.every(run => Number.isSafeInteger(run.seed)) || runs.map(run => run.seed).sort().join() !== '1,2,3' || new Set(runs.map(run => run.bundleId)).size !== 3 || !runs.every(run => name(run.bundleId))) return 'stop';", '', 'runs.length !== 3', 'runs.length === 0');
+    const one = run(1, [32, 8]);
+    for (const [label, runs] of [['one run three times', [one, one, one]], ['two runs', three([32, 8]).slice(0, 2)],
+      ['a repeated seed', three([32, 8]).map((run, i) => ({ ...run, seed: i ? 2 : 1 }))], ['string seeds', three([32, 8]).map(run => ({ ...run, seed: String(run.seed) }))],
+      ['a repeated bundle', three([32, 8]).map(run => ({ ...run, bundleId: 'bundle-1' }))]]) {
+      assert.equal(verdict(runs), 'stop', `${label} stops`);
+      assert.equal(verdict(runs, anyRuns), 'pass', `Without the run rule ${label} would pass`);
     }
-    // no-key-or-poll is expected only up to the declared polls.
-    assert.equal(verdict(noKey, gate, declare(31, 0)), 'stop', 'An undeclared no-key-or-poll stops');
-    assert.equal(verdict(noKey, mutant('n <= declared.polls', 'true'), declare(31, 0)), 'pass');
-    assert.equal(verdict(noKey, mutant("(code === 'no-key-or-poll' && n <= declared.polls)", 'false'), declare(31, 1)), 'stop', 'Without the poll allowance a declared poll would stop');
-    // Multiple selection is outside the single-key probes, so it is expected.
-    const multiple = withReasons(three([32, 8]), { 'multiple-select': 2 });
-    assert.equal(verdict(multiple), 'pass');
-    assert.equal(verdict(multiple, mutant("code === 'multiple-select' || ", '')), 'stop');
-    // Every other code stops, including one Trace adds later.
-    const anyCode = mutant('if (Object.entries(reasons).some(', 'if (false && Object.entries(reasons).some(');
-    for (const code of ['key-count', 'insufficient-options', 'ineligible-stem', 'overlapping-groups', 'masked-language', 'masked-space', 'a-code-added-later']) {
-      const runs = withReasons(three([32, 8]), { [code]: 1 });
-      assert.equal(verdict(runs), 'stop', `${code} stops`);
-      assert.equal(verdict(runs, anyCode), 'pass', `Without the code rule ${code} would pass`);
-    }
-    // Reports before Trace #24 have no excludedByReason; absence is never zero exclusions.
-    const old = everyRow(three([32, 8]), row => { delete row.excludedByReason; });
-    assert.equal(verdict(old), 'stop', 'A missing excludedByReason stops');
-    assert.equal(verdict(old, mutant('const reasons = course.excludedByReason;', 'const reasons = course.excludedByReason ?? {};')), 'pass');
-    // A bank Trace excluded whole stays in the report with count 0; its expected codes don't stop the gate.
-    const emptyBank = withReasons(three([32, 8]).map(itemCues => ({ ...itemCues, banks: [...itemCues.banks, { id: 'lesson:2', count: 0, excludedCount: 2,
-      excludedByReason: { ...noReasons(), 'multiple-select': 2 }, items: [], masked: { applies: false, reason: 'no-included-items', detail: 'No included single-key choices in this scope.' } }] })), { 'multiple-select': 2 });
-    assert.equal(verdict(emptyBank), 'pass', 'A bank of multiple selections is left out of the tails');
-    assert.equal(verdict(emptyBank, mutant("itemCues.banks.filter(bank => !(bank?.count === 0 && bank.masked?.reason === 'no-included-items'))", 'itemCues.banks')), 'stop');
-    // Unknown shuffle means the position check skipped the item: report it rather than pass.
-    const unknownShuffle = runs => everyRow(runs, row => { row.items[0] = { ...row.items[0], shuffle: null }; });
-    assert.equal(verdict(unknownShuffle(three([32, 8]))), 'stop', 'An unknown shuffle stops');
-    assert.equal(verdict(unknownShuffle(three([32, 8])), mutant("     if (!scoped[0].course.items.every(item => typeof item.shuffle === 'boolean')) return 'stop';\n", '')), 'pass');
-    assert.equal(verdict(unknownShuffle(three([32, 20]))), 'fail', 'An unknown shuffle does not hide a fail');
-
-    // Exactly three runs, pooled. One noisy run can neither fail nor pass the bank alone.
-    assert.equal(verdict(three([32, 8]).slice(0, 2)), 'stop', 'Two runs stop');
-    assert.equal(verdict([...three([32, 8]), run([32, 8])]), 'stop', 'A fourth run stops');
-    assert.equal(verdict(three([32, 8]).slice(0, 2), mutant('runs.length !== 3', 'runs.length === 0')), 'pass');
-    assert.equal(predicate.split('pool(scoped.map(').length, 3);
+    assert.equal(verdict([...three([32, 8]), run(4, [32, 8])]), 'stop', 'A fourth run stops');
+    const twoCourses = three([32, 8]); twoCourses[2].courseHash = 'other-hash';
+    assert.equal(verdict(twoCourses), 'stop', 'Runs of different inspect JSON stop');
+    assert.equal(verdict(twoCourses, mutant('runs.some(run => run.courseHash !== runs[0].courseHash)', 'false')), 'pass');
     const firstRunOnly = loadGate(predicate.replaceAll('pool(scoped.map(', 'pool([scoped[0]].map('));
+    assert.equal(predicate.split('pool(scoped.map(').length, 3);
     // 13 of 32 alone has p ≈ 0.038; 39 of 96 pooled has p < 0.001.
     assert.equal(verdict(three([32, 13])), 'fail', 'Three near-misses fail when pooled');
     assert.equal(verdict(three([32, 13]), firstRunOnly), 'pass', 'Gating one run would pass them');
     // 15 of 32 alone has p ≈ 0.006; 27 of 96 pooled has p ≈ 0.27.
-    const oneHighRun = [run([32, 15]), run([32, 6]), run([32, 6])];
+    const oneHighRun = [run(1, [32, 15]), run(2, [32, 6]), run(3, [32, 6])];
     assert.equal(verdict(oneHighRun), 'pass', 'The pooled count decides, not the first run');
     assert.equal(verdict(oneHighRun, firstRunOnly), 'fail');
-    // The runs share their items and their named masked solver.
+
+    // The runs share their items, option lengths and named masked solver.
     const noShape = mutant("if (scoped.some(run => shape(run) !== shape(scoped[0]))) return 'stop';", '');
     const swapped = three([32, 8]); everyRow([swapped[1]], row => { row.masked.model = 'weaker-solver'; });
     assert.equal(verdict(swapped), 'stop', 'A run with another solver stops');
     assert.equal(verdict(swapped, noShape), 'pass');
-    const reshaped = three([32, 8]); everyRow([reshaped[2]], row => { row.items[0] = { ...row.items[0], lengths: [20, 20, 20] }; });
-    assert.equal(verdict(reshaped), 'stop', 'A run over different items stops');
+    const relengthened = three([32, 8]); everyRow([relengthened[2]], row => { row.items[0] = { ...row.items[0], lengths: [200, 1, 1, 1] }; });
+    assert.equal(verdict(relengthened), 'stop', 'A run over different option text stops');
+    assert.equal(verdict(relengthened, mutant('row.items.map(item => [item.ref, item.lengths, item.keyPosition, item.shuffle])', 'row.items.map(item => [item.ref, item.lengths.length])')), 'pass');
+    // The solver's model is a real name, the same on every row.
+    const named = mutant('name(row.masked.model) && row.masked.model === course.masked.model', 'true');
+    for (const [label, model] of [['a missing model', undefined], ['a NaN model', NaN], ['an empty model', '']]) {
+      const runs = everyRow(three([32, 8]), row => { row.masked.model = model; });
+      assert.equal(verdict(runs), 'stop', `${label} stops`);
+      assert.equal(verdict(runs, named), 'pass', `Without the name rule ${label} would pass`);
+    }
+    const mixedModels = everyRow(three([32, 8]), row => { if (row.id !== 'course') row.masked.model = 'other'; });
+    assert.equal(verdict(mixedModels), 'stop', 'Course and bank rows name one solver');
+    // The course is its banks' disjoint union, item for item and hit for hit.
+    const understated = everyRow(three([8, 8], [8, 8], [8, 8], [8, 8]), row => { if (row.id === 'course') row.masked.right = 8; });
+    assert.equal(verdict(understated), 'stop', 'A course that understates its banks\' hits stops');
+    assert.equal(verdict(understated, mutant("if (course.masked.right !== banks.reduce((sum, bank) => sum + bank.masked.right, 0)) return 'stop';", '')), 'pass');
+    const union = mutant("if (new Set(course.items.map(item => item.ref)).size !== course.count || JSON.stringify(course.items.map(key).sort()) !== JSON.stringify(bankItems)) return 'stop';", '');
+    const strayRef = everyRow(three([32, 8]), row => { if (row.id !== 'course') row.items[0] = { ...row.items[0], ref: 'elsewhere' }; });
+    const sameRef = everyRow(three([32, 8]), row => { row.items = row.items.map(item => ({ ...item, ref: 'same' })); });
+    for (const [label, runs] of [['a bank item missing from the course', strayRef], ['repeated refs', sameRef]]) {
+      assert.equal(verdict(runs), 'stop', `${label} stops`);
+      assert.equal(verdict(runs, union), 'pass', `Without the union rule ${label} would pass`);
+    }
 
     // Trace's masked contract. Each case also runs against the predicate with its rule removed, which must change the result.
     const unavailable = reason => ({ ...scored(32, 8), applies: false, reason, detail: 'Masked probe not applicable.' });
@@ -506,7 +576,7 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     const ignoresApplies = mutant('row.masked?.applies === true && ', 'row.masked && ');
     // Any refusal stops, including a reason Trace adds later.
     for (const runs of [...['language-unconfirmed', 'language', 'mask-space', 'a-reason-added-later'].map(reason => withMasked(unavailable(reason))), withMasked(noApplies)]) {
-      assert.equal(verdict(runs), 'stop', `${runs[0].course.masked.reason ?? 'missing applies'} with injected hits stops`);
+      assert.equal(verdict(runs), 'stop', `${runs[0].itemCues.course.masked.reason ?? 'missing applies'} with injected hits stops`);
       assert.equal(verdict(runs, ignoresApplies), 'pass', 'Without the applies rule the injected hits would pass');
     }
     assert.equal(verdict(everyRow(three([32, 8]), row => { delete row.masked; })), 'stop', 'A missing masked result stops');
@@ -520,20 +590,20 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     const smallBank = masked => everyRow(three([3, 1], [29, 7]), row => { if (row.id === 'lesson:1') row.masked = masked; });
     const largeOnly = mutant('if (![course, ...banks].every(row => row.masked?.applies', 'if (![course, ...banks.filter(bank => bank.count >= 12)].every(row => row.masked?.applies');
     for (const [label, runs] of [
-      ['an explicit refusal', smallBank({ applies: false, reason: 'language-unconfirmed' })],
+      ['an explicit refusal', smallBank({ ...scored(3, 1), applies: false, reason: 'language-unconfirmed' })],
       ['an unsolved masked status', smallBank({ ...scored(3, 1), status: 'not run' })],
       ['an incomplete total', smallBank({ ...scored(3, 1), total: 2 })],
     ]) {
       assert.equal(verdict(runs), 'stop', `A three-item bank with ${label} stops`);
       assert.equal(verdict(runs, largeOnly), 'pass', `Checking only large banks would pass ${label}`);
     }
-    assert.equal(verdict(smallBank(scored(3, 3))), 'pass', 'A fully scored small bank reads through the course row');
+    assert.equal(verdict(three([3, 3], [29, 7])), 'pass', 'A fully scored small bank reads through the course row');
 
     // Item counts are validated, never coerced.
     for (const [label, count] of [['string counts', '32'], ['fractional counts', 32.5], ['infinite counts', Infinity]]) {
-      assert.equal(verdict(everyRow(three([32, 8]), row => { row.count = count; })), 'stop', `${label} stop`);
+      assert.equal(verdict(everyRow(three([32, 8]), row => { row.count = count; }), gate, { scoredChoices: 32, polls: [] }), 'stop', `${label} stop`);
     }
-    assert.equal(verdict(three([32, 8]).map(itemCues => ({ ...itemCues, banks: [null, ...itemCues.banks] }))), 'stop', 'A null bank stops rather than throwing');
+    assert.equal(verdict(three([32, 8]).map(run => ({ ...run, itemCues: { ...run.itemCues, banks: [null, ...run.itemCues.banks] } }))), 'stop', 'A null bank stops rather than throwing');
     assert.equal(verdict(everyRow(three([32, 8]), row => { delete row.items; })), 'stop', 'Rows without items stop');
 
     // An eligible but unsolved bank has applies: true and status "not run"; it never passes, even with hits injected.
@@ -554,6 +624,95 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     assert.equal(verdict(three([4, 0])), 'stop', '0 of 12 pooled cannot fail its lower tail at 0.025, so it stops');
     assert.equal(verdict(three([4, 0]), ignoresPower), 'pass', 'Without the power rule an anti-key course would pass');
     assert.doesNotMatch(predicate, /ponytail|tooFewItems/, 'The power check replaces the 0.05 flags and their marked limit');
+
+    // Studio shows a missing (x) the same way as a poll, so the declared count finds the missing key.
+    const declare = (scoredChoices, polls = []) => ({ scoredChoices, polls });
+    const noKey = exclude(three([31, 8]), [{ ref: '1.32', code: 'no-key-or-poll', bank: 'lesson:1' }]);
+    assert.equal(verdict(noKey, gate, declare(32, ['1.32'])), 'stop', 'A missing key declared as scored stops');
+    assert.equal(verdict(noKey, mutant("     if (scoped[0].course.count !== declared.scoredChoices) return 'stop';\n", ''), declare(32, ['1.32'])), 'pass', 'Without the declared count it passes as a poll');
+    assert.equal(verdict(noKey, gate, declare(31, ['1.32'])), 'pass', 'A declared poll is an expected exclusion');
+    for (const declared of [undefined, {}, declare('31', ['1.32']), declare(0, ['1.32']), declare(31, 1), declare(31, ['1.32', '1.32']), declare(31, [''])]) {
+      assert.equal(verdict(noKey, gate, declared), 'stop', 'A missing or invalid declaration stops');
+    }
+    // Polls match ref for ref: a poll that gained a stray (x) while a question lost its (x) keeps both counts.
+    const byRef = mutant("if (JSON.stringify(polls) !== JSON.stringify([...declared.polls].sort())) return 'stop';", "if (polls.length !== declared.polls.length) return 'stop';");
+    assert.equal(verdict(noKey, gate, declare(31, ['1.9'])), 'stop', 'A no-key-or-poll ref that is not a declared poll stops');
+    assert.equal(verdict(noKey, byRef, declare(31, ['1.9'])), 'pass', 'Matching polls by count would pass the swap');
+    assert.equal(verdict(noKey, gate, declare(31)), 'stop', 'An undeclared no-key-or-poll stops');
+    // Multiple selection is outside the single-key probes, so it is expected.
+    const multiple = exclude(three([32, 8]), [{ ref: '1.40', code: 'multiple-select', bank: 'lesson:1' }, { ref: '1.41', code: 'multiple-select', bank: 'lesson:1' }]);
+    assert.equal(verdict(multiple), 'pass');
+    assert.equal(verdict(multiple, mutant("n > 0 && code !== 'multiple-select' && ", 'n > 0 && ')), 'stop');
+    // Every other structural code stops.
+    const anyCode = mutant("if (Object.entries(course.excludedByReason).some(([code, n]) => n > 0 && code !== 'multiple-select' && code !== 'no-key-or-poll')) return 'stop';", '');
+    for (const code of ['key-count', 'insufficient-options', 'ineligible-stem', 'overlapping-groups']) {
+      const runs = exclude(three([32, 8]), [{ ref: '1.40', code, bank: 'lesson:1' }]);
+      assert.equal(verdict(runs), 'stop', `${code} stops`);
+      assert.equal(verdict(runs, anyCode), 'pass', `Without the code rule ${code} would pass`);
+    }
+    // A bank Trace excluded whole stays in the report with count 0; its expected codes don't stop the gate.
+    const emptyBank = three([32, 8]).map(run => ({ ...run, itemCues: { ...run.itemCues, banks: [...run.itemCues.banks, { id: 'lesson:2', count: 0, excludedCount: 0, maskedExcludedCount: 0,
+      excludedByReason: noReasons(), items: [], masked: { applies: false, reason: 'no-included-items', detail: 'No included single-key choices in this scope.' } }] } }));
+    exclude(emptyBank, [{ ref: '2.1', code: 'multiple-select', bank: 'lesson:2' }]);
+    assert.equal(verdict(emptyBank), 'pass', 'A bank of multiple selections is left out of the tails');
+    assert.equal(verdict(emptyBank, mutant("itemCues.banks.filter(bank => !(bank?.count === 0 && bank.masked?.reason === 'no-included-items'))", 'itemCues.banks')), 'stop');
+
+    // Exclusion accounting must be complete and add up.
+    const tooling = "name(record.bank)))) return 'tooling';";
+    for (const [label, change] of [['no excludedByReason', row => { delete row.excludedByReason; }], ['no excludedCount', row => { delete row.excludedCount; }],
+      ['no maskedExcludedCount', row => { delete row.maskedExcludedCount; }], ['bank rows without excludedByReason', row => { if (row.id !== 'course') delete row.excludedByReason; }],
+      ['array reason maps', row => { row.excludedByReason = []; }]]) {
+      const runs = everyRow(three([32, 8]), change);
+      assert.equal(verdict(runs), 'tooling', `${label} is a tooling limit`);
+      assert.equal(verdict(runs, mutant(tooling, "name(record.bank)))) return 'stop';")), 'stop');
+    }
+    const missingCode = everyRow(three([32, 8]), row => { delete row.excludedByReason['ineligible-stem']; });
+    assert.equal(verdict(missingCode), 'stop', 'A reason map without every stable code stops');
+    assert.equal(verdict(missingCode, mutant('codes.every(code => whole(row.excludedByReason[code])) && ', '')), 'pass');
+    const unsummed = everyRow(three([32, 8]), row => { row.maskedExcludedCount = 32; });
+    assert.equal(verdict(unsummed), 'stop', 'Masked exclusions without masked reasons stop');
+    // Course and bank disagree on which code: each row adds up, but the course isn't its banks' sum.
+    const recoded = exclude(three([32, 8]), [{ ref: '1.40', code: 'multiple-select', bank: 'lesson:1' }]);
+    for (const { itemCues: { banks } } of recoded) banks[0].excludedByReason = { ...noReasons(), 'key-count': 1 };
+    assert.equal(verdict(recoded), 'stop', 'A bank code the course hides stops');
+    assert.equal(verdict(recoded, mutant("if (Object.keys(course.excludedByReason).some(code => course.excludedByReason[code] !== itemCues.banks.reduce((sum, bank) => sum + (bank.excludedByReason[code] ?? 0), 0))) return 'stop';", '')), 'pass');
+    // Records must belong to a bank and carry the code the counts say.
+    const orphan = exclude(three([32, 8]), [{ ref: '1.40', code: 'multiple-select', bank: 'lesson:1' }]);
+    for (const { itemCues } of orphan) itemCues.excluded[0].bank = 'lesson:9';
+    assert.equal(verdict(orphan), 'stop', 'A record owned by no bank stops');
+    assert.equal(verdict(orphan, mutant("if (!itemCues.banks.every(bank => bank.excludedCount === itemCues.excluded.filter(record => record.bank === bank.id).length)) return 'stop';", '')), 'pass');
+    const miscoded = exclude(three([32, 8]), [{ ref: '1.40', code: 'multiple-select', bank: 'lesson:1' }]);
+    for (const { itemCues } of miscoded) itemCues.excluded[0].code = 'key-count';
+    assert.equal(verdict(miscoded), 'stop', 'A record whose code the counts miss stops');
+    assert.equal(verdict(miscoded, mutant("if (Object.keys(course.excludedByReason).some(code => !code.startsWith('masked-') && course.excludedByReason[code] !== itemCues.excluded.filter(record => record.code === code).length)) return 'stop';", '')), 'pass');
+
+    // Unknown shuffle means the position check skipped the item: a tooling limit, never a silent pass.
+    const unknownShuffle = runs => everyRow(runs, row => { row.items[0] = { ...row.items[0], shuffle: null }; });
+    assert.equal(verdict(unknownShuffle(three([32, 8]))), 'tooling', 'An unknown shuffle is a tooling limit');
+    assert.equal(verdict(unknownShuffle(three([32, 8])), mutant("     if (!scoped.every(run => [run.course, ...run.banks].every(row => row.items.every(item => typeof item.shuffle === 'boolean')))) return 'tooling';\n", '')), 'pass');
+    const laterRun = three([32, 8]); unknownShuffle([laterRun[1]]);
+    assert.equal(verdict(laterRun), 'stop', 'Unknown shuffle in one run differs from the others');
+    assert.equal(verdict(laterRun, mutant(', item.keyPosition, item.shuffle])]));', ', item.keyPosition])]));',
+      'if (!scoped.every(run => [run.course', 'if (![scoped[0]].every(run => [run.course')), 'pass', 'Checking only the first run would pass it');
+    // A clear statistical fail comes before every tooling limit.
+    const failLast = loadGate(predicate.replace(failLine, '').replace("     return 'pass';", failLine + "     return 'pass';"));
+    for (const runs of [unknownShuffle(three([32, 20])), everyRow(three([32, 20]), row => { delete row.excludedByReason; })]) {
+      assert.equal(verdict(runs), 'fail', 'A fail reports as fail despite a tooling limit');
+      assert.equal(verdict(runs, failLast), 'tooling');
+    }
+
+    // Step 1's key-longest check flags only a count above chance, ties counted as Trace counts them.
+    const cue = runInNewContext(`${predicate}\nkeyLongestCue`);
+    const longest = (n, k, lengths = [30, 20, 20, 20]) => ({ items: Array.from({ length: n }, (_, i) => ({ lengths, keyLongest: i < k })) });
+    // 18 four-option items: 8 keys longest has p ≈ 0.057, 9 has p ≈ 0.019.
+    assert.equal(cue(longest(18, 8)), false, 'Eight of 18 is within chance');
+    assert.equal(cue(longest(18, 9)), true, 'Nine of 18 is above chance');
+    assert.equal(runInNewContext(`${predicate.replace('<= 0.05;', '<= 0.5;')}\nkeyLongestCue`)(longest(18, 6)), true, 'A limit at the chance mean would flag a fair bank');
+    // All options tied: every key is longest by Trace's count, and so is chance.
+    const tied = longest(18, 18, [20, 20, 20, 20]);
+    assert.equal(cue(tied), false, 'Ties raise the chance of longest');
+    assert.equal(runInNewContext(`${predicate.replace('.filter(length => length === Math.max(...item.lengths)).length / item.lengths.length', '.length ** -1')}\nkeyLongestCue`)(tied), true);
+
 
 
     assert.doesNotMatch(skill, /\b[A-Z]:[\\/]|\/Users\/|\/home\/|file:\/\//i);
