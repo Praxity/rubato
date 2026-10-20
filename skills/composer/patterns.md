@@ -2,7 +2,7 @@
 
 Pick from this file in step 4 of the composer skill. Each entry gives the pattern id to write in the outline, whether Studio can publish it now, the barriers it answers, when to use it and when to avoid it.
 
-Library guidance below is generated from the READMEs in [Praxity/learning-patterns at 3ed3d0e](https://github.com/Praxity/learning-patterns/tree/3ed3d0e2ccb373cc3646dd89a6dd33030fab58e6/patterns). Those READMEs own when to use and avoid each library pattern. Studio's own compositions have no README yet, so their entries live here. Studio support, barriers and fallbacks also live here. The prax-format skill owns how to write each block.
+Library guidance below is generated from the READMEs in [Praxity/learning-patterns at e9d4fb6](https://github.com/Praxity/learning-patterns/tree/e9d4fb6989135a44d75f0765c61d3a596a5d4428/patterns). Those READMEs own when to use and avoid each library pattern. Studio's own compositions have no README yet, so their entries live here. Studio support, barriers and fallbacks also live here. The prax-format skill owns how to write each block.
 
 Output matters. Rules (show, hide, jump) run only in Pages: Guided slides and PDF reject them. Learner PDF also refuses self-checks.
 
