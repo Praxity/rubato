@@ -122,8 +122,11 @@ function assertDistractorTension(skill) {
   const percent = (up, down) => Math.round(((1 + up / 100) * (1 - down / 100) - 1) * 100);
   const key = percent(price, quantity);
   assert.equal(key, -12);
-  const strong = [[quantity - price, 'subtracts the percentages'], [-percent(quantity, price), 'swaps the two changes'], [quantity, 'quantity change only']];
-  assert.deepEqual(strong.map(([value]) => value), [10, -8, 20]);
+  const strong = [[quantity - price, 'subtracts the percentages'], [-percent(-price, quantity), 'treats the price rise as a fall'], [quantity, 'quantity change only']];
+  assert.deepEqual(strong.map(([value]) => value), [10, 28, 20]);
+  // No odd one out: all four options are falls of the same length.
+  const labels = [-key, ...strong.map(([value]) => value)].map(value => value < 0 ? `Rises by ${-value}%` : `Falls by ${value}%`);
+  assert.ok(labels.every(label => label.startsWith('Falls') && label.length === labels[0].length), labels.join(', '));
   assert.ok(numeric.includes(`Key: "Falls by ${-key}%"`));
   for (const [value, method] of strong) assert.ok(numeric.includes(`"${value < 0 ? `Rises by ${-value}` : `Falls by ${value}`}%" (${method}`), method);
   // No option is the odd one out by being, alone, a non-multiple of ten.
@@ -154,13 +157,15 @@ function assertKeyCheck(skill) {
   assert.ok(notes.indexOf('without the writer\'s case') < notes.indexOf('Only then does it see the writer\'s note'));
   const control = paragraphs(attack).find(paragraph => paragraph.includes('positive control'));
   assert.ok(control, 'Every key check carries a planted double key');
-  assert.match(control, /Plant one double-key item in every key check as a positive control\. The orchestrating step plants it, not the writer/);
+  assert.match(control, /Plant one double-key item in every key check as a positive control\. The orchestrating step is the agent that runs this attack, preparing bundles and spawning solvers and judges; when that agent also wrote the items, a fresh subagent briefed only with the topic writes the control\./);
   assert.match(control, /a single-answer stem, never a best-answer stem/);
-  assert.match(control, /a ref under the reserved prefix `0\.`/);
+  assert.match(control, /a ref in the course's own pattern that no item in this pass's `<inspect\.json>` uses, so the judge can't tell it from the rest/);
+  assert.match(control, /Record its ref and text only in the orchestrator's own notes, outside the course and every folder a solver or judge sees\./);
   assert.match(control, /The control is exempt from every rewrite rule and from the one-mark item in the done list\./);
   assert.match(control, /run the key check once more with a new fresh judge\. If that judge misses it too, report the key check as unverified and ask the person\./);
-  assert.match(attack, /^   - No key-check control remains in the course\. Before shipping, `grep -rnF '<control stem>' <course-dir>` prints nothing, and no ref in a fresh `<inspect\.json>` starts with `0\.`\./m);
-  assert.match(check, /The judge also names each item's headline answer[^.]*, and reports how many of those items key it\./);
+  assert.match(attack, /^   - No key-check control remains in the course\. Before shipping, `grep -rnF '<control stem>' <course-dir>` prints nothing for every control the orchestrator's notes record\./m);
+  // An option that points at the stem, even by paraphrase, gives the key away; the judge sees both.
+  assert.match(check, /The judge also flags any option whose wording points at a detail in the stem, by repeating or paraphrasing it[^.]*\. Rewrite every option it flags this way\./);
   assert.match(notes, /The writer never decides which items skip a rewrite\./);
   assert.match(attack, /Rewrite every item the plain solver got right unless the key check confirmed every one of its distractor notes\./);
   assert.match(attack, /^   - The key check marked exactly one option, the key, on every item, and flagged none\./m);
@@ -203,7 +208,7 @@ function assertStopRules(skill) {
   assert.match(stopText, /When `excludedByReason` has a code other than `multiple-select`, or `no-key-or-poll` refs differ from the declared polls/);
   assert.match(stopText, /On `"tooling"` with no exclusion accounting: the installed Trace predates Praxity\/praxity-trace#24\./);
   assert.match(stopText, /On `"tooling"` with unknown shuffle: give the sum of `spreads\[\]\.unknownCount`, since the position check didn't cover those items\./);
-  assert.match(stop, /On `"tooling"`, the installed tools can't supply what the gate needs\. That is a tooling limit, not a fault in the bank, and another pass can't change it\.[^\n]*but don't spend passes 2 and 3 on it\.[^\n]*tell the person which limit it was\./);
+  assert.match(stop, /On `"tooling"`, the installed tools can't supply what the gate needs\. That is a tooling limit, not a fault in the bank, and another pass can't change the gate's verdict\.[^\n]*If pass 1 led to rewrites, run one more pass to check them: inspect, the three masked runs, and the key check and blind notes on the rewritten items\. Never ship a rewrite unchecked\. Don't spend a further pass on the tooling limit\.[^\n]*tell the person which limit it was\./);
   assert.match(attack, /a clear statistical fail is `"fail"` before any other stop/);
   assert.match(stopText, /Don't compute tails by hand, don't mask items by hand/);
   assert.doesNotMatch(skill, /^### The masked probe by hand/m);
@@ -226,7 +231,7 @@ function assertReviewFolder(skill) {
 
 function assertSolverStrength(skill) {
   assert.match(skill, /^Every solver and judge must be a model at least as strong as the writer\. A weaker solver misses cues the writer can see/m);
-  assert.match(skill, /The explanations reviewer in step 4 may be any model\./);
+  assert.match(skill, /The explanations reviewer in step 4, and the plain and cover solvers of seeds 2 and 3, whose answers nothing reads, may be any model\. Seed 1's plain solver must meet the rule/);
   // A Haiku solver passed banks a Sonnet solver failed, so the skill names the masked solver.
   assert.match(skill, /Name the masked solver's model before the first run, and use it in all three runs: the writer's own model or a stronger one, so a Sonnet writer gets at least a Sonnet solver, never Haiku\./);
 }
@@ -239,6 +244,8 @@ function assertSeededRuns(skill) {
   assert.match(attack, /Gate the masked probe on its hits pooled across the three runs\./);
   assert.match(attack, /Seeds 2 and 3 add masked evidence only\.[^\n]*nothing reads their answers: any model may give them, their cover answers need no judge, and those rows never block done\./);
   assert.match(attack, /The cover judge, the key check, the explanations probe and the plain-hit rewrites below use seed 1's run only\./);
+  assert.match(attack, /^   - The independent judge has no unresolved decisions or "not judged" items in seed 1's run,/m);
+  assert.match(attack, /^   - The key check confirmed every distractor note on each item seed 1's plain solver got right\./m);
 }
 
 // The v2 eval's keys were the longest option on 29 of 53 items, and usually the headline answer.
@@ -248,7 +255,9 @@ function assertLengthAndHeadline(skill) {
   assert.match(write, /^- No option repeats a content word or phrase from the stem unless every option does\./m);
   assert.match(write, /Step 1 runs `keyLongestCue` on Trace's report: it flags a bank only when the key is the longest option, ties included as Trace counts them, on more items than chance allows at one-sided 0\.05\./);
   assert.match(write, /The neighbouring case must test the same objective\. Check: the item still tests the idea named in step 1, and the course teaches this case\./);
-  assert.match(write, /it should be the key about one time in k, as often as each other option\. The key-check judge in step 3 reports this count; the writer doesn't\./);
+  assert.match(write, /it should be the key about one time in k, as often as each other option\./);
+  assert.match(write, /That detail describes the option itself, what it is or how it's done, never why it suits a case\./);
+  assert.match(write, /"The median, which a handful of extreme values barely moves" points at the stem; "The median, the middle value when incomes are put in order" doesn't\./);
   assert.match(skill, /Run `keyLongestCue`, below, on the course row and each bank row/);
   // Example 4: parity from each action's own detail; nothing restates or denies the stem.
   const example = (section(skill, '## Distractors that need the stem') ?? '').split(/^(?=Example \d)/m).find(text => text.startsWith('Example 4'));
@@ -343,7 +352,7 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(/\r?\n\r?\nNumeric items[^\n]*/, ''),
         skill.replace('Key: "Hold the burn under a cool running tap"', 'Key: "Cool the burn under cool running water"'),
         skill.replace('Key: "Erosion by a glacier, which scours a trough as it moves"', 'Key: "Erosion by a glacier, which deepens and widens the valley it fills"'),
-        skill.replace('"Rises by 8%" (swaps the two changes: 1.20 × 0.90 = 1.08)', '"Rises by 10%" (price change only)'),
+        skill.replace('"Falls by 28%" (treats the price rise as a fall: 0.90 × 0.80 = 0.72)', '"Rises by 8%" (swaps the two changes: 1.20 × 0.90 = 1.08)'),
       ]) {
         assert.notEqual(stripped, skill);
         assert.throws(() => assertDistractorTension(stripped));
@@ -362,12 +371,15 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(' The judge confirms or rejects each note in `<review>/key-check.md`, and confirms only a note that matches its own blind reading.', ' The judge confirms or rejects each note in `<review>/key-check.md`.'),
         skill.replace(" first sees each distractor with the stem but without the writer's case,", ' sees each distractor with the writer\'s case,'),
         skill.replace(/\r?\n\r?\n   Plant one double-key item[^\n]*/, ''),
-        skill.replace(' The orchestrating step plants it, not the writer:', ' The writer plants it:'),
+        skill.replace('a fresh subagent briefed only with the topic writes the control', 'it writes the control itself'),
+        skill.replace("a ref in the course's own pattern that no item in this pass's `<inspect.json>` uses, so the judge can't tell it from the rest", 'a ref under the reserved prefix `0.`'),
+        skill.replace("only in the orchestrator's own notes, outside the course and every folder a solver or judge sees", 'in `<review>/control.md`'),
         skill.replace('a single-answer stem, never a best-answer stem,', 'any stem'),
         skill.replace(' The control is exempt from every rewrite rule and from the one-mark item in the done list.', ''),
         skill.replace(' If that judge misses it too, report the key check as unverified and ask the person.', ' Repeat until a judge catches it.'),
         skill.replace(/^   - No key-check control remains in the course\.[^\n]*\r?\n/m, ''),
-        skill.replace(/ The judge also names each item's headline answer[^.]*\./, ''),
+        skill.replace(/ The judge also flags any option whose wording points at a detail in the stem[^.]*\. Rewrite every option it flags this way\./, ''),
+        skill.replace('by repeating or paraphrasing it', 'by repeating it'),
         skill.replace(/ For a stem that asks for the best or most likely answer,[^.]*\.[^.]*\./, ''),
         skill.replace(' It may be a distractor only when the stem names the standard that rules it out, because the key check sees the stem alone.', ' Name the standard the course follows in the stem or the course.'),
         skill.replace(' The ruling detail must be one the case naturally has and the tested knowledge interprets, never a clause added only to deny that option.', ''),
@@ -398,8 +410,9 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(' Trace reports them per bank:', ''),
         skill.replace('; reword or remove it.', '.'),
         skill.replace(/^   - When a gated row can't reach its threshold[^\n]*\r?\n/m, ''),
-        skill.replace(", but don't spend passes 2 and 3 on it", ''),
-        skill.replace(' That is a tooling limit, not a fault in the bank, and another pass can\'t change it.', ''),
+        skill.replace(' If pass 1 led to rewrites, run one more pass to check them: inspect, the three masked runs, and the key check and blind notes on the rewritten items. Never ship a rewrite unchecked.', ''),
+        skill.replace(" Don't spend a further pass on the tooling limit.", ''),
+        skill.replace(' That is a tooling limit, not a fault in the bank, and another pass can\'t change the gate\'s verdict.', ''),
         skill.replace(': a clear statistical fail is `"fail"` before any other stop', ''),
         skill.replace(/^   - On `"tooling"` with unknown shuffle[^\n]*\r?\n/m, ''),
         skill.replace('   The bank is done only when all of these hold:', '   Stop only when all of these hold:'),
@@ -426,6 +439,7 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
       for (const stripped of [
         skill.replace(/^Every solver and judge must be a model at least as strong as the writer\.[^\n]*\r?\n/m, ''),
         skill.replace('Every solver and judge must be', 'Every solver must be'),
+        skill.replace(" Seed 1's plain solver must meet the rule, because its hits decide which items need the blind notes check.", ''),
         skill.replace(', so a Sonnet writer gets at least a Sonnet solver, never Haiku', ''),
       ]) {
         assert.notEqual(stripped, skill);
@@ -439,6 +453,8 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(' never prepare a fourth run in a pass, re-run a solver, or leave a run out to get a pass.', ' re-run as needed.'),
         skill.replace(', their cover answers need no judge, and those rows never block done', ''),
         skill.replace("use seed 1's run only.", 'use every run.'),
+        skill.replace(' items in seed 1\'s run,', ' items,'),
+        skill.replace("each item seed 1's plain solver got right.", 'each item the plain solver got right.'),
       ]) {
         assert.notEqual(stripped, skill);
         assert.throws(() => assertSeededRuns(stripped));
@@ -451,12 +467,13 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
         skill.replace(/^- No option repeats a content word or phrase from the stem[^\n]*\r?\n/m, ''),
         skill.replace('on more items than chance allows at one-sided 0.05.', 'on more than n/k items.'),
         skill.replace(' The neighbouring case must test the same objective.', ''),
-        skill.replace(" The key-check judge in step 3 reports this count; the writer doesn't.", ''),
-        skill.replace('"Give five sharp back blows between his shoulder blades"', '"Give five sharp back blows, as he can no longer breathe"'),
-        skill.replace('Key: "Encourage him to keep coughing to bring the food up"', 'Key: "Encourage him to keep coughing while he can still breathe"'),
-        skill.replace('Key: "Encourage him to keep coughing to bring the food up"', 'Key: "Encourage him to keep coughing hard until he brings the food up"'),
-        skill.replace('Key: "Encourage him to keep coughing to bring the food up"', 'Key: "Encourage him to keep coughing to bring the food up."'),
-        skill.replace('The options run 49 to 54 characters', 'The options run 45 to 60 characters'),
+        skill.replace(" That detail describes the option itself, what it is or how it's done, never why it suits a case.", ''),
+        skill.replace(/ A paraphrase points just as well\.[^\n]*?doesn't\./, ''),
+        skill.replace('"Give up to five sharp back blows between his shoulder blades"', '"Give up to five sharp back blows, as he can no longer breathe"'),
+        skill.replace('Key: "Encourage him to cough hard to bring the food back up"', 'Key: "Encourage him to keep coughing while he can still breathe"'),
+        skill.replace('Key: "Encourage him to cough hard to bring the food back up"', 'Key: "Encourage him to cough really hard until he brings all of the food back up"'),
+        skill.replace('Key: "Encourage him to cough hard to bring the food back up"', 'Key: "Encourage him to cough hard to bring the food back up."'),
+        skill.replace('The options run 49 to 60 characters', 'The options run 45 to 60 characters'),
         skill.replace(', and the headline answer;', ';'),
       ]) {
         assert.notEqual(stripped, skill);
@@ -644,7 +661,8 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     assert.equal(verdict(multiple), 'pass');
     assert.equal(verdict(multiple, mutant("n > 0 && code !== 'multiple-select' && ", 'n > 0 && ')), 'stop');
     // Every other structural code stops.
-    const anyCode = mutant("if (Object.entries(course.excludedByReason).some(([code, n]) => n > 0 && code !== 'multiple-select' && code !== 'no-key-or-poll')) return 'stop';", '');
+    const anyCode = mutant("if (Object.entries(course.excludedByReason).some(([code, n]) => n > 0 && code !== 'multiple-select' && code !== 'no-key-or-poll')) return 'stop';", '',
+      "       if (itemCues.excluded.some(record => name(record?.code) && record.code !== 'multiple-select' && record.code !== 'no-key-or-poll')) return 'stop';\n", '');
     for (const code of ['key-count', 'insufficient-options', 'ineligible-stem', 'overlapping-groups']) {
       const runs = exclude(three([32, 8]), [{ ref: '1.40', code, bank: 'lesson:1' }]);
       assert.equal(verdict(runs), 'stop', `${code} stops`);
@@ -658,13 +676,36 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     assert.equal(verdict(emptyBank, mutant("itemCues.banks.filter(bank => !(bank?.count === 0 && bank.masked?.reason === 'no-included-items'))", 'itemCues.banks')), 'stop');
 
     // Exclusion accounting must be complete and add up.
-    const tooling = "name(record.bank)))) return 'tooling';";
-    for (const [label, change] of [['no excludedByReason', row => { delete row.excludedByReason; }], ['no excludedCount', row => { delete row.excludedCount; }],
-      ['no maskedExcludedCount', row => { delete row.maskedExcludedCount; }], ['bank rows without excludedByReason', row => { if (row.id !== 'course') delete row.excludedByReason; }],
-      ['array reason maps', row => { row.excludedByReason = []; }]]) {
-      const runs = everyRow(three([32, 8]), change);
+    const absentIsStop = mutant("missing(record?.code))))) return 'tooling';", "missing(record?.code))))) return 'stop';");
+    const codeless = exclude(three([32, 8]), [{ ref: '1.40', code: 'multiple-select', bank: 'lesson:1' }]);
+    for (const { itemCues } of codeless) delete itemCues.excluded[0].code;
+    for (const [label, runs] of [['no excludedByReason', everyRow(three([32, 8]), row => { delete row.excludedByReason; })], ['no excludedCount', everyRow(three([32, 8]), row => { delete row.excludedCount; })],
+      ['no maskedExcludedCount', everyRow(three([32, 8]), row => { delete row.maskedExcludedCount; })], ['bank rows without excludedByReason', everyRow(three([32, 8]), row => { if (row.id !== 'course') delete row.excludedByReason; })],
+      ['records without codes', codeless]]) {
       assert.equal(verdict(runs), 'tooling', `${label} is a tooling limit`);
-      assert.equal(verdict(runs, mutant(tooling, "name(record.bank)))) return 'stop';")), 'stop');
+      assert.equal(verdict(runs, absentIsStop), 'stop');
+    }
+    // Accounting that is present but malformed is invalid evidence, not a tooling limit.
+    const malformedIsTooling = mutant("name(record.bank)))) return 'stop';", "name(record.bank)))) return 'tooling';");
+    for (const [label, change] of [['array reason maps', row => { row.excludedByReason = []; }], ['null reason maps', row => { row.excludedByReason = null; }], ['negative exclusion counts', row => { row.excludedCount = -1; }]]) {
+      const runs = everyRow(three([32, 8]), change);
+      assert.equal(verdict(runs), 'stop', `${label} stop`);
+      assert.equal(verdict(runs, malformedIsTooling), 'tooling');
+    }
+    // A record already in the report that shows a fault decides before a tooling limit.
+    const knownFault = exclude(three([32, 8]), [{ ref: '1.40', code: 'key-count', bank: 'lesson:1' }]);
+    everyRow(knownFault, row => { delete row.excludedByReason; });
+    assert.equal(verdict(knownFault), 'stop', 'A double-key record stops though accounting is missing');
+    assert.equal(verdict(knownFault, mutant("       if (itemCues.excluded.some(record => name(record?.code) && record.code !== 'multiple-select' && record.code !== 'no-key-or-poll')) return 'stop';\n", '')), 'tooling');
+    // Excluded refs are distinct and never also included.
+    const distinctRefs = mutant("       if (new Set(refs).size !== refs.length || refs.some(ref => included.has(ref))) return 'stop';\n", '');
+    for (const [label, runs, declared] of [
+      ['a poll that is also scored', exclude(three([32, 8]), [{ ref: '1.1', code: 'no-key-or-poll', bank: 'lesson:1' }]), declare(32, ['1.1'])],
+      ['a multiple selection that is also scored', exclude(three([32, 8]), [{ ref: '1.1', code: 'multiple-select', bank: 'lesson:1' }]), declare(32)],
+      ['a repeated exclusion', exclude(three([32, 8]), [{ ref: '1.40', code: 'multiple-select', bank: 'lesson:1' }, { ref: '1.40', code: 'multiple-select', bank: 'lesson:1' }]), declare(32)],
+    ]) {
+      assert.equal(verdict(runs, gate, declared), 'stop', `${label} stops`);
+      assert.equal(verdict(runs, distinctRefs, declared), 'pass', `Without the ref rule ${label} would pass`);
     }
     const missingCode = everyRow(three([32, 8]), row => { delete row.excludedByReason['ineligible-stem']; });
     assert.equal(verdict(missingCode), 'stop', 'A reason map without every stable code stops');
@@ -682,9 +723,9 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     assert.equal(verdict(orphan), 'stop', 'A record owned by no bank stops');
     assert.equal(verdict(orphan, mutant("if (!itemCues.banks.every(bank => bank.excludedCount === itemCues.excluded.filter(record => record.bank === bank.id).length)) return 'stop';", '')), 'pass');
     const miscoded = exclude(three([32, 8]), [{ ref: '1.40', code: 'multiple-select', bank: 'lesson:1' }]);
-    for (const { itemCues } of miscoded) itemCues.excluded[0].code = 'key-count';
-    assert.equal(verdict(miscoded), 'stop', 'A record whose code the counts miss stops');
-    assert.equal(verdict(miscoded, mutant("if (Object.keys(course.excludedByReason).some(code => !code.startsWith('masked-') && course.excludedByReason[code] !== itemCues.excluded.filter(record => record.code === code).length)) return 'stop';", '')), 'pass');
+    for (const { itemCues } of miscoded) itemCues.excluded[0].code = 'no-key-or-poll';
+    assert.equal(verdict(miscoded, gate, declare(32, ['1.40'])), 'stop', 'A record whose code the counts miss stops');
+    assert.equal(verdict(miscoded, mutant("if (Object.keys(course.excludedByReason).some(code => !code.startsWith('masked-') && course.excludedByReason[code] !== itemCues.excluded.filter(record => record.code === code).length)) return 'stop';", ''), declare(32, ['1.40'])), 'pass');
 
     // Unknown shuffle means the position check skipped the item: a tooling limit, never a silent pass.
     const unknownShuffle = runs => everyRow(runs, row => { row.items[0] = { ...row.items[0], shuffle: null }; });
