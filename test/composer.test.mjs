@@ -31,6 +31,10 @@ for (const [id, patterns, fix] of cases) test(`composer selection CLI checks ${i
   t.after(() => rmSync(directory, { recursive: true }));
   const outline = join(directory, 'outline.md');
   const selection = {
+    barriers: [
+      { id: 'b1', category: 'knowledge' },
+      ...(fix ? [{ id: 'environment', category: 'environment' }] : []),
+    ],
     patterns: patterns.map(pattern => ({ pattern, barriers: [pattern === 'written-task' || pattern === 'final-check' ? 'record' : 'b1'] })),
     outsideCourse: fix ? [{ barrier: 'environment', fix }] : [],
   };
@@ -63,9 +67,38 @@ for (const [id, patterns, fix] of cases) test(`composer selection CLI checks ${i
   assert.equal(untraced.status, 1);
   assert.deepEqual(untraced.untracedPatterns, patterns);
 
+  const dangling = run({ ...selection, patterns: selection.patterns.map(p => ({ ...p, barriers: ['b1', 'does-not-exist'] })) });
+  assert.equal(dangling.status, 1, 'Every reference must resolve, even alongside a valid reference');
+  assert.deepEqual(dangling.untracedPatterns, patterns);
+
+  const undeclared = run({ ...selection, barriers: [] });
+  assert.equal(undeclared.status, 1, 'A nonempty reference list needs declared barriers');
+
+  const invalidRecord = run({ ...selection, patterns: selection.patterns.map(p => ({ ...p, barriers: ['record'] })) });
+  assert.equal(invalidRecord.status, 1, 'Only final-check and written-task may use record');
+  assert.deepEqual(invalidRecord.untracedPatterns, patterns.filter(pattern => !['final-check', 'written-task'].includes(pattern)));
+
+  // Outside-course entries must be real fixes even when this fixture requires none.
+  for (const outsideCourse of [
+    [{ barrier: 'does-not-exist', fix: 'Correct the display.' }],
+    [{ barrier: 'b1', fix: 'Correct the display.' }],
+  ]) {
+    const invalidFix = run({ ...selection, outsideCourse });
+    assert.equal(invalidFix.status, 1, 'A fix must reference a declared environment barrier');
+    assert.equal(invalidFix.environmentFlagged, 0);
+  }
+
   if (fix) {
     const absentFix = run({ ...selection, outsideCourse: [] });
     assert.equal(absentFix.status, 1);
     assert.equal(absentFix.environmentFlagged, 0);
+
+    for (const empty of ['', '  \t ']) {
+      const emptyFix = run({ ...selection, outsideCourse: [{ barrier: 'environment', fix: empty }] });
+      assert.equal(emptyFix.status, 1, 'An environment fix must contain text');
+      assert.equal(emptyFix.environmentFlagged, 0);
+      const extraEmptyFix = run({ ...selection, outsideCourse: [...selection.outsideCourse, { barrier: 'environment', fix: empty }] });
+      assert.equal(extraEmptyFix.status, 1, 'A valid fix must not hide an empty one');
+    }
   }
 });
