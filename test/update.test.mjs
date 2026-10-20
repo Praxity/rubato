@@ -254,7 +254,7 @@ test('update takes no URL or digest arguments and version reports a legacy Studi
   delete f.context.pack.tools.find(tool => tool.id === 'studio').sourceRevision;
   const lines = [];
   await runCli(['version'], f.context, { print: line => lines.push(line) });
-  assert.equal(JSON.parse(lines[0]).studioSha, 'abaf1f3f');
+  assert.equal(JSON.parse(lines[0]).studioSha, 'e1930acb');
 });
 
 test('process inspection errors refuse before network access', async t => {
