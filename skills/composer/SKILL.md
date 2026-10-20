@@ -1,6 +1,6 @@
 ---
 name: composer
-description: Compose a course from a brief. Starts from the behaviour people should change and what stops them, picks learning patterns, writes an outline, then builds and reviews the course through prax-format, assessment-writing, praxity-trace and praxity-check. Use when someone asks for a new course, module or lesson, or brings a training problem.
+description: Compose a new course or module from a brief, or address a training problem. Starts from the behaviour people should change and what stops them, picks learning patterns, writes an outline, then builds and reviews the course through prax-format, assessment-writing, praxity-trace and praxity-check.
 ---
 
 # Composer
@@ -9,11 +9,13 @@ You turn a brief into a course that changes what people do. You own four things:
 
 Write the outline to `outline.md` beside the course's `course.yaml`, starting from [outline-template.md](outline-template.md). Pattern facts are in [patterns.md](patterns.md). The later steps run the `praxity` command; when it's missing, use the install-praxity skill first.
 
+For a lesson added to an existing outline, use prax-format directly. A draft is not ready to export and is marked in `outline.md` and the report as needing an independent review.
+
 ## 1. Read the brief
 
 Fill the outline's Brief section: audience and their reading level, where and when they will act, time per sitting, device and connection, output, languages and register, records wanted, and the sources of truth for facts.
 
-For French, ask and record the person's register and regional variety. The prax-format skill's learners guide owns the French register rules and defaults.
+For French, ask and record the person's register and regional variety. The prax-format skill's "Agree on French register" section in `skill/learners.md` owns the rules and defaults. When the choice is `tu`, tell the person about the built-in-control mismatch described there and record it in Questions.
 
 Output is Pages, Guided slides, a PDF, or a mix such as slides on a projector with a printed take-home. Decide it here, because some patterns don't work in every output.
 
@@ -75,29 +77,31 @@ Show the person the behaviour, barriers, fixes outside the course, selection and
 
 ## 7. Hand off the writing
 
-1. Write the course from outline.md with the prax-format skill. It owns syntax, block details, validation and identity. For two languages, keep one outline and build one course folder per language, side by side, with the same lessons in the same order.
+1. Write the course from outline.md with the prax-format skill, following steps 1 to 6 of its build list; export comes in step 8 below. It owns syntax, block details, validation and identity. For two languages, keep one outline and build one course folder per language, side by side, with the same lessons in the same order.
 2. Write every keyed single-answer choice, scored or practice, with the assessment-writing skill, including its attack, before any export. Hand it the Items section. When Trace is missing, follow that skill's fallback. When no fresh agent can run its probes, mark the bank unverified and keep the course a draft.
+
+   Trace's masked gate covers English only. For a French or other non-English bank, run the plain choices-only and cover-the-options probes, report the masked gate as "not applicable", mark the bank unverified, keep the course a draft, and ask the person how to proceed. In an unattended run, stop after reporting the available probe results and the unresolved review; a fluent-reader check alone doesn't verify the bank.
 3. Sort facts three ways:
    - facts the person's organisation owns (its policy, limits, steps, contacts) come only from the brief or its named sources. Where one is missing, write `[SOURCE NEEDED: what]` once per course folder, where learners first meet the fact, and add it to Questions;
    - general facts of a subject (science, common safety advice) you may write; list each one in the report for an expert to check;
    - invented details for cases and examples (names, items, prices) are fine when they agree with the first kind.
 
-   Every restatement of a rule, whether an objective, a card, a summary, a model answer or feedback, keeps all its conditions and exceptions. Feedback explains what the teaching already says; it adds no new claims.
+   Every restatement of a rule, whether an objective, a card, a summary, a model answer or feedback, keeps all its conditions and exceptions. Feedback adds no claim that the course or the brief's sources don't support. A neighbouring-case explanation from assessment-writing is allowed when the course teaches that case or a cited source states it. Otherwise add that teaching first, or drop the option. Subject facts still need the expert check above.
 
-Done when every activity in the outline exists in the course, prax-format's validation and identity steps pass for each course folder, and every `[SOURCE NEEDED]` marker is listed in Questions. Export only when no marker is left, or when the person asks for a draft export.
+Done when every activity in the outline exists in the course, prax-format's validation and identity steps pass for each course folder, and every `[SOURCE NEEDED]` marker is listed in Questions. Any remaining marker keeps the course a draft.
 
 ## 8. Review with fresh eyes
 
-The agent that wrote the course doesn't grade it. The judge and fidelity reviewer must be fresh agents that didn't write the course, from a different model family than the writer.
+The agent that wrote the course doesn't grade it. The fidelity reviewer also judges alignment in step 8.2. Use a fresh-context reviewer from a different model family than the writer when one is available. If no other model family is available, run a fresh-context reviewer from the same family, using a different model if one is available. Label the result "same-family review" in outline.md and the report, and keep the course a draft needing an independent review.
 
-1. Fidelity. Give the fresh agent the brief, outline.md and the course. It checks every model answer, example plan, shortened rule, branch and feedback line against the behaviour sentences and the sources, and lists each claim the teaching doesn't support and each place a condition went missing. It reads every language; mirror each fix in all of them.
+1. Fidelity. Give the fresh agent the brief, outline.md, the course and its cited sources. It checks support for every model answer, example plan, shortened rule, branch and feedback line in the course or cited sources, against the behaviour sentences and step 7.3. It flags unsupported claims and missing conditions; a supported neighbouring-case explanation may add information learners haven't yet read. It reads every language; mirror each fix in all of them.
 2. Run the praxity-trace report, and have that fresh agent answer its alignment view. Compare the result with outline.md: each behaviour should have practice and, if scored, a check.
-3. Export through prax-format and run praxity-check on the export.
+3. Once no draft blocker remains, export through prax-format and run praxity-check on the export. Otherwise report that export and its checks couldn't run.
 4. Fix through prax-format, rerun what the fix touched, and update outline.md when an activity changes. The fidelity reviewer then rechecks every line the fixes changed; a finding counts as fixed only when the course text meets it, not when the report notes it.
 
-When a fresh agent from a different model family can't run, keep the course a draft labelled "not independently reviewed". Report which reviews couldn't run; the writer's own check doesn't replace them.
+When no fresh reviewer can run at all, keep the course a draft labelled "not independently reviewed". Report which reviews couldn't run; the writer's own check doesn't replace them.
 
-Done when no review finding is left without a fix or a note in the report.
+Done when no review finding is left without a fix or a note in the report. Any unresolved finding keeps the course a draft.
 
 ## 9. Report
 
@@ -115,7 +119,7 @@ Ask before outlining when the following hold. In an unattended run, each becomes
 - the brief names no audience or no situation where they will act;
 - facts the course must teach (policy, thresholds, procedure) have no source;
 - the records wanted are unclear, or completion is asked for as proof of skill;
-- the course is in more than one language and the register is unstated, such as *tu* or *vous* in French.
+- the course includes French and the register or regional variety is unstated.
 
 Decline, and say what you'll do instead, when asked to:
 - match content to learning styles. Offer access and choice instead;
@@ -124,4 +128,4 @@ Decline, and say what you'll do instead, when asked to:
 - copy items from a real exam or a prep bank;
 - collect learner data the brief doesn't need.
 
-Stop for an expert when the course teaches safety, health, legal or financial facts. Build the course as a draft, list the facts to check, name who should check them, and export only after that check or when the person asks for a draft export.
+Stop for an expert when the course teaches safety, health, legal or financial facts. Build the course as a draft, list the facts to check, name who should check them, and export only after that check and the other draft blockers are cleared.

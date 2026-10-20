@@ -1,6 +1,6 @@
 # Outline template
 
-Copy this into `outline.md` beside the course's `course.yaml`. The person reads the prose sections. The Selection section holds only a JSON block, which the nightly check parses, so keep its keys exactly as shown.
+Copy this into `outline.md` beside the course's `course.yaml`. The person reads the prose sections. The Selection section holds only a JSON block; keep its keys exactly as shown so the selection scorer can parse it.
 
 ```markdown
 # <Course title>: outline

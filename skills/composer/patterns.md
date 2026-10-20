@@ -38,6 +38,7 @@ Output matters. Rules (show, hide, jump) run only in Pages: Guided slides and PD
 
 ### dont-know
 - Studio: now. The `dontKnow` setting on a single-answer choice; the prax-format skill documents its default. Studio counts it as wrong, with no penalty. Say in the outline where you want it on, and where it would read oddly, such as a reply in a conversation.
+- If you don't choose `dont-know`, set `dontKnow=false` on practice choices.
 - Answers: knowledge, and motivation when learners guess to hide what they don't know.
 - Use it "for short practice quizzes where learners need a way to say they are unsure" (README).
 - Avoid on scored questions until the scoring has been tested with your learners (README).
