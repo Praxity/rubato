@@ -176,7 +176,9 @@ function assertStopRules(skill) {
     assert.match(stopText, remedy, reason);
   }
   assert.match(stopText, /give that row's item count: even pooled across three runs it is too small to test/);
-  assert.match(stopText, /When a row's `excludedCount` is above 0, list `itemCues\.excluded`/);
+  assert.match(stopText, /When `itemCues\.course\.count` differs from `scoredChoices`[^\n]*Never change the declared count to match\./);
+  assert.match(stopText, /When `excludedByReason` has a code other than `multiple-select`, or more `no-key-or-poll` than declared polls/);
+  assert.match(stopText, /When an item's shuffle is unknown, give the sum of `spreads\[\]\.unknownCount`: the position check didn't cover those items\./);
   assert.match(stopText, /Don't compute tails by hand, don't mask items by hand/);
   assert.doesNotMatch(skill, /^### The masked probe by hand/m);
   const fallback = section(skill, '### If item-cues is unavailable');
@@ -235,23 +237,28 @@ function assertHandIn(skill) {
   assert.match(checklist, /^- Every scored single-answer choice has exactly one `\(x\)`\./m);
   assert.match(checklist, /^- Every scored choice sets `\{shuffle\}`/m);
   assert.match(checklist, /^- The number of scored single-answer choices[^\n]*Count by the markers, not by inspect's `scored` field[^\n]*Step 1 reconciles this count with Trace's included count\./m);
-  assert.match(skill, /This count is `scoredChoices`\./);
+  assert.match(checklist, /^- Each deliberate poll, a choice with no key on purpose, by reference, and the number of them\./m);
+  assert.match(skill, /This count is `scoredChoices`, and the number of deliberate polls is `polls`; the gate takes both as `\{ scoredChoices, polls \}`\./);
   assert.match(skill, /The included item count, `itemCues\.course\.count`, must equal `scoredChoices`\./);
 }
 
 // Trace's itemCues rows for four-option items. The gate pools `masked.right` across three seeded runs.
-const items = (id, count) => Array.from({ length: count }, (_, i) => ({ ref: `${id}.${i + 1}`, lengths: [20, 20, 20, 20] }));
+const items = (id, count) => Array.from({ length: count }, (_, i) => ({ ref: `${id}.${i + 1}`, lengths: [20, 20, 20, 20], shuffle: true }));
+const codes = ['no-key-or-poll', 'multiple-select', 'insufficient-options', 'key-count', 'ineligible-stem', 'overlapping-groups', 'masked-language', 'masked-space'];
+const noReasons = () => Object.fromEntries(codes.map(code => [code, 0]));
 const scored = (count, right) => ({ applies: true, status: 'scored', model: 'solver', right, total: count });
 // One run from [count, right] per bank. The course row holds every bank's items, as Trace's does.
 const run = (...banks) => {
-  const rows = banks.map(([count, right], i) => ({ id: `lesson:${i + 1}`, count, excludedCount: 0, items: items(`${i + 1}`, count), masked: scored(count, right), choicesOnly: scored(count, 0) }));
+  const rows = banks.map(([count, right], i) => ({ id: `lesson:${i + 1}`, count, excludedCount: 0, maskedExcludedCount: 0, excludedByReason: noReasons(), items: items(`${i + 1}`, count), masked: scored(count, right), choicesOnly: scored(count, 0) }));
   const count = rows.reduce((sum, row) => sum + row.count, 0);
   const right = rows.reduce((sum, row) => sum + row.masked.right, 0);
-  return { excluded: [], banks: rows, course: { id: 'course', count, excludedCount: 0, items: rows.flatMap(row => row.items), masked: scored(count, right), choicesOnly: scored(count, 0) } };
+  return { excluded: [], banks: rows, course: { id: 'course', count, excludedCount: 0, maskedExcludedCount: 0, excludedByReason: noReasons(), items: rows.flatMap(row => row.items), masked: scored(count, right), choicesOnly: scored(count, 0) } };
 };
 const three = (...banks) => [run(...banks), run(...banks), run(...banks)];
 // Apply a change to every row of every run.
 const everyRow = (runs, change) => { for (const itemCues of runs) for (const row of [itemCues.course, ...itemCues.banks]) change(row); return runs; };
+// Add exclusion counts to every run's course row.
+const withReasons = (runs, counts) => everyRow(runs, row => { if (row.id === 'course') row.excludedByReason = { ...row.excludedByReason, ...counts }; });
 const loadGate = source => runInNewContext(`${source}\nguessingGate`);
 
 for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/skills']]) {
@@ -396,6 +403,7 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
       for (const stripped of [
         skill.replace(/^- Every scored single-answer choice has exactly one `\(x\)`\.\r?\n/m, ''),
         skill.replace(/^- Every scored choice sets `\{shuffle\}`[^\n]*\r?\n/m, ''),
+        skill.replace(/^- Each deliberate poll,[^\n]*\r?\n/m, ''),
         skill.replace(' Step 1 reconciles this count with Trace\'s included count.', ''),
         skill.replace('The included item count, `itemCues.course.count`, must equal `scoredChoices`.', 'The included item count should be close to the source count.'),
       ]) {
@@ -412,7 +420,8 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     const predicate = skill.match(/```js\r?\n([\s\S]*?)```/)?.[1];
     assert.ok(predicate, 'The statistical gate must be executable');
     const gate = loadGate(predicate);
-    const verdict = (runs, check = gate) => check(runs);
+    // The hand-in declaration defaults to Trace's count with no polls.
+    const verdict = (runs, check = gate, declared = { scoredChoices: runs?.[0]?.course?.count, polls: 0 }) => check(runs, declared);
     const mutant = (from, to) => { assert.ok(predicate.includes(from), from); return loadGate(predicate.replace(from, to)); };
     const eightSmall = right => three(...Array.from({ length: 8 }, () => [4, right]));
     assert.equal(verdict(eightSmall(1)), 'pass');
@@ -429,27 +438,52 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     }
     assert.equal(verdict(everyRow(three([32, 8]), row => { if (row.id !== 'course') row.masked.total = 31; })), 'stop');
 
-    // Trace leaves a choice with no key out of count and denominator, and counts it in its rows' excludedCount.
-    const ignoresExcluded = mutant("       if (![course, ...banks].every(row => row.excludedCount === 0)) return 'stop';\n", '');
-    const missingKey = everyRow(three([31, 8]), row => { row.excludedCount = 1; });
-    assert.equal(verdict(missingKey), 'stop', 'An excluded choice stops the gate');
-    assert.equal(verdict(missingKey, ignoresExcluded), 'pass', 'Without the rule the excluded choice drops out unseen');
-    const bankOnly = everyRow(three([31, 8]), row => { if (row.id !== 'course') row.excludedCount = 1; });
-    assert.equal(verdict(bankOnly), 'stop', 'A bank exclusion stops');
-    assert.equal(verdict(bankOnly, ignoresExcluded), 'pass');
-    // Reports before Trace #24 have no per-row excludedCount, so they can't show the denominator is whole.
-    const unknown = everyRow(three([32, 8]), row => { delete row.excludedCount; });
-    assert.equal(verdict(unknown), 'stop', 'A missing excludedCount stops');
-    assert.equal(verdict(unknown, ignoresExcluded), 'pass');
-    // A wholly excluded bank stays in the report with no items.
-    const emptyBank = three([32, 8]).map(itemCues => ({ ...itemCues, banks: [...itemCues.banks, { id: 'lesson:2', count: 0, excludedCount: 1, items: [], masked: { applies: true, status: 'not run' } }] }));
-    assert.equal(verdict(emptyBank), 'stop', 'A wholly excluded bank stops');
+    // Studio shows a missing (x) the same way as a poll, so the declared count finds the missing key.
+    const declare = (scoredChoices, polls = 0) => ({ scoredChoices, polls });
+    const ignoresDeclared = mutant("       if (course.count !== declared.scoredChoices) return 'stop';\n", '');
+    const noKey = withReasons(three([31, 8]), { 'no-key-or-poll': 1 });
+    assert.equal(verdict(noKey, gate, declare(32, 1)), 'stop', 'A missing key declared as scored stops, even beside a declared poll');
+    assert.equal(verdict(noKey, ignoresDeclared, declare(32, 1)), 'pass', 'Without the declared count the missing key passes as a poll');
+    assert.equal(verdict(noKey, gate, declare(31, 1)), 'pass', 'A declared poll is an expected exclusion');
+    for (const declared of [undefined, {}, declare('31', 1), declare(0, 1), declare(31, -1), { scoredChoices: 31 }]) {
+      assert.equal(verdict(noKey, gate, declared), 'stop', 'A missing or invalid declaration stops');
+    }
+    // no-key-or-poll is expected only up to the declared polls.
+    assert.equal(verdict(noKey, gate, declare(31, 0)), 'stop', 'An undeclared no-key-or-poll stops');
+    assert.equal(verdict(noKey, mutant('n <= declared.polls', 'true'), declare(31, 0)), 'pass');
+    assert.equal(verdict(noKey, mutant("(code === 'no-key-or-poll' && n <= declared.polls)", 'false'), declare(31, 1)), 'stop', 'Without the poll allowance a declared poll would stop');
+    // Multiple selection is outside the single-key probes, so it is expected.
+    const multiple = withReasons(three([32, 8]), { 'multiple-select': 2 });
+    assert.equal(verdict(multiple), 'pass');
+    assert.equal(verdict(multiple, mutant("code === 'multiple-select' || ", '')), 'stop');
+    // Every other code stops, including one Trace adds later.
+    const anyCode = mutant('if (Object.entries(reasons).some(', 'if (false && Object.entries(reasons).some(');
+    for (const code of ['key-count', 'insufficient-options', 'ineligible-stem', 'overlapping-groups', 'masked-language', 'masked-space', 'a-code-added-later']) {
+      const runs = withReasons(three([32, 8]), { [code]: 1 });
+      assert.equal(verdict(runs), 'stop', `${code} stops`);
+      assert.equal(verdict(runs, anyCode), 'pass', `Without the code rule ${code} would pass`);
+    }
+    // Reports before Trace #24 have no excludedByReason; absence is never zero exclusions.
+    const old = everyRow(three([32, 8]), row => { delete row.excludedByReason; });
+    assert.equal(verdict(old), 'stop', 'A missing excludedByReason stops');
+    assert.equal(verdict(old, mutant('const reasons = course.excludedByReason;', 'const reasons = course.excludedByReason ?? {};')), 'pass');
+    // A bank Trace excluded whole stays in the report with count 0; its expected codes don't stop the gate.
+    const emptyBank = withReasons(three([32, 8]).map(itemCues => ({ ...itemCues, banks: [...itemCues.banks, { id: 'lesson:2', count: 0, excludedCount: 2,
+      excludedByReason: { ...noReasons(), 'multiple-select': 2 }, items: [], masked: { applies: false, reason: 'no-included-items', detail: 'No included single-key choices in this scope.' } }] })), { 'multiple-select': 2 });
+    assert.equal(verdict(emptyBank), 'pass', 'A bank of multiple selections is left out of the tails');
+    assert.equal(verdict(emptyBank, mutant("itemCues.banks.filter(bank => !(bank?.count === 0 && bank.masked?.reason === 'no-included-items'))", 'itemCues.banks')), 'stop');
+    // Unknown shuffle means the position check skipped the item: report it rather than pass.
+    const unknownShuffle = runs => everyRow(runs, row => { row.items[0] = { ...row.items[0], shuffle: null }; });
+    assert.equal(verdict(unknownShuffle(three([32, 8]))), 'stop', 'An unknown shuffle stops');
+    assert.equal(verdict(unknownShuffle(three([32, 8])), mutant("     if (!scoped[0].course.items.every(item => typeof item.shuffle === 'boolean')) return 'stop';\n", '')), 'pass');
+    assert.equal(verdict(unknownShuffle(three([32, 20]))), 'fail', 'An unknown shuffle does not hide a fail');
 
     // Exactly three runs, pooled. One noisy run can neither fail nor pass the bank alone.
     assert.equal(verdict(three([32, 8]).slice(0, 2)), 'stop', 'Two runs stop');
     assert.equal(verdict([...three([32, 8]), run([32, 8])]), 'stop', 'A fourth run stops');
     assert.equal(verdict(three([32, 8]).slice(0, 2), mutant('runs.length !== 3', 'runs.length === 0')), 'pass');
-    const firstRunOnly = loadGate(predicate.replaceAll('pool(runs.map(', 'pool([runs[0]].map('));
+    assert.equal(predicate.split('pool(scoped.map(').length, 3);
+    const firstRunOnly = loadGate(predicate.replaceAll('pool(scoped.map(', 'pool([scoped[0]].map('));
     // 13 of 32 alone has p ≈ 0.038; 39 of 96 pooled has p < 0.001.
     assert.equal(verdict(three([32, 13])), 'fail', 'Three near-misses fail when pooled');
     assert.equal(verdict(three([32, 13]), firstRunOnly), 'pass', 'Gating one run would pass them');
@@ -458,7 +492,7 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     assert.equal(verdict(oneHighRun), 'pass', 'The pooled count decides, not the first run');
     assert.equal(verdict(oneHighRun, firstRunOnly), 'fail');
     // The runs share their items and their named masked solver.
-    const noShape = mutant("if (runs.some(itemCues => shape(itemCues) !== shape(runs[0]))) return 'stop';", '');
+    const noShape = mutant("if (scoped.some(run => shape(run) !== shape(scoped[0]))) return 'stop';", '');
     const swapped = three([32, 8]); everyRow([swapped[1]], row => { row.masked.model = 'weaker-solver'; });
     assert.equal(verdict(swapped), 'stop', 'A run with another solver stops');
     assert.equal(verdict(swapped, noShape), 'pass');

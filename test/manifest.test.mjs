@@ -72,7 +72,7 @@ test('macOS installation plans select the reviewed Studio, Check and Trace prere
 // Trace revisions whose item-cues score the masked probe: `<bundle>-review/operator.json` (Praxity/praxity-trace#22),
 // then `status: "scored"` with `pMin` and `pLowMin` from Studio language provenance (#23). The assessment-writing
 // gate reads those fields, so an older pin stops every run: 09fcaaf has no masked probe and 92a164d holds every
-// result. The gate also pools each item's `lengths` and `masked.right`, and stops without the per-row `excludedCount`
+// result. The gate also pools each item's `lengths` and `masked.right`, and stops without the per-row `excludedByReason`
 // that Praxity/praxity-trace#24 adds; until the pin includes #24, every gate stops. Add a revision here only after
 // checking its payload.
 const maskedTraceRevisions = new Set(['97e6de33b3c30e67d44e7db6d0f1856bf358d3ef']);

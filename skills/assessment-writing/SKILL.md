@@ -90,7 +90,8 @@ The writer checks each bank before handing it in and reports the results with it
 
 - Every scored single-answer choice has exactly one `(x)`.
 - Every scored choice sets `{shuffle}`, even when the brief's format doesn't show it.
-- The number of scored single-answer choices: every `::: choice` with parentheses markers that is meant to be scored, in the lessons `course.yaml` lists. Count by the markers, not by inspect's `scored` field, which is false for every choice in a course with no grading default. Leave out multiple-selection choices and deliberate polls. Step 1 reconciles this count with Trace's included count.
+- The number of scored single-answer choices: every single-answer `::: choice` with parentheses markers in the lessons `course.yaml` lists, scored or practice, except deliberate polls. Count by the markers, not by inspect's `scored` field, which is false for every choice in a course with no grading default. Count a choice that is missing its `(x)` too; that is how a missing key shows up. Step 1 reconciles this count with Trace's included count.
+- Each deliberate poll, a choice with no key on purpose, by reference, and the number of them. Studio shows a poll and a missing `(x)` the same way, so only this list tells them apart.
 - The key-length-rank check and the headline-answer count from step 2.
 - For each distractor, the case it is right for and the stem detail that rules it out.
 
@@ -113,7 +114,7 @@ Every solver must be a model at least as strong as the writer. A weaker solver m
    praxity inspect <course-dir> --schema 1 > <inspect.json>
    ```
 
-   Pass this JSON to Trace, never the course folder. Keep `<inspect.json>` and every report, bundle and review folder outside the course folder, so a solver can never reach the source or keys. Give each pass its own new report folder `<dir>`; never write over an earlier pass. Keep `<inspect.json>` outside the bundle's parent folder too. Recount the course's scored single-answer choices from the source as the hand-in checklist defines them, including group and deck scoring, and settle any difference from the writer's count. This count is `scoredChoices`. An old projection without keys must not produce an empty-bank pass. Masked scoring needs an authored English declaration, `locale: en` in `course.yaml` or `lang: en` in each lesson, and the pinned Studio, whose inspect reports where each lesson's language comes from. Without both, every bank's masked result is `language-unconfirmed` and every pass stops.
+   Pass this JSON to Trace, never the course folder. Keep `<inspect.json>` and every report, bundle and review folder outside the course folder, so a solver can never reach the source or keys. Give each pass its own new report folder `<dir>`; never write over an earlier pass. Keep `<inspect.json>` outside the bundle's parent folder too. Recount the course's scored single-answer choices from the source as the hand-in checklist defines them, including group and deck scoring, and settle any difference from the writer's count. This count is `scoredChoices`, and the number of deliberate polls is `polls`; the gate takes both as `{ scoredChoices, polls }`. An old projection without keys must not produce an empty-bank pass. Masked scoring needs an authored English declaration, `locale: en` in `course.yaml` or `lang: en` in each lesson, and the pinned Studio, whose inspect reports where each lesson's language comes from. Without both, every bank's masked result is `language-unconfirmed` and every pass stops.
 
 1. Run the scripted report:
 
@@ -121,7 +122,7 @@ Every solver must be a model at least as strong as the writer. A weaker solver m
    praxity trace report <inspect.json> --out <dir>
    ```
 
-   The included item count, `itemCues.course.count`, must equal `scoredChoices`. Trace leaves a choice with no key, two keys or unreadable text out of both the count and the gate's denominator, counts it in its row's `excludedCount` and lists it in `itemCues.excluded`. Fix every excluded choice; a missing scored key is a blocker, and the gate stops while any row's `excludedCount` is above 0. Fix every flagged cue or justify it with item-specific evidence, and inspect key-position and key-length-rank spread across the bank as well as single items. In each bank's `spreads`, `keyLongest` must not exceed `longestExpected`; rewrite before preparing probes if it does. A report with no `itemCues` at all means the installed Trace is too old; see If item-cues is unavailable. If `itemCues` has no course row, stop and ask. Neither is a pass.
+   The included item count, `itemCues.course.count`, must equal `scoredChoices`. Trace leaves a choice with no key, two keys or unreadable text out of both the count and the gate's denominator, counts it by code in each row's `excludedByReason` and lists it with its `code` in `itemCues.excluded`. Only two codes are expected: `multiple-select`, and `no-key-or-poll` up to the declared polls. A `no-key-or-poll` beyond them is a missing key, which is a blocker. Fix every other excluded choice. Items with unknown shuffle, counted in `spreads[].unknownCount`, aren't covered by the position check; report their number. Fix every flagged cue or justify it with item-specific evidence, and inspect key-position and key-length-rank spread across the bank as well as single items. In each bank's `spreads`, `keyLongest` must not exceed `longestExpected`; rewrite before preparing probes if it does. A report with no `itemCues` at all means the installed Trace is too old; see If item-cues is unavailable. If `itemCues` has no course row, stop and ask. Neither is a pass.
 
 2. Prepare the blind probes as three runs, with seeds 1, 2 and 3:
 
@@ -171,28 +172,39 @@ Every solver must be a model at least as strong as the writer. A weaker solver m
 
    The gate can only pass on a scored masked result. Every bank and the course row need `masked.applies` set to `true`, `masked.status` set to `"scored"` and `masked.total` equal to their `count`, whatever their size. Any other status, whatever its `reason`, leaves the probe unscored; `"not run"` means no masked answers were combined. On the course row and on every bank with at least 12 items, each pooled tail must be able to fail at that row's own threshold: the upper tail with every answer right and the lower tail with every answer wrong must both be at or below it. Otherwise that tail carries no evidence at this size. Trace's `tooFewItems` and `tooFewItemsLow` flags use 0.05, which is too loose for these thresholds. A tail at or below its threshold is a fail whatever the other tail's power.
 
-   This executable predicate checks both statistical tails against Trace's JSON for the three runs. It returns `"pass"`, `"fail"` or `"stop"`. It stops when there aren't exactly three runs, on missing rows, item counts that aren't positive integers, a course total that differs from the sum of its banks, any excluded choice or a missing `excludedCount`, runs that differ in items or masked solver, an unscored masked result and a population too small to test. It does not replace the independent reviews or coverage reconciliation.
+   This executable predicate checks both statistical tails against Trace's JSON for the three runs. It returns `"pass"`, `"fail"` or `"stop"`. It stops when there aren't exactly three runs, on a missing declaration, missing rows, item counts that aren't positive integers, a course total that differs from the sum of its banks or from `scoredChoices`, a missing `excludedByReason` or an exclusion code other than the expected ones, runs that differ in items or masked solver, an unscored masked result, a population too small to test, and an item whose shuffle is unknown. A bank Trace excluded whole, with `count: 0` and `masked.reason` `"no-included-items"`, is left out of the tails; its codes still count. It does not replace the independent reviews or coverage reconciliation.
 
    ```js
-   function guessingGate(runs) {
+   function guessingGate(runs, declared) {
      const counted = row => row !== null && typeof row === 'object' && Number.isSafeInteger(row.count) && row.count > 0;
      // Exactly three seeded runs, fixed before solving: a fourth run can't replace one that failed.
      if (!Array.isArray(runs) || runs.length !== 3) return 'stop';
+     // The writer's hand-in checklist declares both counts.
+     if (!Number.isSafeInteger(declared?.scoredChoices) || declared.scoredChoices <= 0 || !Number.isSafeInteger(declared.polls) || declared.polls < 0) return 'stop';
+     const scoped = [];
      for (const itemCues of runs) {
-       const banks = itemCues?.banks;
        const course = itemCues?.course;
-       if (!Array.isArray(banks) || banks.length === 0 || ![course, ...banks].every(counted)) return 'stop';
+       if (!Array.isArray(itemCues?.banks) || !counted(course)) return 'stop';
+       // Trace keeps a bank it excluded whole, with count 0; its exclusion codes below decide whether that was expected.
+       const banks = itemCues.banks.filter(bank => !(bank?.count === 0 && bank.masked?.reason === 'no-included-items'));
+       if (banks.length === 0 || !banks.every(counted)) return 'stop';
        if (course.count !== banks.reduce((sum, bank) => sum + bank.count, 0)) return 'stop';
-       // Trace drops a choice with no key, two keys or unreadable text from count and denominator. Reports before Trace #24 lack the field.
-       if (![course, ...banks].every(row => row.excludedCount === 0)) return 'stop';
+       // Studio shows a missing (x) the same way as a poll, so only the declared count finds a missing key.
+       if (course.count !== declared.scoredChoices) return 'stop';
+       // Reports before Trace #24 have no excludedByReason; never read its absence as zero exclusions.
+       const reasons = course.excludedByReason;
+       if (reasons === null || typeof reasons !== 'object') return 'stop';
+       const expected = (code, n) => code === 'multiple-select' || (code === 'no-key-or-poll' && n <= declared.polls);
+       if (Object.entries(reasons).some(([code, n]) => !Number.isSafeInteger(n) || n < 0 || (n > 0 && !expected(code, n)))) return 'stop';
        // Any status but applies: true, including a reason added later, leaves the probe unscored.
        if (![course, ...banks].every(row => row.masked?.applies === true && row.masked.status === 'scored' && row.masked.total === row.count
          && Number.isSafeInteger(row.masked.right) && row.masked.right >= 0 && row.masked.right <= row.count
          && Array.isArray(row.items) && row.items.length === row.count && row.items.every(item => Array.isArray(item?.lengths) && item.lengths.length >= 2))) return 'stop';
+       scoped.push({ course, banks });
      }
      // The three runs must cover the same items, with the same named masked solver.
-     const shape = itemCues => JSON.stringify([itemCues.course, ...itemCues.banks].map(row => [row.id, row.masked.model, row.items.map(item => [item.ref, item.lengths.length])]));
-     if (runs.some(itemCues => shape(itemCues) !== shape(runs[0]))) return 'stop';
+     const shape = run => JSON.stringify([run.course, ...run.banks].map(row => [row.id, row.masked.model, row.items.map(item => [item.ref, item.lengths.length])]));
+     if (scoped.some(run => shape(run) !== shape(scoped[0]))) return 'stop';
      // Exact tails of the hits pooled across runs: each item counts once per run, at chance 1/k for k options.
      const pool = rows => {
        const mass = [1];
@@ -205,22 +217,26 @@ Every solver must be a model at least as strong as the writer. A weaker solver m
        const sum = masses => Math.min(1, masses.reduce((total, p) => total + p, 0));
        return { p: sum(mass.slice(right)), pLow: sum(mass.slice(0, right + 1)), pMin: mass[mass.length - 1], pLowMin: mass[0] };
      };
-     const large = runs[0].banks.flatMap((bank, i) => bank.count >= 12 ? [pool(runs.map(itemCues => itemCues.banks[i]))] : []);
-     const gated = [[pool(runs.map(itemCues => itemCues.course)), 0.025], ...large.map(bank => [bank, 0.05 / (2 * large.length)])];
+     const large = scoped[0].banks.flatMap((bank, i) => bank.count >= 12 ? [pool(scoped.map(run => run.banks[i]))] : []);
+     const gated = [[pool(scoped.map(run => run.course)), 0.025], ...large.map(bank => [bank, 0.05 / (2 * large.length)])];
      // A tail at or below its threshold is evidence, whatever the other tail's power.
      if (gated.some(([row, limit]) => row.p <= limit || row.pLow <= limit)) return 'fail';
      // Each tail must be able to fail at this row's own threshold: pMin with every answer right, pLowMin with every answer wrong.
      if (!gated.every(([row, limit]) => row.pMin <= limit && row.pLowMin <= limit)) return 'stop';
+     // Trace's position check skips an item whose shuffle is unknown, so the bank can't pass unchecked.
+     if (!scoped[0].course.items.every(item => typeof item.shuffle === 'boolean')) return 'stop';
      return 'pass';
    }
-   // Evaluate guessingGate([run1, run2, run3].map(report => report.itemCues)) on this pass's three report.json files. Plain choicesOnly is never read.
+   // Evaluate guessingGate([run1, run2, run3].map(report => report.itemCues), { scoredChoices, polls }) on this pass's three report.json files. Plain choicesOnly is never read.
    ```
 
    On `"fail"`, rewrite as above. On `"stop"`, the gate can't pass this pass. Finish the other probes, the key check, the judgements and their rewrites within the pass cap. Then report all of their results, mark the bank unverified, give the stop reason and ask the person how to proceed. Give the reason and its remedy:
 
    - When `applies` isn't `true`, give `masked.reason` and `masked.detail`. Trace reports them per bank: a scored bank's masked hits still drive the rewrites above, but a blocked bank keeps the pooled course row unavailable, so the gate stops. `"language-unconfirmed"`: the inspect JSON has no authored English declaration; add `locale: en` to `course.yaml` or `lang: en` per lesson, use the pinned Studio, then re-run inspect. `"language"`: a lesson declares another language, or the item text shows listed non-English markers; fix a wrong declaration, otherwise the bank stays unverified. `"mask-space"`: an item can't be masked safely; reword or remove it. For any other reason, give Trace's detail as it stands.
    - When `status` is `"not run"`, the masked answers weren't combined; run the masked solver.
-   - When a row's `excludedCount` is above 0, list `itemCues.excluded` and fix or remove each choice in it, such as a choice with no `(x)`. A multiple-selection choice counts too, so a bank with one stops; ask the person. When the field is missing, the installed Trace is too old; update Rubato's tools.
+   - When `itemCues.course.count` differs from `scoredChoices`, find the difference in the source and in `itemCues.excluded`, such as a choice with no `(x)`. Never change the declared count to match.
+   - When `excludedByReason` has a code other than `multiple-select`, or more `no-key-or-poll` than declared polls, list those `itemCues.excluded` records and fix each choice. When the field is missing, the installed Trace is too old; update Rubato's tools.
+   - When an item's shuffle is unknown, give the sum of `spreads[].unknownCount`: the position check didn't cover those items. Check `{shuffle}` on each in the source and use a Studio whose inspect reports `assessment.shuffle`.
    - When the runs aren't three runs of the same inspect JSON with the same masked solver model, prepare and solve the missing runs as step 2 says; never swap in a fourth.
    - When a gated row can't reach its threshold, give that row's item count: even pooled across three runs it is too small to test, so add items.
    - Otherwise name the rows and fields that are missing.
