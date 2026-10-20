@@ -31,8 +31,9 @@ function sections(text, name) {
     } else if (current) found.get(current).push(line);
   }
   return ['Use it when', 'Avoid it when'].map(heading => {
-    const content = found.get(heading)?.join(' ').replace(/\s+/g, ' ').trim();
-    if (!content) throw new Error(`${name}: missing or empty ${heading}`);
+    if (!found.has(heading)) throw new Error(`${name}: missing ${heading}`);
+    const content = found.get(heading).join(' ').replace(/\s+/g, ' ').trim();
+    if (!content && heading === 'Use it when') throw new Error(`${name}: empty ${heading}`);
     return content.replaceAll('|', '\\|');
   });
 }

@@ -52,15 +52,29 @@ test('write refreshes only the generated region, preserves CRLF and then passes'
 });
 
 for (const heading of ['Use it when', 'Avoid it when']) {
-  test(`refuses missing, empty or duplicate ${heading}`, async t => {
-    for (const source of [readme.replace(`## ${heading}`, '## Other'), readme.replace(/Recall a few ideas\.|You need a grade\./g, ''), readme + `\n## ${heading}\nDuplicate.\n`]) {
+  test(`refuses missing or duplicate ${heading}`, async t => {
+    for (const source of [readme.replace(`## ${heading}`, '## Other'), readme + `\n## ${heading}\nDuplicate.\n`]) {
       const f = await fixture(t, source);
       const result = f.run('--write');
       assert.equal(result.status, 1);
-      assert.match(result.stderr, /missing or empty|duplicate/);
+      assert.match(result.stderr, /missing|duplicate/);
     }
   });
 }
+
+test('copies an empty avoid section without inventing guidance and excludes setup notes', async t => {
+  const source = readme.replace('You need a grade.', '').replace('## How it works', '## Setting it up\n\nConfigure the host.\n\n## How it works');
+  const f = await fixture(t, source);
+  assert.match(f.run().stderr, /guidance is stale/);
+  assert.equal(f.run('--write').status, 0);
+  assert.equal(f.run().status, 0);
+  assert.equal(await readFile(f.target, 'utf8'), before + block.replace('You need a grade.', '') + after);
+});
+
+test('still rejects an empty use section', async t => {
+  const f = await fixture(t, readme.replace('Recall a few ideas.', ''));
+  assert.match(f.run('--write').stderr, /empty Use it when/);
+});
 
 test('fails on added and removed patterns and rejects a missing README', async t => {
   const f = await fixture(t);
