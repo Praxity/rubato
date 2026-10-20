@@ -78,9 +78,11 @@ Show the person the behaviour, barriers, fixes outside the course, selection and
 ## 7. Hand off the writing
 
 1. Write the course from outline.md with the prax-format skill, following steps 1 to 6 of its build list; export comes in step 8 below. It owns syntax, block details, validation and identity. For two languages, keep one outline and build one course folder per language, side by side, with the same lessons in the same order.
-2. Write every keyed single-answer choice, scored or practice, with the assessment-writing skill, including its attack, before any export. Hand it the Items section. When Trace is missing, follow that skill's fallback. When no fresh agent can run its probes, mark the bank unverified and keep the course a draft.
+2. Write every keyed single-answer choice, scored or practice, with the assessment-writing skill, including its attack, before any export. Hand it the Items section, and list each deliberate poll in the course by ref: its hand-in checklist declares them, and its gate stops on a choice with no key that it wasn't told about. When Trace is missing, follow that skill's fallback. When no fresh agent can run its probes, mark the bank unverified and keep the course a draft.
 
    Trace's masked gate covers English only. For any bank where it doesn't apply, including French, run the plain choices-only and cover-the-options probes, the key check and the explanations probe within assessment-writing's pass cap. Report the masked gate as "not applicable" with its reason, mark that bank unverified, and add the unverified bank as a blocking reason under Draft. Continue through steps 7.3 to 9, including the fidelity review, alignment check, accessibility check and report, even in an unattended run. Ask the person how to resolve the unverified bank at the end in step 9, rather than at this hand-off; a fluent-reader check alone doesn't verify it.
+
+   When assessment-writing's gate returns `"tooling"`, the installed tools can't verify the bank. Let that skill check pass 1's rewrites first, then treat the bank as above: mark it unverified because of the tooling limit, add it as a blocking reason under Draft, continue through steps 7.3 to 9, and ask the person at the end in step 9.
 
 3. Sort facts three ways:
    - facts the person's organisation owns (its policy, limits, steps, contacts) come only from the brief or its named sources. Where one is missing, write `[SOURCE NEEDED: what]` once per course folder, where learners first meet the fact, and add it to Questions;
