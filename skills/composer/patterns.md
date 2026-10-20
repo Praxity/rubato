@@ -2,9 +2,34 @@
 
 Pick from this file in step 4 of the composer skill. Each entry gives the pattern id to write in the outline, whether Studio can publish it now, the barriers it answers, when to use it and when to avoid it.
 
-Library patterns quote their README in [Praxity/learning-patterns](https://github.com/Praxity/learning-patterns/tree/main/patterns). That README owns the pattern; when this file and the README disagree, the README wins. Studio's own compositions have no README yet, so their entries live here. The prax-format skill owns how to write each block.
+Library guidance below is generated from the READMEs in [Praxity/learning-patterns at 85f03f1](https://github.com/Praxity/learning-patterns/tree/85f03f1652ff756579e82e1a386345ef28ecd894/patterns). Those READMEs own when to use and avoid each library pattern. Studio's own compositions have no README yet, so their entries live here. Studio support, barriers and fallbacks also live here. The prax-format skill owns how to write each block.
 
 Output matters. Rules (show, hide, jump) run only in Pages: Guided slides and PDF reject them. Learner PDF also refuses self-checks.
+
+## Library guidance
+
+Use these sections for every library pattern, including the planned patterns. Check Studio support below before choosing one.
+
+<!-- library-pattern-guidance:start -->
+
+| Pattern | Use it when | Avoid it when |
+| --- | --- | --- |
+| `conversation` | Use it to practise a difficult workplace conversation. You can acknowledge the impact, defend the change, attack, withdraw or ask for a pause. Michel responds to each choice. The review explains the effects of your two replies. | It gives no score. |
+| `course-lookup` | Use it across a course with a small, stable catalogue. The demo has eight FAQ entries and six course sections. Both shapes use the same renderer and enhancer, configured with `kind: 'faq' \| 'sections'`. | For catalogues with more than about 30 entries, first narrow the candidates with embeddings. Check the chosen candidates against the learner's question before showing them. |
+| `dont-know` | Use it for short practice quizzes where learners need a way to say they are unsure. Set points for right, wrong and unknown answers. Losing points for wrong answers may discourage guessing. | Test the scoring with your learners before using it for assessment. |
+| `explain-back` | Use it after a short reading. This example checks three ideas: stonewalling, announcing a pause and returning to the conversation. The feedback helps you revise your explanation. | It gives no grade. |
+| `first-answer` | Use it when learners can answer the same question at the start and end of a course. Keep the question and self-check criteria the same. | Learners judge their own changes, so use another method to grade answers. |
+| `highlight` | Use it to find key ideas or evidence for a question. Keep passages short and split them into meaningful pieces. | Learners select whole pieces, so use another pattern for selecting individual words. Searching visible text does not test recall. |
+| `journal` | Use it for weekly course reflections. Each suggestion asks about the first missing detail: a situation, your response, a next step or when to try it. | There is no score or checklist. The distress check was tested only on agent-written answers. It shows an authored support message instead of a question. It does not diagnose, contact anyone or send alerts. Replace the message with your real support details. Test the decision model with your own examples before use with learners. |
+| `live-feedback` | Use it for short action plans, outline-like writing assignments, and generally to give learners immediate feedback on responses that can be classified. This example checks for three different actions a colleague could see or hear, a time or situation, and your own commitments. The feedback helps you revise. | It gives no grade. |
+| `misconception` | Use it when a short answer can reveal a mistaken belief. This example asks whether rereading notes prepares you for a test. The proxy checks four study misconceptions. Feedback helps you revise your reasoning. | It gives no grade. |
+| `retrieval-sheet` | Use it for a short module with a few ideas or actions worth recalling. Keep questions focused and answers short. Learners can use the sheet without internet. Print it or save a PDF while connected. A SCORM package prints from its course files without fetching anything. | Choosing a date sends no reminder. Arrange one through your course host if needed. |
+| `review-prompts` | Use it for short readings with facts or actions learners need to recall later. Give each section one focused question and a short answer. | Ratings record what learners say they remembered. They do not verify recall or workplace performance. |
+| `self-check` | Use it when learners can check their answers against a short list of clear parts. It works offline and can help you compare self-checking with automated feedback. | The pattern does not judge the learner's text. |
+| `test-out` | Use it for a small refresher where one or two questions can justify skipping a section. Advanced questions must test any prerequisite knowledge they credit. | Keep all sections required when the course needs proof that learners saw each one. The host course handles navigation and completion records. |
+| `write-distractors` | Use it when learners know enough to answer from memory and explain common mistakes. Authors can review their wrong options for use in quizzes. | A person must judge whether each option expresses the chosen misconception and would tempt a learner. Matching labels cannot do that. |
+
+<!-- library-pattern-guidance:end -->
 
 ## Quick lookup
 
@@ -40,8 +65,7 @@ Output matters. Rules (show, hide, jump) run only in Pages: Guided slides and PD
 - Studio: now. The `dontKnow` setting on a single-answer choice; the prax-format skill documents its default. Studio counts it as wrong, with no penalty. Say in the outline where you want it on, and where it would read oddly, such as a reply in a conversation.
 - If you don't choose `dont-know`, set `dontKnow=false` on practice choices.
 - Answers: knowledge, and motivation when learners guess to hide what they don't know.
-- Use it "for short practice quizzes where learners need a way to say they are unsure" (README).
-- Avoid on scored questions until the scoring has been tested with your learners (README).
+- Selection guidance: see [Library guidance](#library-guidance).
 
 ### knowledge-check
 - Studio: now. A single-answer `choice` with feedback on each option, placed between short teaching sections.
@@ -59,14 +83,12 @@ Output matters. Rules (show, hide, jump) run only in Pages: Guided slides and PD
 ### retrieval-sheet
 - Studio: now. `::: retrieval-sheet`, 1 to 8 questions.
 - Answers: knowledge (forgetting after the course).
-- Use it "for a short module with a few ideas or actions worth recalling". Learners can use it without internet (README).
-- Avoid counting on it to bring learners back: "choosing a date sends no reminder" (README).
+- Selection guidance: see [Library guidance](#library-guidance).
 
 ### self-check
 - Studio: now, not in learner PDF. `::: self-check` with a model answer and criteria.
 - Answers: skill (producing written work), knowledge (explaining an idea).
-- Use it "when learners can check their answers against a short list of clear parts" (README).
-- Avoid when you need a grade: "the pattern does not judge the learner's text" (README).
+- Selection guidance: see [Library guidance](#library-guidance).
 
 ### sort
 - Studio: now. `categorize`, `match` or `order`.
@@ -123,19 +145,21 @@ Output matters. Rules (show, hide, jump) run only in Pages: Guided slides and PD
 
 Record these as rejected (planned) when they are the best fit, and use the fallback.
 
-| Pattern | Status | Use when (README) | Fallback now |
-| --- | --- | --- | --- |
-| `write-distractors` | Studio adoption in progress; cannot publish | Learners know enough to answer from memory and explain common mistakes | none |
-| `highlight` | Studio support accepted, not built | Finding key ideas or evidence in a short passage; not recall | `hotspot` over an image of the passage, or a multiple-answer `choice` listing its pieces |
-| `review-prompts` | Studio support accepted, not built | Short readings with facts or actions to recall later | `knowledge-check` or `flashcards` between sections, without review dates |
-| `first-answer` | Studio adoption deferred | The same question at the start and end; learners judge their own change | `self-check` at the end; the saved first answer is lost |
-| `test-out` | Studio adoption deferred | A small refresher where one or two questions justify skipping a section | `check-first` |
-| answer with confidence | Library pattern next; Studio later | Learners mark sure, guessed or don't know | `dont-know` |
-| `conversation` (AI) | Library only | Practising a difficult workplace conversation | `dialogue-branching` |
-| `explain-back` (AI) | Library only | Explaining a short reading in your own words | `self-check` |
-| `live-feedback` (AI) | Library only | Short classifiable writing such as action plans | `self-check` |
-| `misconception` (AI) | Library only | A short answer that can reveal a mistaken belief | `knowledge-check` with feedback that explains the contrast |
-| `journal` (AI) | Library only | Weekly reflection | `free-response {private}` |
-| `course-lookup` (AI) | Library only | Questions across a course with a small, stable catalogue | none |
+For library patterns, use and avoid guidance is in [Library guidance](#library-guidance). The proposed answer-with-confidence pattern lets learners mark sure, guessed or don't know; it has no library README yet.
+
+| Pattern | Status | Fallback now |
+| --- | --- | --- |
+| `write-distractors` | Studio adoption in progress; cannot publish | none |
+| `highlight` | Studio support accepted, not built | `hotspot` over an image of the passage, or a multiple-answer `choice` listing its pieces |
+| `review-prompts` | Studio support accepted, not built | `knowledge-check` or `flashcards` between sections, without review dates |
+| `first-answer` | Studio adoption deferred | `self-check` at the end; the saved first answer is lost |
+| `test-out` | Studio adoption deferred | `check-first` |
+| answer with confidence | Library pattern next; Studio later | `dont-know` |
+| `conversation` (AI) | Library only | `dialogue-branching` |
+| `explain-back` (AI) | Library only | `self-check` |
+| `live-feedback` (AI) | Library only | `self-check` |
+| `misconception` (AI) | Library only | `knowledge-check` with feedback that explains the contrast |
+| `journal` (AI) | Library only | `free-response {private}` |
+| `course-lookup` (AI) | Library only | none |
 
 AI patterns let a model pick among messages the author wrote; the model writes no learner text. They need a server to run the model, which Studio courses don't have. Ideas in the pattern gallery that are not in this file can't be chosen yet.

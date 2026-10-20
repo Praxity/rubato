@@ -6,6 +6,7 @@
   "engines": { "node": ">=24.18.0 <25" },
   "scripts": {
     "test": "node --test",
+    "check:composer-patterns": "node scripts/check-composer-patterns.mjs",
     "validate": "node scripts/validate-manifest.mjs pack.json",
     "validate:release": "node scripts/validate-manifest.mjs pack.json --release",
     "build:adapters": "node scripts/build-adapters.mjs"

@@ -477,6 +477,16 @@ Typst 0.15.1 hashes came from [official release asset metadata](https://api.gith
 `docs/provenance/` preserves the signed Node list, public key and extracted
 checksums. Neither origin settles signing, Gatekeeper or clean-Mac acceptance.
 
+The composer's library guidance uses a checked-in copy of the 14 learning-patterns
+READMEs and their MIT licence under `docs/provenance/learning-patterns/`.
+`docs/provenance/learning-patterns.json` records the full source revision, source
+URL and SHA-256 of each copied file. `npm run check:composer-patterns` verifies
+those hashes and compares the use/avoid sections with `skills/composer/patterns.md`
+without a network connection. CI runs this check. To update the source, copy the
+READMEs and licence from a reviewed revision, update the provenance and hashes,
+then run `npm run check:composer-patterns -- --write` and review the generated
+diff. Keep Studio support and composition guidance outside the generated region.
+
 Rubato's own scripts, skills and adapters are MIT-licensed (see `LICENSE`).
 The tools it installs keep their own licences: Studio, Check, Trace, Print and
 Import are under PolyForm Perimeter 1.0.1, with their third-party notices inside

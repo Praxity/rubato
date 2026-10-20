@@ -1,0 +1,22 @@
+{
+  "source": "https://github.com/Praxity/learning-patterns/tree/85f03f1652ff756579e82e1a386345ef28ecd894",
+  "sourceRevision": "85f03f1652ff756579e82e1a386345ef28ecd894",
+  "license": "MIT",
+  "files": {
+    "LICENSE": "d817c04f10efaffd1ab6dba0792a6567dce98f8ab41e86c64833a7b9cff7ecc5",
+    "patterns/conversation/README.md": "e7905b5f6428f051bd713925ab62d730c4439eb9f83156a7129081945109ed21",
+    "patterns/course-lookup/README.md": "8d998c9f4acf83e4d2e46c31e36737f4c06b3e4fda9be9bd1919aa665a94b8a7",
+    "patterns/dont-know/README.md": "7426f50a790f4d493520ffd08368592e76217b8de8ae091246a54ab68c743b5e",
+    "patterns/explain-back/README.md": "2de4bf358b88d386a07e6d9dd2ca79e11757e331e2eb6a6fa192b0c1a0b16f0f",
+    "patterns/first-answer/README.md": "f17127befa84657cee5b1a853aefbb5bd962c2c1a0063f14e7daec1e361f0fa9",
+    "patterns/highlight/README.md": "4f7d7615e079b92196b5cbb0c0f2c296683490d60db6e64fefaaa75a793ed91d",
+    "patterns/journal/README.md": "ec0c57adfd400063640f4bb1b324ff3eaf8d24052313a765b97afab1569dbadf",
+    "patterns/live-feedback/README.md": "9dfbe57b30a9525e6ce10912952d51cc45d3896686822d8caa291a23940c9944",
+    "patterns/misconception/README.md": "26e45cdc9bbc70582571ebb3ab391db945848b9b9544a6e9f85a7aafebff2d17",
+    "patterns/retrieval-sheet/README.md": "30b017eb6121534538cdedf934d943b2e57cb4f058113367aadab03e8718aee8",
+    "patterns/review-prompts/README.md": "f53cbe5f287d64010f7a71209ca0172218c1cd009f2a85b34bd0370fcbe0de70",
+    "patterns/self-check/README.md": "b287cbc682d6aeb2d6788574cb9454e6ebd7f9f00247931a2d07d7a17f4a9614",
+    "patterns/test-out/README.md": "86962152f36d93f0ce765b999d57523b790bb8968953d2cd983c2c0f49eacc85",
+    "patterns/write-distractors/README.md": "91ccba1707d1a2b09ac3a78c55a57262411f6a8d6441c2d08276f039313488e2"
+  }
+}

@@ -51,6 +51,7 @@ jobs:
         with:
           node-version: 24.21.0
       - run: npm run validate
+      - run: npm run check:composer-patterns
       - run: node --test
       - run: npm run validate:release
   macos-install:
