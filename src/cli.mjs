@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import { parseArgs } from 'node:util';
 import { readManifest } from './manifest.mjs';
 import { doctor } from './doctor.mjs';
-import { executeTool, probeProcess, quotePosix } from './tools.mjs';
+import { executeTool, probeProcess } from './tools.mjs';
 import { buildAdapters, installSkills, refreshSkills, uninstallSkills } from './skills.mjs';
 import { initCourse } from './init.mjs';
 import { t3ActionsRepairNote } from './t3-actions.mjs';
