@@ -94,7 +94,7 @@
   "tools": [
     {
       "id": "studio",
-      "version": "0.3.0",
+      "version": "0.3.0-main.5003117d",
       "sourceRevision": "5003117df3db719a22addcea3d735b04f42605e1",
       "entry": "praxity.mjs",
       "runner": "node",

@@ -48,7 +48,7 @@ test('macOS installation plans select the reviewed Studio, Check and Trace prere
   const pack = realPack();
   const candidates = [
     // Studio's admitted CLI candidate 39556177329 includes adjacent deck image warming (praxity-studio#1843).
-    { id: 'studio', version: '0.3.0', revision: '5003117df3db719a22addcea3d735b04f42605e1',
+    { id: 'studio', version: '0.3.0-main.5003117d', revision: '5003117df3db719a22addcea3d735b04f42605e1',
       urls: { 'darwin-arm64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261021.1/praxity-studio-cli-0.3.0-darwin-arm64.tar.gz',
         'darwin-x64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261021.1/praxity-studio-cli-0.3.0-darwin-x64.tar.gz' },
       digests: { 'darwin-arm64': '6e6250325da26114ede9fe0583efc727780eb2e70f8d5122e5938a9d7433b789',
