@@ -252,6 +252,7 @@ test('update takes no URL or digest arguments and version reports a legacy Studi
   await assert.rejects(runCli(['update', '--manifest', 'https://example.com/pack.json'], f.context), /Usage: praxity update/);
   // A manifest without sourceRevision falls back to the SHA in the version suffix.
   delete f.context.pack.tools.find(tool => tool.id === 'studio').sourceRevision;
+  f.context.pack.tools.find(tool => tool.id === 'studio').version = '0.3.0-main.e1930acb';
   const lines = [];
   await runCli(['version'], f.context, { print: line => lines.push(line) });
   assert.equal(JSON.parse(lines[0]).studioSha, 'e1930acb');
