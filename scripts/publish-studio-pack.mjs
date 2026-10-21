@@ -16,7 +16,7 @@ const newer = (version, previous) => {
   return next.some((n, i) => n > old[i] && next.slice(0, i).every((v, j) => v === old[j]));
 };
 
-export function verifyStudioArchive(file, arch, studioSha, expectedDigest, studio) {
+function verifyStudioArchive(file, arch, studioSha, expectedDigest, studio) {
   requireValue(lstatSync(file).isFile() && !lstatSync(file).isSymbolicLink(), 'Archive must be a regular file');
   const name = file.split(/[\\/]/).at(-1);
   const digest = hash(readFileSync(file));
