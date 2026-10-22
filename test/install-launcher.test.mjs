@@ -18,7 +18,7 @@ test('installed launcher returns real version output through a relocated pack li
   assert.equal(version.status, 0, version.stderr);
   const output = JSON.parse(version.stdout);
   assert.equal(output.pack, '0.1.0');
-  assert.equal(output.runtimes.node, '24.21.0');
+  assert.equal(output.runtimes.node, '24.22.1');
   assert.equal(output.tools.every(tool => tool.installed === false), true);
 });
 

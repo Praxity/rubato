@@ -471,7 +471,7 @@ inventory declares it portable. Other platform entries stay
 Published pack manifests retain their original archive URLs. GitHub redirects
 those URLs to this repository after the rename.
 
-Node 24.21.0 hashes came from its [signed official checksum list](https://nodejs.org/dist/v24.21.0/SHASUMS256.txt.asc),
+Node 24.22.1 hashes came from its [signed official checksum list](https://nodejs.org/dist/v24.22.1/SHASUMS256.txt.asc),
 verified with release key `5BE8A3F6C8A5C01D106C0AD820B1A390B168D356` listed in
 the [Node release instructions](https://github.com/nodejs/node/blob/main/README.md#release-keys).
 Typst 0.15.1 hashes came from [official release asset metadata](https://api.github.com/repos/typst/typst/releases/tags/v0.15.1).
