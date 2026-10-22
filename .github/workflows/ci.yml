@@ -49,7 +49,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24.21.0
+          node-version: 24.22.1
       - run: npm run validate
       - run: node --test
       - run: npm run validate:release
@@ -72,7 +72,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24.21.0
+          node-version: 24.22.1
       - run: npm run validate
       - run: node --test
       - name: Real manifest install in an isolated home
@@ -121,6 +121,14 @@ jobs:
           sh install.sh --manifest "$manifest"
           "$HOME/.praxity/bin/praxity" version
           "$HOME/.praxity/bin/praxity" doctor --json
+          # Studio write smoke: doctor only runs read-only inspect. identity init is a
+          # durable write through Studio's journal and fsync path on the bundled Node.
+          smoke_course="$task_home/smoke-course"
+          mkdir "$smoke_course"
+          cp fixtures/course/course.yaml fixtures/course/welcome.prax "$smoke_course/"
+          smoke=$("$HOME/.praxity/bin/praxity" identity init "$smoke_course" --lang en)
+          [ "$smoke" = '{"ok":true,"changed":true}' ] || { echo "Studio write smoke printed: $smoke" >&2; exit 1; }
+          test -f "$smoke_course/.praxity/identity/course.json"
           node -e 'const state = require(process.env.HOME + "/.praxity/toolkit/" + require("./pack.json").version + "/state.json"); require("node:assert/strict").equal(state.platform, process.argv[1])' '${{ matrix.platform }}'
           sh install.sh --manifest "$manifest"
           sh install.sh uninstall

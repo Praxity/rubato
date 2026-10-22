@@ -104,7 +104,7 @@ test('unpublished fixture tools are omitted from the installation plan', () => {
 for (const platform of ['darwin-arm64', 'darwin-x64']) test(`installation plan selects ${platform} archives`, () => {
   const pack = realPack();
   const plan = installationPlan(pack, platform);
-  assert.equal(plan.find(entry => entry.id === 'node').url, `https://nodejs.org/dist/v24.21.0/node-v24.21.0-${platform}.tar.gz`);
+  assert.equal(plan.find(entry => entry.id === 'node').url, `https://nodejs.org/dist/v24.22.1/node-v24.22.1-${platform}.tar.gz`);
   assert.equal(plan.find(entry => entry.id === 'studio').url, `https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261021.1/praxity-studio-cli-0.3.0-${platform}.tar.gz`);
 });
 
@@ -156,7 +156,7 @@ test('published archive has a complete executable contract', () => {
 });
 test('runtime hashes match the preserved official release evidence', () => {
   const pack = realPack();
-  const checksums = readFileSync(join(repository, 'docs/provenance/node-v24.21.0-SHASUMS256.txt'), 'utf8');
+  const checksums = readFileSync(join(repository, 'docs/provenance/node-v24.22.1-SHASUMS256.txt'), 'utf8');
   const typst = JSON.parse(readFileSync(join(repository, 'docs/provenance/typst-v0.15.1-assets.json'), 'utf8'));
   for (const archive of Object.values(pack.runtimes.node.archives)) {
     const file = new URL(archive.url).pathname.split('/').at(-1);

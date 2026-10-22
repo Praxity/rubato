@@ -37,7 +37,7 @@ export function installation(t, options = {}) {
   const nativeArguments = process.platform === 'win32' ? 'for fixture_arg do\n  shift\n  case "$fixture_arg" in /*) fixture_arg=$(cygpath -m "$fixture_arg");; esac\n  set -- "$@" "$fixture_arg"\ndone\n' : '';
   // The fake archive delegates parsing/finalization to the test's real Node.
   // Its doctor output is a fake external CLI, independent of doctor unit tests.
-  writeFileSync(join(runtime, 'bin/node'), `#!/bin/sh\nif [ "${'$'}{1:-}" = --version ]; then echo v24.21.0; exit 0; fi\ncase "${'$'}{1:-}" in */src/cli.mjs) if [ "${'$'}{2:-}" = doctor ]; then echo 'fixture doctor: ok'; exit 0; fi;; esac\n${nativeArguments}exec ${quote(binary)} "${'$'}@"\n`, { mode: 0o755 });
+  writeFileSync(join(runtime, 'bin/node'), `#!/bin/sh\nif [ "${'$'}{1:-}" = --version ]; then echo v24.22.1; exit 0; fi\ncase "${'$'}{1:-}" in */src/cli.mjs) if [ "${'$'}{2:-}" = doctor ]; then echo 'fixture doctor: ok'; exit 0; fi;; esac\n${nativeArguments}exec ${quote(binary)} "${'$'}@"\n`, { mode: 0o755 });
   writeFileSync(join(runtime, 'LICENSE'), 'Node fixture licence\n');
   pack.runtimes.node.archives['darwin-arm64'] = archive(runtime, join(root, 'node archive.tar.gz'));
   const typst = join(root, 'fake typst'); mkdirSync(typst);
