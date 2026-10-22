@@ -121,6 +121,13 @@ jobs:
           sh install.sh --manifest "$manifest"
           "$HOME/.praxity/bin/praxity" version
           "$HOME/.praxity/bin/praxity" doctor --json
+          # Studio write smoke: doctor only runs read-only inspect. identity init is a
+          # durable write through Studio's journal and fsync path on the bundled Node.
+          smoke_course="$task_home/smoke-course"
+          mkdir "$smoke_course"
+          smoke=$("$HOME/.praxity/bin/praxity" identity init "$smoke_course" --lang en)
+          [ "$smoke" = '{"ok":true,"changed":true}' ] || { echo "Studio write smoke printed: $smoke" >&2; exit 1; }
+          test -f "$smoke_course/.praxity/identity/course.json"
           node -e 'const state = require(process.env.HOME + "/.praxity/toolkit/" + require("./pack.json").version + "/state.json"); require("node:assert/strict").equal(state.platform, process.argv[1])' '${{ matrix.platform }}'
           sh install.sh --manifest "$manifest"
           sh install.sh uninstall
