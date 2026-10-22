@@ -125,6 +125,7 @@ jobs:
           # durable write through Studio's journal and fsync path on the bundled Node.
           smoke_course="$task_home/smoke-course"
           mkdir "$smoke_course"
+          cp fixtures/course/course.yaml fixtures/course/welcome.prax "$smoke_course/"
           smoke=$("$HOME/.praxity/bin/praxity" identity init "$smoke_course" --lang en)
           [ "$smoke" = '{"ok":true,"changed":true}' ] || { echo "Studio write smoke printed: $smoke" >&2; exit 1; }
           test -f "$smoke_course/.praxity/identity/course.json"
