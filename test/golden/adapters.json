@@ -6,8 +6,10 @@
     ".claude/skills/composer/SKILL.md": "145cbd81420ff66b0c29ee85b0a899178341bf74e512f460d88e5439c39182db",
     ".claude/skills/install-praxity/SKILL.md": "85b15d9e716afd95ec959c4f5946248d035805e760bb585f1181e8f20548569c",
     ".claude/skills/studio-editor/references/annotation-examples.md": "f2fb3bdcea363192e69a29baf901d7865098575d7b8ec2acbe5d00adbc1982ef",
+    ".claude/skills/studio-editor/references/review-cli.md": "ebe4e5293844007b0efbe7406b61e21e777af1560a2212695d16587a73b5ccb5",
     ".claude/skills/studio-editor/scripts/resolve-annotation.mjs": "cea369258564deee15134d76622bda8192c543dfd1a2baec4287a8528b1004d3",
-    ".claude/skills/studio-editor/SKILL.md": "79a4dca7771e28657d5990b3db4e233fb7e2d3d0b623c79120c9c4967ff0b354"
+    ".claude/skills/studio-editor/scripts/run-praxity.mjs": "3646aac1221e1b4872228849f216956dbd7d07f9a438c3bfbdefe47581d9ad26",
+    ".claude/skills/studio-editor/SKILL.md": "3ed81b58392064ebd32e804a5a762ad341c08a9e09125cd648d6015bed1e0ba1"
   },
   "codex": {
     ".agents/skills/assessment-writing/SKILL.md": "72ef998c8463f6110125a48de970af5c1002826271eee3f9d5eab61e24bbfb27",
@@ -16,7 +18,9 @@
     ".agents/skills/composer/SKILL.md": "145cbd81420ff66b0c29ee85b0a899178341bf74e512f460d88e5439c39182db",
     ".agents/skills/install-praxity/SKILL.md": "85b15d9e716afd95ec959c4f5946248d035805e760bb585f1181e8f20548569c",
     ".agents/skills/studio-editor/references/annotation-examples.md": "f2fb3bdcea363192e69a29baf901d7865098575d7b8ec2acbe5d00adbc1982ef",
+    ".agents/skills/studio-editor/references/review-cli.md": "ebe4e5293844007b0efbe7406b61e21e777af1560a2212695d16587a73b5ccb5",
     ".agents/skills/studio-editor/scripts/resolve-annotation.mjs": "cea369258564deee15134d76622bda8192c543dfd1a2baec4287a8528b1004d3",
-    ".agents/skills/studio-editor/SKILL.md": "79a4dca7771e28657d5990b3db4e233fb7e2d3d0b623c79120c9c4967ff0b354"
+    ".agents/skills/studio-editor/scripts/run-praxity.mjs": "3646aac1221e1b4872228849f216956dbd7d07f9a438c3bfbdefe47581d9ad26",
+    ".agents/skills/studio-editor/SKILL.md": "3ed81b58392064ebd32e804a5a762ad341c08a9e09125cd648d6015bed1e0ba1"
   }
 }

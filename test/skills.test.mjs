@@ -8,6 +8,8 @@ import { spawnSync, spawn } from 'node:child_process';
 import { buildAdapters, installSkills, uninstallSkills } from '../src/skills.mjs';
 import { runCli } from '../src/cli.mjs';
 import { doctor } from '../src/doctor.mjs';
+import { courseActions } from '../src/t3-actions.mjs';
+import { initCourse } from '../src/init.mjs';
 import { fixture, fakeTool, repository } from './helpers.mjs';
 
 const outputsFor = context => buildAdapters({ source: join(context.root, 'skills'), packVersion: context.pack.version });
@@ -286,6 +288,7 @@ function assertExportProcedure(text, name) {
 // The prax-format skill owns the identity rule, including when rederivation is allowed.
 // Rubato skills run init before each Studio or export command and point to that rule.
 const identityRule = "follow the prax-format skill's identity rule";
+const readStudioWorkflow = () => readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8') + '\n' + readFileSync(join(repository, 'skills/studio-editor/references/review-cli.md'), 'utf8');
 const studioStopRule = "If init reports anything other than `ok: true`, stop: don't open Studio, and follow the prax-format skill's identity rule.";
 
 function praxityCommands(code) {
@@ -307,6 +310,7 @@ function assertCommandProcedures(text, name) {
     // Prose spans may use an earlier instruction in their section; blocks and chains stand alone.
     const initialized = block !== undefined || /&&|;|\n/.test(code) ? new Set() : sectionInitialized;
     for (const { operation, args } of praxityCommands(code)) {
+      if (operation === 'studio' && args.length === 1 && args[0] === '--help') continue;
       const course = args[0]?.replace(/^(?:"(.*)"|'(.*)')$/, '$1$2');
       if (operation === 'identity init') {
         if (course && !course.startsWith('-') && args.length === 1) initialized.add(course);
@@ -350,15 +354,18 @@ test('every Studio and export command initializes the same course first, with pi
   const totals = { studio: 0, export: 0 };
   for (const [name, bytes] of outputs.codex) {
     if (!name.endsWith('.md')) continue;
-    const counts = assertCommandProcedures(bytes.toString(), name);
+    // Resolve the lifecycle's identity pointer before checking all three launch examples.
+    if (name.endsWith('/studio-editor/references/review-cli.md')) continue;
+    const document = name.endsWith('/studio-editor/SKILL.md') ? readStudioWorkflow() : bytes.toString();
+    const counts = assertCommandProcedures(document, name);
     totals.studio += counts.studio;
     totals.export += counts.export;
   }
-  assert.deepEqual(totals, { studio: 1, export: 0 });
+  assert.deepEqual(totals, { studio: 3, export: 0 });
 });
 
 test('Studio guards reject missing, late or mismatched initialization and missing stop instructions', () => {
-  const skill = readFileSync(join(repository, 'skills/studio-editor/SKILL.md'), 'utf8');
+  const skill = readStudioWorkflow();
   const init = '~/.praxity/bin/praxity identity init .\n';
   assert.ok(skill.includes(init));
   const withoutInit = skill.replace(init, '');
@@ -371,6 +378,113 @@ test('Studio guards reject missing, late or mismatched initialization and missin
   assert.throws(() => assertCommandProcedures(skill.replace('~/.praxity/bin/praxity studio . --no-open', '~/.praxity/bin/praxity studio . --no-open\n~/.praxity/bin/praxity studio . --no-open')));
   assert.throws(() => assertCommandProcedures(`${skill}\n\`\`\`sh\n  $ praxity studio ./other-course\n\`\`\``));
   assert.match(skill.replace(/\s+/g, ' '), /stop the old process\. Run identity init, then launch again,/);
+});
+
+function assertReviewLaunch(section) {
+  const text = section.replace(/\s+/g, ' ');
+  assert.ok(text.includes("Before every open or restart, follow Open Studio's identity initialization step and follow the prax-format skill's identity rule."), 'review launch follows the exact identity stop rule');
+  assert.doesNotMatch(text, /\b(?:exempt|exception|does not apply|may skip|can skip|skip identity|skip initialization|without identity|bypass|ignore (?:the )?(?:identity|stop))\b/i, 'review launches have no identity exemption');
+}
+
+function assertReservedReviewPort(section) {
+  const text = section.replace(/\s+/g, ' ');
+  assert.match(text, /course root's `t3\.json`/);
+  assert.match(text, /`scripts\[\]` entry named `Open in Studio`/);
+  assert.match(text, /`command`.*executable `praxity` or `"\$HOME\/\.praxity\/bin\/praxity"`, followed by `studio \. --port N` and optionally `--no-open`, with no other arguments/);
+  assert.match(text, /Copy only the decimal port/);
+  assert.match(text, /never invent a port/i);
+  assert.match(text, /Without a reservation, unsent drafts do not survive a Studio restart\./);
+  assert.ok(section.includes('~/.praxity/bin/praxity identity init .\n~/.praxity/bin/praxity studio . --review --port N --no-open'), 'review launch uses the reserved port after identity init');
+  assert.ok(section.includes('~/.praxity/bin/praxity identity init .\n~/.praxity/bin/praxity studio . --review --no-open'), 'unreserved review launch omits the port after identity init');
+}
+
+test('review launch takes its port from the reserved Studio action in every adapter', () => {
+  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  for (const [host, files] of Object.entries(outputs)) {
+    const skill = [...files].filter(([name]) => /studio-editor\/(?:SKILL\.md|references\/review-cli\.md)$/.test(name)).map(([, bytes]) => bytes.toString()).join('\n');
+    const section = skill.split('## Open for review\n')[1].split('\n## ')[0];
+    assertReservedReviewPort(section);
+    assertReviewLaunch(section);
+    assert.equal(assertCommandProcedures(skill, host).studio, 3);
+    // Both reservation branches must independently initialize the course.
+    for (const launch of ['--review --port N --no-open', '--review --no-open']) {
+      const commands = `~/.praxity/bin/praxity identity init .\n~/.praxity/bin/praxity studio . ${launch}`;
+      assert.throws(() => assertCommandProcedures(skill.replace(commands, commands.split('\n')[1]), host), /initialize the same course/);
+    }
+  }
+});
+
+test('review port guard rejects an omitted or invented reserved port', () => {
+  const skill = readStudioWorkflow();
+  const section = skill.split('## Open for review\n')[1].split('\n## ')[0];
+  assertReservedReviewPort(section);
+  for (const replacement of ['--review --no-open', '--review --port 4311 --no-open']) {
+    assert.throws(() => assertReservedReviewPort(section.replace('--review --port N --no-open', replacement)), /uses the reserved port/);
+  }
+});
+
+test('documented reserved-port forms round trip generated actions and the init matcher', t => {
+  const skill = readStudioWorkflow();
+  const section = skill.split('## Open for review\n')[1].split('\n## ')[0];
+  assertReservedReviewPort(section);
+  const form = section.match(/`(studio \. --port N)`/)[1];
+  const action = courseActions(4311).find(action => action.name === 'Open in Studio');
+  assert.equal(action.command, `"$HOME/.praxity/bin/praxity" ${form.replace('N', '4311')} --no-open`);
+  for (const launcher of ['praxity', '"$HOME/.praxity/bin/praxity"']) {
+    const command = action.command.replace('"$HOME/.praxity/bin/praxity"', launcher);
+    assert.equal(Number(command.match(/ --port (\d+)(?: --no-open)?$/)[1]), 4311);
+    // Exercise studioCommand through init's public interface, using a port in its reservation range.
+    const { context } = fixture(t);
+    writeFileSync(join(context.cwd, 'course.yaml'), 'title: A course\n');
+    writeFileSync(join(context.cwd, 't3.json'), JSON.stringify({ scripts: [{ name: action.name, command: command.replace('4311', '41811') }] }));
+    assert.equal(initCourse({ folder: context.cwd, home: context.home }).port, 41811);
+    const saved = JSON.parse(readFileSync(join(context.cwd, 't3.json'), 'utf8')).scripts.find(script => script.name === action.name);
+    assert.equal(Number(saved.command.match(/ --port (\d+)(?: --no-open)?$/)[1]), 41811);
+  }
+});
+
+test('busy review reservation reports the collision and requires consent before dropping the port', () => {
+  const skill = readStudioWorkflow();
+  const section = skill.split('## Open for review\n')[1].split('\n## ')[0].replace(/\s+/g, ' ');
+  assert.match(section, /reserved port is busy, report Studio's message/);
+  assert.match(section, /Never stop another course's Studio/);
+  assert.match(section, /Ask before launching without `--port`, because unsent drafts will not carry over/);
+});
+
+test('review launch obeys the same identity guard, including every generated adapter', () => {
+  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  for (const [host, files] of Object.entries(outputs)) {
+    const skill = [...files].filter(([name]) => /studio-editor\/(?:SKILL\.md|references\/review-cli\.md)$/.test(name)).map(([, bytes]) => bytes.toString()).join('\n');
+    const section = skill.split('## Open for review\n')[1]?.split('\n## ')[0];
+    assert.ok(section, `${host}: review launch procedure exists`);
+    assertReviewLaunch(section);
+    assert.ok(section.includes('~/.praxity/bin/praxity identity init .\n~/.praxity/bin/praxity studio . --review --no-open'));
+    assert.equal(assertCommandProcedures(skill, host).studio, 3);
+    const init = '~/.praxity/bin/praxity identity init .\n';
+    for (const replacement of ['', '~/.praxity/bin/praxity identity init ./other-course\n']) {
+      assert.throws(() => assertCommandProcedures(skill.replace(section, section.replace(init, replacement)), host));
+    }
+    assert.match(section, /already running.*review enabled/s);
+    assert.match(section, /without review.*restart/s);
+    assert.match(section, /background process/);
+    assert.match(section, /preview_open.*preview_navigate/s);
+    assert.match(section, /open: true/);
+    assert.match(section.replace(/\s+/g, ' '), /If a Studio you did not start may be serving this folder, ask the person to save and stop it, or to confirm none is running/);
+    assert.match(section, /Never start a second one\./);
+  }
+});
+
+test('review identity guard rejects both a replacement exemption and an appended exemption', () => {
+  const skill = readStudioWorkflow();
+  const section = skill.split('## Open for review\n')[1].split('\n## ')[0];
+  assertReviewLaunch(section);
+  assert.throws(() => assertReviewLaunch(section.replace(/Before every open or restart,[\s\S]*?identity rule\./,
+    "Open Studio's identity stop-and-ask rule does not apply to review launches.")), /exact identity stop rule/);
+  assert.throws(() => assertReviewLaunch(section + '\nReview launches are exempt from identity initialization.'), /no identity exemption/);
+});
+
+test('read-only Studio help does not need identity initialization', () => {
+  assert.deepEqual(assertCommandProcedures('`~/.praxity/bin/praxity studio --help`'), { studio: 0, export: 0 });
 });
 
 for (const operation of ['studio', 'export']) test(`${operation} guards cover launcher forms, fences, chains and prose spans`, () => {
