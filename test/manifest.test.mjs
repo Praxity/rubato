@@ -47,12 +47,12 @@ test('real pack preserves the unchanged tool archive URLs from v0.1.1', () => {
 test('macOS installation plans select the reviewed Studio, Check and Trace prereleases', () => {
   const pack = realPack();
   const candidates = [
-    // Studio's admitted CLI candidate 39556177329 includes adjacent deck image warming (praxity-studio#1843).
-    { id: 'studio', version: '0.3.0-main.5003117d', revision: '5003117df3db719a22addcea3d735b04f42605e1',
-      urls: { 'darwin-arm64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261021.1/praxity-studio-cli-0.3.0-darwin-arm64.tar.gz',
-        'darwin-x64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261021.1/praxity-studio-cli-0.3.0-darwin-x64.tar.gz' },
-      digests: { 'darwin-arm64': '6e6250325da26114ede9fe0583efc727780eb2e70f8d5122e5938a9d7433b789',
-        'darwin-x64': '694d9a259d02983d513cf39cb7a1c51f3faa86ff7d4545d864c949a61b1cc6ec' } },
+    // Studio's admitted CLI candidate 39923168143 includes the review thread list used by studio-editor.
+    { id: 'studio', version: '0.3.0-main.0e920110', revision: '0e920110b2d282d871352babe0d8ea627daf7c00',
+      urls: { 'darwin-arm64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261023.1/praxity-studio-cli-0.3.0-darwin-arm64.tar.gz',
+        'darwin-x64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261023.1/praxity-studio-cli-0.3.0-darwin-x64.tar.gz' },
+      digests: { 'darwin-arm64': '156757389d1893b840da043b83c74d718c3997f54b6110f016b02907eec0e4bf',
+        'darwin-x64': 'da08ce784ff41805bd8f363ee6eecc8a395f0b29304105d8f23f97b26588459f' } },
     { id: 'check', version: '0.6.0-alpha.c61b1cb3c', revision: 'c61b1cb3ce3a4e7afb0a44f3dd70e82a52c1154d',
       url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz' },
     { id: 'trace', version: '0.1.1-experimental.53ee25cc6', revision: '53ee25cc620fcbc669e0f00508962156f21bdce5',
@@ -105,7 +105,7 @@ for (const platform of ['darwin-arm64', 'darwin-x64']) test(`installation plan s
   const pack = realPack();
   const plan = installationPlan(pack, platform);
   assert.equal(plan.find(entry => entry.id === 'node').url, `https://nodejs.org/dist/v24.22.1/node-v24.22.1-${platform}.tar.gz`);
-  assert.equal(plan.find(entry => entry.id === 'studio').url, `https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261021.1/praxity-studio-cli-0.3.0-${platform}.tar.gz`);
+  assert.equal(plan.find(entry => entry.id === 'studio').url, `https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261023.1/praxity-studio-cli-0.3.0-${platform}.tar.gz`);
 });
 
 test('every declared platform requires every tool archive', () => {
