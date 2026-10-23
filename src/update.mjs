@@ -8,7 +8,7 @@ import { findSkillsProject } from './skills.mjs';
 import { probeProcess } from './tools.mjs';
 
 // This channel is part of the reviewed bootstrap, never a CLI or environment override.
-export const officialReleaseChannel = Object.freeze({
+const officialReleaseChannel = Object.freeze({
   metadata: 'https://api.github.com/repos/Praxity/rubato/releases/latest',
   downloads: 'https://github.com/Praxity/rubato/releases/download/',
 });

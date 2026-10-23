@@ -47,14 +47,16 @@ test('real pack preserves the unchanged tool archive URLs from v0.1.1', () => {
 test('macOS installation plans select the reviewed Studio, Check and Trace prereleases', () => {
   const pack = realPack();
   const candidates = [
-    // Studio's admitted CLI candidate 39336016757 includes the root prax-format skill (praxity-studio#1804).
-    { id: 'studio', version: '0.3.0-main.abaf1f3f', revision: 'abaf1f3f876ac32a610886fecd3d709513bf5bb5',
-      urls: { 'darwin-arm64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.3/praxity-studio-cli-0.3.0-main.abaf1f3f-darwin-arm64.tar.gz',
-        'darwin-x64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.3/praxity-studio-cli-0.3.0-main.abaf1f3f-darwin-x64.tar.gz' } },
+    // Studio's admitted CLI candidate 39556177329 includes adjacent deck image warming (praxity-studio#1843).
+    { id: 'studio', version: '0.3.0-main.5003117d', revision: '5003117df3db719a22addcea3d735b04f42605e1',
+      urls: { 'darwin-arm64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261021.1/praxity-studio-cli-0.3.0-darwin-arm64.tar.gz',
+        'darwin-x64': 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261021.1/praxity-studio-cli-0.3.0-darwin-x64.tar.gz' },
+      digests: { 'darwin-arm64': '6e6250325da26114ede9fe0583efc727780eb2e70f8d5122e5938a9d7433b789',
+        'darwin-x64': '694d9a259d02983d513cf39cb7a1c51f3faa86ff7d4545d864c949a61b1cc6ec' } },
     { id: 'check', version: '0.6.0-alpha.c61b1cb3c', revision: 'c61b1cb3ce3a4e7afb0a44f3dd70e82a52c1154d',
       url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz' },
-    { id: 'trace', version: '0.1.1-experimental.97e6de33b', revision: '97e6de33b3c30e67d44e7db6d0f1856bf358d3ef',
-      url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.4/praxity-trace-0.1.1-experimental.97e6de33b-portable.tar.gz' },
+    { id: 'trace', version: '0.1.1-experimental.53ee25cc6', revision: '53ee25cc620fcbc669e0f00508962156f21bdce5',
+      url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.5/praxity-trace-0.1.1-experimental.53ee25cc6-portable.tar.gz' },
   ];
   for (const candidate of candidates) {
     const tool = pack.tools.find(tool => tool.id === candidate.id);
@@ -63,29 +65,32 @@ test('macOS installation plans select the reviewed Studio, Check and Trace prere
     for (const platform of ['darwin-arm64', 'darwin-x64']) {
       const archive = installationPlan(pack, platform).find(entry => entry.id === candidate.id);
       assert.equal(archive.url, candidate.urls?.[platform] ?? candidate.url);
+      if (candidate.digests) assert.equal(archive.sha256, candidate.digests[platform]);
       assert.equal(archive.format, 'tar.gz');
       assert.equal(archive.stripComponents, 1);
     }
   }
 });
 
-// Trace revisions whose item-cues score the masked probe: `<bundle>-review/operator.json` (Praxity/praxity-trace#22),
-// then `status: "scored"` with `pMin` and `pLowMin` from Studio language provenance (#23). The assessment-writing
-// gate reads those fields, so an older pin stops every run: 09fcaaf has no masked probe and 92a164d holds every
-// result. Add a revision here only after checking its payload.
-const maskedTraceRevisions = new Set(['97e6de33b3c30e67d44e7db6d0f1856bf358d3ef']);
+// Trace revisions whose item-cues carry what the assessment-writing gate reads: `<bundle>-review/operator.json`
+// (Praxity/praxity-trace#22), `status: "scored"` masked results from Studio language provenance (#23), and per-row
+// `excludedByReason`, `maskedExcludedCount` and coded `excluded` records (#24). An older pin can't reach a verdict:
+// 09fcaaf has no masked probe, 92a164d holds every result, and 97e6de3 makes every gate return "tooling".
+// Add a revision here only after checking its payload.
+const maskedTraceRevisions = new Set(['53ee25cc620fcbc669e0f00508962156f21bdce5']);
 const pinsMaskedTrace = pack => maskedTraceRevisions.has(pack.tools.find(tool => tool.id === 'trace')?.sourceRevision);
 
 test('the pinned Trace ships the masked item-cues contract the assessment skill gates on', () => {
   const pack = realPack();
-  assert.ok(pinsMaskedTrace(pack), 'Pin a Trace revision with the masked item-cues contract');
+  assert.ok(pinsMaskedTrace(pack), 'Pin a Trace revision with the masked item-cues contract and exclusion accounting');
   const skill = readFileSync(join(repository, 'skills/assessment-writing/SKILL.md'), 'utf8');
   assert.match(skill, /`<bundle>-review\/`/);
-  assert.match(skill, /row\.masked\.status === 'scored'[\s\S]*row\.masked\.pLowMin <= limit/);
+  assert.match(skill, /row\.masked\.status === 'scored'[\s\S]*row\.masked\.right[\s\S]*item\.lengths\.length/);
+  assert.match(skill, /excludedByReason[\s\S]*maskedExcludedCount[\s\S]*record\.code/);
   const old = realPack();
-  for (const revision of ['09fcaaf76841175d150210ec29c66d7ebab05cc3', '92a164dd8573ff80fd24c61614b229f62f0eff2a']) {
+  for (const revision of ['09fcaaf76841175d150210ec29c66d7ebab05cc3', '92a164dd8573ff80fd24c61614b229f62f0eff2a', '97e6de33b3c30e67d44e7db6d0f1856bf358d3ef']) {
     old.tools.find(tool => tool.id === 'trace').sourceRevision = revision;
-    assert.equal(pinsMaskedTrace(old), false, `${revision.slice(0, 7)} predates scored masked results`);
+    assert.equal(pinsMaskedTrace(old), false, `${revision.slice(0, 7)} predates the gate's contract`);
   }
 });
 
@@ -99,8 +104,8 @@ test('unpublished fixture tools are omitted from the installation plan', () => {
 for (const platform of ['darwin-arm64', 'darwin-x64']) test(`installation plan selects ${platform} archives`, () => {
   const pack = realPack();
   const plan = installationPlan(pack, platform);
-  assert.equal(plan.find(entry => entry.id === 'node').url, `https://nodejs.org/dist/v24.21.0/node-v24.21.0-${platform}.tar.gz`);
-  assert.equal(plan.find(entry => entry.id === 'studio').url, `https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.3/praxity-studio-cli-0.3.0-main.abaf1f3f-${platform}.tar.gz`);
+  assert.equal(plan.find(entry => entry.id === 'node').url, `https://nodejs.org/dist/v24.22.1/node-v24.22.1-${platform}.tar.gz`);
+  assert.equal(plan.find(entry => entry.id === 'studio').url, `https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261021.1/praxity-studio-cli-0.3.0-${platform}.tar.gz`);
 });
 
 test('every declared platform requires every tool archive', () => {
@@ -151,7 +156,7 @@ test('published archive has a complete executable contract', () => {
 });
 test('runtime hashes match the preserved official release evidence', () => {
   const pack = realPack();
-  const checksums = readFileSync(join(repository, 'docs/provenance/node-v24.21.0-SHASUMS256.txt'), 'utf8');
+  const checksums = readFileSync(join(repository, 'docs/provenance/node-v24.22.1-SHASUMS256.txt'), 'utf8');
   const typst = JSON.parse(readFileSync(join(repository, 'docs/provenance/typst-v0.15.1-assets.json'), 'utf8'));
   for (const archive of Object.values(pack.runtimes.node.archives)) {
     const file = new URL(archive.url).pathname.split('/').at(-1);

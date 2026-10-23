@@ -14,13 +14,14 @@ T3 course actions and skills for T3, Claude Code and Codex CLI. There is no SDK
 or MCP server. `pack.json` pins every archive by URL and SHA-256.
 
 Studio reads grammar 4 courses; convert grammar 3 courses first.
-The checked-in manifest pins Studio CLI `0.3.0-main.abaf1f3f`, Check
-`0.6.0-alpha.c61b1cb3c` and Trace `0.1.1-experimental.97e6de33b`.
+The checked-in manifest pins Studio CLI `0.3.0-main.5003117d` at
+`5003117df3db719a22addcea3d735b04f42605e1`, Check `0.6.0-alpha.c61b1cb3c`
+and Trace `0.1.1-experimental.53ee25cc6`.
 Rubato's asset-only experimental prereleases host the verified CLI archives
 without a pack manifest or installer bootstrap: Studio downloads from
-`v0.1.1-tools.experimental.20261019.3`, Check from
+`v0.1.1-tools.experimental.20261021.1`, Check from
 `v0.1.1-tools.experimental.20261019` and Trace from
-`v0.1.1-tools.experimental.20261019.4`.
+`v0.1.1-tools.experimental.20261019.5`.
 The remaining tool archives come from Rubato `v0.1.1`.
 These candidate pins support installation from a reviewed checkout; the published
 Rubato `v0.1.1` manifest and stable update channel remain unchanged.
@@ -316,8 +317,10 @@ are refused before removal. Host skills retain their separate ownership record.
 
 ## Skills
 
-Rubato owns `skills/install-praxity`, `skills/studio-editor` and
-[`skills/assessment-writing`](skills/assessment-writing/SKILL.md). The assessment
+Rubato owns `skills/install-praxity`, `skills/studio-editor`,
+[`skills/composer`](skills/composer/SKILL.md) and
+[`skills/assessment-writing`](skills/assessment-writing/SKILL.md). Composer turns
+briefs into course outlines and coordinates writing and review. The assessment
 skill teaches misconception-based distractors, case-specific feedback and independent probes. Each tool
 owns the skill and references shipped in its archive. The generator collects
 installed tools' skill folders without rewriting them.
@@ -468,7 +471,7 @@ inventory declares it portable. Other platform entries stay
 Published pack manifests retain their original archive URLs. GitHub redirects
 those URLs to this repository after the rename.
 
-Node 24.21.0 hashes came from its [signed official checksum list](https://nodejs.org/dist/v24.21.0/SHASUMS256.txt.asc),
+Node 24.22.1 hashes came from its [signed official checksum list](https://nodejs.org/dist/v24.22.1/SHASUMS256.txt.asc),
 verified with release key `5BE8A3F6C8A5C01D106C0AD820B1A390B168D356` listed in
 the [Node release instructions](https://github.com/nodejs/node/blob/main/README.md#release-keys).
 Typst 0.15.1 hashes came from [official release asset metadata](https://api.github.com/repos/typst/typst/releases/tags/v0.15.1).

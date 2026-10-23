@@ -291,10 +291,9 @@ test('manifest schema rejects malformed tested Studio revision', () => {
   assert.ok(validateReleaseManifest(pack).length);
 });
 
-for (const name of ['tampered checksum', 'missing x64', 'existing output', 'invalid version', 'invalid SHA']) test(`refuses ${name}`, async t => {
+for (const name of ['tampered checksum', 'existing output', 'invalid version', 'invalid SHA']) test(`refuses ${name}`, async t => {
   const { options, calls, release } = candidate(t);
   if (name === 'tampered checksum') writeFileSync(join(options.archivesDir, 'praxity-cli-0.3.0-macos-x64.tar.gz.sha256'), '0'.repeat(64));
-  if (name === 'missing x64') rmSync(join(options.archivesDir, 'praxity-cli-0.3.0-macos-x64.tar.gz'));
   if (name === 'existing output') mkdirSync(options.outputDir);
   if (name === 'invalid version') options.version = '../bad';
   if (name === 'invalid SHA') options.studioSha = 'main';

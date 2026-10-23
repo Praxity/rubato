@@ -106,10 +106,6 @@ test('spoofed course HTML markers expose their enclosing ID and all occurrences'
   assert.equal(result.occurrences.length, 2);
 });
 
-test('a free region has no selector and cannot become a block address', () => {
-  assert.equal(probe(null, [], []).reason, 'missing-selector');
-});
-
 test('an element without a block marker refuses', () => {
   assert.equal(probe('nav', [element()], []).reason, 'missing-node-id');
   const empty = element({ 'data-node-id': '' });

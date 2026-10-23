@@ -682,7 +682,7 @@ test('unowned plugin components and untracked other-scope skills block competing
 test('launcher installs selected scope; doctor checks two physical adapters', async t => {
   const { context } = fixture(t);
   await runCli(['skills', 'install', '--host', 't3', '--scope', 'project'], context, { print: () => {} });
-  const result = doctor(context, () => ({ code: 0, stdout: 'v24.21.0', stderr: '' }));
+  const result = doctor(context, () => ({ code: 0, stdout: 'v24.22.1', stderr: '' }));
   assert.equal(result.items.find(item => item.id === 'host.claude.project').status, 'ok');
   assert.equal(result.items.find(item => item.id === 'host.codex.project').status, 'not-installed');
   assert.equal(result.items.some(item => item.id.startsWith('host.t3.')), false);
@@ -749,11 +749,11 @@ for (const phase of ['stage', 'remove']) test(`interrupted adapter addition reco
 
 test('doctor names every missing skill and its install command even when no adapter is installed', t => {
   const { context } = fixture(t);
-  const result = doctor(context, () => ({ code: 0, stdout: 'v24.21.0', stderr: '' }));
+  const result = doctor(context, () => ({ code: 0, stdout: 'v24.22.1', stderr: '' }));
   for (const scope of ['user', 'project']) for (const host of ['claude', 'codex']) {
     assert.deepEqual(result.items.find(item => item.id === `host.${host}.${scope}`), {
       id: `host.${host}.${scope}`, status: 'not-installed',
-      message: 'Missing skills: assessment-writing, install-praxity, studio-editor.',
+      message: 'Missing skills: assessment-writing, composer, install-praxity, studio-editor.',
       fix: `praxity skills install --host ${host} --scope ${scope}`,
     });
   }
@@ -768,7 +768,7 @@ test('doctor names skills missing after an upgrade, and refresh adds them withou
   fakeTool(context, 'import');
   mkdirSync(join(context.root, 'tools/import/skill'));
   writeFileSync(join(context.root, 'tools/import/skill/SKILL.md'), '---\nname: praxity-import\ndescription: Convert a course.\n---\nImport skill.\n');
-  const host = () => doctor(context, () => ({ code: 0, stdout: 'v24.21.0', stderr: '' })).items.find(item => item.id === 'host.claude.user');
+  const host = () => doctor(context, () => ({ code: 0, stdout: 'v24.22.1', stderr: '' })).items.find(item => item.id === 'host.claude.user');
   assert.deepEqual(host(), { id: 'host.claude.user', status: 'partial', message: 'Missing skills: praxity-import.', fix: 'praxity skills install --host claude --scope user' });
   await runCli(['skills', 'refresh', '--scope', 'user'], context, quiet);
   assert.equal(host().status, 'ok');
@@ -783,14 +783,14 @@ test('doctor reports a changed toolkit skill as partial', async t => {
   const { context } = fixture(t);
   await runCli(['skills', 'install', '--host', 'codex', '--scope', 'project'], context, { print: () => {} });
   writeFileSync(join(context.cwd, '.agents/skills/studio-editor/SKILL.md'), 'Edited');
-  const item = doctor(context, () => ({ code: 0, stdout: 'v24.21.0', stderr: '' })).items.find(item => item.id === 'host.codex.project');
+  const item = doctor(context, () => ({ code: 0, stdout: 'v24.22.1', stderr: '' })).items.find(item => item.id === 'host.codex.project');
   assert.equal(item.status, 'partial');
   assert.equal(item.message, 'Changed or out-of-date skills: studio-editor. Edited skill files: studio-editor.');
   assert.equal(item.fix, 'Move your edited copies of studio-editor out of .agents/skills, then run praxity skills install --host codex --scope project');
   // Following the fix works: install recreates the moved skill.
   renameSync(join(context.cwd, '.agents/skills/studio-editor'), join(context.cwd, 'studio-editor edited'));
   await runCli(['skills', 'install', '--host', 'codex', '--scope', 'project'], context, { print: () => {} });
-  assert.equal(doctor(context, () => ({ code: 0, stdout: 'v24.21.0', stderr: '' })).items.find(item => item.id === 'host.codex.project').status, 'ok');
+  assert.equal(doctor(context, () => ({ code: 0, stdout: 'v24.22.1', stderr: '' })).items.find(item => item.id === 'host.codex.project').status, 'ok');
   assert.equal(readFileSync(join(context.cwd, 'studio-editor edited/SKILL.md'), 'utf8'), 'Edited');
 });
 
@@ -844,7 +844,7 @@ test('doctor sees an rc.1 t3 install as the claude adapter, and refresh adds its
   fakeTool(context, 'import');
   mkdirSync(join(context.root, 'tools/import/skill'));
   writeFileSync(join(context.root, 'tools/import/skill/SKILL.md'), '---\nname: praxity-import\ndescription: Convert a course.\n---\nImport skill.\n');
-  const host = () => doctor(context, () => ({ code: 0, stdout: 'v24.21.0', stderr: '' })).items.find(item => item.id === 'host.claude.user');
+  const host = () => doctor(context, () => ({ code: 0, stdout: 'v24.22.1', stderr: '' })).items.find(item => item.id === 'host.claude.user');
   assert.deepEqual(host(), { id: 'host.claude.user', status: 'partial', message: 'Missing skills: praxity-import.', fix: 'praxity skills install --host claude --scope user' });
   await runCli(['skills', 'refresh', '--scope', 'user'], context, { print: line => printed.push(line) });
   assert.deepEqual(printed, ['Refreshed claude skills at user scope. Restart the host to load them.']);
