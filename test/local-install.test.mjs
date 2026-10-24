@@ -60,8 +60,8 @@ for (const result of [{code:null,signal:'SIGINT'},{code:null},{code:130,error:'i
  const calls=[];assert.throws(()=>installVerifiedPack({...f.context,home:f.home},{bootstrap,manifest},{updateProcess:call=>{calls.push(call);return call.command==='ps'?{code:0,stdout:'',stderr:''}:result;}}),/interrupted.*recover/);
  assert.equal(calls.length,2);
 });
-test('recertified pack refresh discovers the project and reports the conflicting user file',t=>{
- const f=fixture(t);mkdirSync(join(f.root,'course/.praxity'),{recursive:true});writeFileSync(join(f.root,'course/.praxity/toolkit-skills.json'),'{}');mkdirSync(join(f.root,'course/lesson'));
+test('pack refresh discovers the project and reports a conflicting user file',t=>{
+ const f=fixture(t);mkdirSync(join(f.root,'course/.praxity'),{recursive:true});writeFileSync(join(f.root,'course/.praxity/toolkit-skills.json'),'{"owner":"praxity-toolkit","hosts":["claude"],"skills":{"claude":["prax-format"]}}');mkdirSync(join(f.root,'course/lesson'));
  const calls=[],output=[];
  const code=refreshInstalledSkills({...f.context,home:f.home,cwd:join(f.root,'course/lesson')},{print:line=>output.push(line),updateProcess:(call,options)=>{calls.push([call,options]);return call.args.at(-1)==='user'?{code:1,stderr:'Owned adapter changed: /fixture/prax-format/SKILL.md'}:{code:0};}},true);
  assert.equal(code,1);assert.deepEqual(calls.map(([call])=>call.args.at(-1)),['user','project']);assert.equal(calls[1][1].cwd,join(f.root,'course'));assert.match(output[0],/prax-format\/SKILL.md.*--scope user/);

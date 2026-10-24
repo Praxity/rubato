@@ -37,7 +37,7 @@ function assertReviewSafety(document) {
 for (const host of ['claude', 'codex']) {
   function installedSkill(t) {
     const { context } = fixture(t);
-    const outputs = buildAdapters({ source: join(context.root, 'skills'), packVersion: context.pack.version });
+    const outputs = buildAdapters({ source: join(context.root, 'skills') });
     installSkills({ base: context.home, host, outputs });
     const directory = host === 'claude' ? '.claude' : '.agents';
     const installed = readFileSync(join(context.home, directory, 'skills/studio-editor/references/review-cli.md'), 'utf8');
@@ -251,7 +251,7 @@ function assertSharedReview(document, lifecycle) {
 
 for (const host of ['claude', 'codex']) test(host + ' installed review section routes to shared edits once', t => {
   const { context } = fixture(t);
-  const outputs = buildAdapters({ source: join(context.root, 'skills'), packVersion: context.pack.version });
+  const outputs = buildAdapters({ source: join(context.root, 'skills') });
   installSkills({ base: context.home, host, outputs });
   const directory = join(context.home, host === 'claude' ? '.claude' : '.agents', 'skills/studio-editor');
   const document = readFileSync(join(directory, 'SKILL.md'), 'utf8');

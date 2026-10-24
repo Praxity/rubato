@@ -106,6 +106,15 @@ export function refreshSkills({ base, outputs }) {
   return changeSkills({ base, outputs, remove: false });
 }
 
+function writeState(base, state) {
+  state.hosts.sort();
+  const record = contained(base, '.praxity/toolkit-skills.json');
+  const temp = contained(base, '.praxity/toolkit-skills.json.tmp');
+  mkdirSync(dirname(record), { recursive: true });
+  writeFileSync(temp, JSON.stringify(state, null, 2) + '\n');
+  renameSync(temp, record);
+}
+
 function changeSkills({ base, otherBase, host, outputs, remove }) {
   host = host === undefined ? undefined : canonicalHost(host);
   if (host !== undefined && !Object.hasOwn(adapters, host)) throw new Error('Host must be t3, claude or codex');
@@ -123,21 +132,32 @@ function changeSkills({ base, otherBase, host, outputs, remove }) {
       if (!/^[a-z0-9-]+$/.test(skill)) throw new Error(`Unsafe skill name: ${skill}`);
       return skill;
     }))];
-    const directories = [...new Set([...(state.skills[value] ?? []), ...names])].map(name => contained(base, `${root}/${name}`));
+    const owned = state.skills[value] ?? [];
+    const directories = [...new Set([...owned, ...names])].map(name => {
+      const directory = contained(base, `${root}/${name}`);
+      if (existsSync(directory) && !owned.includes(name)) throw new Error(`Unowned skill folder: ${directory}; refusing ${remove ? 'removal' : 'overwrite'}. Move it aside before retrying.`);
+      return directory;
+    });
     if (!remove && otherBase && realpathSync(otherBase) !== base) for (const name of names) {
       const competing = contained(realpathSync(otherBase), `${root}/${name}/SKILL.md`);
       if (existsSync(competing)) throw new Error(`Competing skill in the other scope: ${competing}`);
     }
     return { value, entries, names, directories };
   });
-  // Rubato owns these folders by name. A rerun replaces any partial copy.
+  // Record names before copying so a rerun can replace a partial install.
+  if (!remove) {
+    for (const { value, names } of changes) {
+      if (!state.hosts.includes(value)) state.hosts.push(value);
+      state.skills[value] = [...new Set([...(state.skills[value] ?? []), ...names])];
+    }
+    writeState(base, state);
+  }
   for (const { value, entries, names, directories } of changes) {
     for (const directory of directories) rmSync(directory, { recursive: true, force: true });
     if (remove) {
       state.hosts = state.hosts.filter(value => value !== host);
       delete state.skills[value];
     } else {
-      if (!state.hosts.includes(value)) state.hosts.push(value);
       state.skills[value] = names;
       for (const [name, bytes] of entries) {
         const path = contained(base, name);
@@ -147,12 +167,7 @@ function changeSkills({ base, otherBase, host, outputs, remove }) {
       }
     }
   }
-  state.hosts.sort();
-  const record = contained(base, '.praxity/toolkit-skills.json');
-  const temp = contained(base, '.praxity/toolkit-skills.json.tmp');
-  mkdirSync(dirname(record), { recursive: true });
-  writeFileSync(temp, JSON.stringify(state, null, 2) + '\n');
-  renameSync(temp, record);
+  writeState(base, state);
   return { host, hosts: state.hosts, files };
 }
 

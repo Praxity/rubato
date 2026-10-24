@@ -78,7 +78,7 @@ if (command === 'plan') {
     if (!existsSync(join(directory, definition.notices)) || !statSync(join(directory, definition.notices)).isFile()) throw new Error(`Missing notices for ${entry.id}: ${definition.notices}`);
     if (entry.kind === 'tool' && definition.skillPath && !existsSync(join(directory, definition.skillPath))) throw new Error(`Missing skill for ${entry.id}: ${definition.skillPath}`);
   }
-  buildAdapters({ source: join(stage, 'skills'), packVersion: pack.version,
+  buildAdapters({ source: join(stage, 'skills'),
     tools: pack.tools.filter(tool => tool.skillPath && plan.some(entry => entry.kind === 'tool' && entry.id === tool.id)).map(tool => join(stage, 'tools', tool.id, tool.skillPath)) });
   mkdirSync(join(stage, 'bin'));
   // Tool wrappers resolve relative to their pack, so staged paths never leak

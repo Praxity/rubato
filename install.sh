@@ -36,6 +36,7 @@ if [ "$ACTION" = uninstall ]; then
 fi
 command -v shasum >/dev/null 2>&1 || die 'Install needs shasum -a 256'
 mkdir -p "$ROOT"
+rm -rf "$ROOT"/.install.*
 WORK=$(mktemp -d "$ROOT/.install.XXXXXX")
 LAUNCHER_TEMP=
 cleanup() {
@@ -194,7 +195,12 @@ else
   for FILE in install.sh package.json; do cp "$SCRIPT_DIR/$FILE" "$STAGE/$FILE"; done
   cp "$MANIFEST_FILE" "$STAGE/pack.json"
   "$NODE" "$SCRIPT_DIR/src/install.mjs" finalize "$STAGE/pack.json" "$PLATFORM" "$STAGE" "$ROOT"
-  mv "$STAGE" "$ROOT/$VERSION"
+  if [ -e "$ROOT/$VERSION" ]; then
+    rm -rf "$STAGE"
+    "$NODE" "$SCRIPT_DIR/src/install.mjs" verify "$MANIFEST_FILE" "$PLATFORM" "$ROOT/$VERSION"
+  else
+    mv "$STAGE" "$ROOT/$VERSION"
+  fi
 fi
 mkdir -p "$BIN"
 LAUNCHER_TEMP=$(mktemp "$BIN/.praxity-launcher.XXXXXX")

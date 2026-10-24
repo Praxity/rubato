@@ -62,7 +62,7 @@ export async function runCli(args, context, dependencies = {}) {
       const path = join(context.root, 'tools', tool.id, tool.skillPath ?? 'skill');
       return context.state.installed.includes(tool.id) && existsSync(path) ? [path] : [];
     });
-    const outputs = buildAdapters({ source: join(context.root, 'skills'), tools, packVersion: context.pack.version });
+    const outputs = buildAdapters({ source: join(context.root, 'skills'), tools });
     if (rest[0] === 'refresh') {
       const result = refreshSkills({ base: values.scope === 'user' ? context.home : context.cwd, outputs });
       print(result.hosts.length ? `Refreshed ${result.hosts.join(', ')} skills at ${values.scope} scope. Restart the host to load them.` : `No Rubato skills are installed at ${values.scope} scope.`);

@@ -11,7 +11,7 @@ import { courseActions } from '../src/t3-actions.mjs';
 import { initCourse } from '../src/init.mjs';
 import { fixture, fakeTool, repository } from './helpers.mjs';
 
-const outputsFor = context => buildAdapters({ source: join(context.root, 'skills'), packVersion: context.pack.version });
+const outputsFor = context => buildAdapters({ source: join(context.root, 'skills') });
 const readState = base => JSON.parse(readFileSync(join(base, '.praxity/toolkit-skills.json'), 'utf8'));
 
 function assertExportProcedure(text, name) {
@@ -73,7 +73,7 @@ function assertRederivationRule(text, required = false) {
 }
 
 test('every course export procedure initializes identity first without flags', () => {
-  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  const outputs = buildAdapters({ source: join(repository, 'skills') });
   let exports = 0;
   for (const [name, bytes] of outputs.codex) {
     if (!name.endsWith('.md')) continue;
@@ -83,7 +83,7 @@ test('every course export procedure initializes identity first without flags', (
 });
 
 test('skills that initialize identity defer rederivation to the prax-format identity rule', () => {
-  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  const outputs = buildAdapters({ source: join(repository, 'skills') });
   for (const [name, bytes] of outputs.codex) {
     if (!name.endsWith('.md')) continue;
     assertRederivationRule(bytes.toString(), bytes.toString().includes('praxity identity init'));
@@ -91,7 +91,7 @@ test('skills that initialize identity defer rederivation to the prax-format iden
 });
 
 test('every Studio and export command initializes the same course first, with pinned invocation totals', () => {
-  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  const outputs = buildAdapters({ source: join(repository, 'skills') });
   const totals = { studio: 0, export: 0 };
   for (const [name, bytes] of outputs.codex) {
     if (!name.endsWith('.md')) continue;
@@ -140,7 +140,7 @@ function assertReservedReviewPort(section) {
 }
 
 test('review launch takes its port from the reserved Studio action in every adapter', () => {
-  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  const outputs = buildAdapters({ source: join(repository, 'skills') });
   for (const [host, files] of Object.entries(outputs)) {
     const skill = [...files].filter(([name]) => /studio-editor\/(?:SKILL\.md|references\/review-cli\.md)$/.test(name)).map(([, bytes]) => bytes.toString()).join('\n');
     const section = skill.split('## Open for review\n')[1].split('\n## ')[0];
@@ -193,7 +193,7 @@ test('busy review reservation reports the collision and requires consent before 
 });
 
 test('review launch obeys the same identity guard, including every generated adapter', () => {
-  const outputs = buildAdapters({ source: join(repository, 'skills'), packVersion: '0.1.0' });
+  const outputs = buildAdapters({ source: join(repository, 'skills') });
   for (const [host, files] of Object.entries(outputs)) {
     const skill = [...files].filter(([name]) => /studio-editor\/(?:SKILL\.md|references\/review-cli\.md)$/.test(name)).map(([, bytes]) => bytes.toString()).join('\n');
     const section = skill.split('## Open for review\n')[1]?.split('\n## ')[0];
@@ -308,10 +308,10 @@ test('tool-owned skills and references are collected unchanged', t => {
   const skill = '---\nname: praxity-trace\ndescription: Trace a course.\n---\nOwned by Trace.\n';
   writeFileSync(join(tool, 'SKILL.md'), skill);
   writeFileSync(join(tool, 'references/legal.txt'), 'Required notice.\n');
-  const outputs = buildAdapters({ source: join(context.root, 'skills'), tools: [tool], packVersion: '0.1.0' });
+  const outputs = buildAdapters({ source: join(context.root, 'skills'), tools: [tool] });
   assert.equal(outputs.codex.get('.agents/skills/praxity-trace/SKILL.md').toString(), skill);
   assert.equal(outputs.claude.get('.claude/skills/praxity-trace/references/legal.txt').toString(), 'Required notice.\n');
-  assert.throws(() => buildAdapters({ source: join(context.root, 'skills'), tools: [tool, tool], packVersion: '0.1.0' }), /Duplicate skill/);
+  assert.throws(() => buildAdapters({ source: join(context.root, 'skills'), tools: [tool, tool] }), /Duplicate skill/);
 });
 function brokenLinks(files) {
   const broken = [];
@@ -338,16 +338,16 @@ test('every relative link in an installed skill resolves inside the adapter (T12
   writeFileSync(join(studio, 'SKILL.md'), '---\nname: prax-format\ndescription: Write a course.\n---\nRead [blocks](reference/blocks.md) and [choices](skill/assessments.md).\n');
   writeFileSync(join(studio, 'skill/assessments.md'), 'See [blocks](../reference/blocks.md#choice). Not a link: `![alt](source)`.\n');
   writeFileSync(join(studio, 'reference/blocks.md'), '# Blocks\n');
-  const outputs = buildAdapters({ source: join(repository, 'skills'), tools: [studio], packVersion: '0.1.0' });
+  const outputs = buildAdapters({ source: join(repository, 'skills'), tools: [studio] });
   for (const host of ['claude', 'codex']) assert.deepEqual(brokenLinks(outputs[host]), [], host);
   assert.ok(outputs.claude.has('.claude/skills/prax-format/reference/blocks.md'));
   // A skill that links out of its own folder fails the same check.
   writeFileSync(join(studio, 'SKILL.md'), '---\nname: prax-format\ndescription: Write a course.\n---\nRead [blocks](../reference/blocks.md).\n');
-  const outside = buildAdapters({ source: join(repository, 'skills'), tools: [studio], packVersion: '0.1.0' });
+  const outside = buildAdapters({ source: join(repository, 'skills'), tools: [studio] });
   assert.deepEqual(brokenLinks(outside.codex), ['.agents/skills/prax-format/SKILL.md -> ../reference/blocks.md']);
   // So does a link into another installed skill, although its target exists.
   writeFileSync(join(studio, 'SKILL.md'), '---\nname: prax-format\ndescription: Write a course.\n---\nSee [the editor](../studio-editor/SKILL.md).\n');
-  const sibling = buildAdapters({ source: join(repository, 'skills'), tools: [studio], packVersion: '0.1.0' });
+  const sibling = buildAdapters({ source: join(repository, 'skills'), tools: [studio] });
   assert.ok(sibling.codex.has('.agents/skills/studio-editor/SKILL.md'));
   assert.deepEqual(brokenLinks(sibling.codex), ['.agents/skills/prax-format/SKILL.md -> ../studio-editor/SKILL.md']);
 });
@@ -357,7 +357,7 @@ test('portable CRLF skills retain their bytes and require real frontmatter', t =
   const tool = join(context.root, 'Windows portable skill'); mkdirSync(tool);
   const skill = '---\r\nname: praxity-check\r\ndescription: Check a course.\r\n---\r\nTool-owned instructions.\r\n';
   writeFileSync(join(tool, 'SKILL.md'), skill);
-  const options = { source: join(context.root, 'skills'), tools: [tool], packVersion: '0.1.0' };
+  const options = { source: join(context.root, 'skills'), tools: [tool] };
   assert.equal(buildAdapters(options).codex.get('.agents/skills/praxity-check/SKILL.md').toString(), skill);
   writeFileSync(join(tool, 'SKILL.md'), '---\nname: praxity-check\n---\nNo description.\n');
   assert.throws(() => buildAdapters(options), /Invalid skill frontmatter/);
@@ -539,4 +539,29 @@ test('doctor reports changed skills and reinstall repairs them', async t => {
   assert.equal(host().fix, 'praxity skills install --host codex --scope project');
   await runCli(['skills', 'install', '--host', 'codex', '--scope', 'project'], context, quiet);
   assert.equal(host().status, 'ok');
+});
+
+for (const operation of ['install', 'uninstall']) for (const recorded of [false, true]) test(`${operation} refuses an unowned same-name skill folder, record=${recorded}`, async t => {
+  const { context } = fixture(t);
+  const folder = join(context.home, '.claude/skills/composer');
+  mkdirSync(folder, { recursive: true }); writeFileSync(join(folder, 'notes.txt'), 'My own skill');
+  writeFileSync(join(folder, 'SKILL.md'), 'My own skill definition');
+  if (recorded) {
+    mkdirSync(join(context.home, '.praxity'));
+    writeFileSync(join(context.home, '.praxity/toolkit-skills.json'), '{"owner":"praxity-toolkit","hosts":["claude"],"skills":{"claude":[]}}');
+  }
+  await assert.rejects(runCli(['skills', operation, '--host', 'claude', '--scope', 'user'], context, { print() {} }), /Unowned skill folder.*composer.*refusing/i);
+  assert.equal(readFileSync(join(folder, 'notes.txt'), 'utf8'), 'My own skill');
+  assert.equal(readFileSync(join(folder, 'SKILL.md'), 'utf8'), 'My own skill definition');
+});
+
+test('a failed skill copy records its names before writing and can be retried', t => {
+  const { context } = fixture(t);
+  const outputs = { claude: new Map([['.claude/skills/composer/SKILL.md', null]]) };
+  const options = { base: context.home, host: 'claude', outputs };
+  assert.throws(() => installSkills(options), { code: 'ERR_INVALID_ARG_TYPE' });
+  assert.deepEqual(readState(context.home), { owner: 'praxity-toolkit', hosts: ['claude'], skills: { claude: ['composer'] } });
+  outputs.claude.set('.claude/skills/composer/SKILL.md', Buffer.from('Fresh skill\n'));
+  installSkills(options);
+  assert.equal(readFileSync(join(context.home, '.claude/skills/composer/SKILL.md'), 'utf8'), 'Fresh skill\n');
 });

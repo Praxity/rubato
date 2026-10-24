@@ -107,12 +107,12 @@ export function doctor(context, run = probeProcess) {
       const path = join(context.root, 'tools', tool.id, tool.skillPath ?? 'skill');
       return context.state.installed.includes(tool.id) && existsSync(path) ? [path] : [];
     });
-    const generated = buildAdapters({ source: join(context.root, 'skills'), tools: toolSkills, packVersion: context.pack.version });
+    const generated = buildAdapters({ source: join(context.root, 'skills'), tools: toolSkills });
     for (const [scope, base] of [['user', context.home], ['project', context.cwd]]) for (const host of Object.keys(adapters)) {
       const install = `praxity skills install --host ${host} --scope ${scope}`;
       let presence;
       try { presence = skillPresence({ base, host, outputs: generated }); }
-      catch (error) { items.push(item(`host.${host}.${scope}`, 'failed', error.message, `Restore the record from a backup, or move it and the Rubato skills in ${adapters[host].skills} aside, then run ${install}`)); continue; }
+      catch (error) { items.push(item(`host.${host}.${scope}`, 'partial', error.message, `Delete ${join(base, '.praxity/toolkit-skills.json')}, then run ${install}`)); continue; }
       const { current, stale, missing } = presence;
       if (!stale.length && !missing.length) items.push(item(`host.${host}.${scope}`, 'ok', `Skill files current in ${adapters[host].skills}; verify invocation in the host`));
       else items.push(item(`host.${host}.${scope}`, !current.length && !stale.length ? 'not-installed' : 'partial', [missing.length && `Missing skills: ${missing.join(', ')}.`, stale.length && `Changed or out-of-date skills: ${stale.join(', ')}.`].filter(Boolean).join(' '), install));

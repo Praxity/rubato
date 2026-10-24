@@ -279,6 +279,7 @@ The installer owns everything in `~/.praxity/toolkit` and the launcher at
 failures publish no version or launcher. Installed file damage is refused.
 Roll back to an intact previous pack, or uninstall and reinstall. A different
 manifest needs a new pack version. There is no migration of prerelease installs.
+Old files `~/.praxity-toolkit-bootstrap.tsv`, `~/.praxity/toolkit/.install-ledger.tsv` and `~/.praxity/toolkit/.bootstrap-*` can be deleted.
 
 Activation writes both version pointers to a temporary file, then renames it to
 `active`. If the version check or doctor fails, it restores the previous `active`
@@ -323,7 +324,7 @@ first. A same-host copy in the other scope blocks a competing installation.
 Rubato does not edit host settings, shell profiles or AGENTS files.
 
 Rubato owns its installed skill folders by name. Install and refresh delete
-those folders and copy fresh content, including replacing local edits and
+recorded folders and copy fresh content, including replacing local edits and
 removing added files. Keep custom skills under different names. There is no
 migration of former plugin layouts or prerelease records.
 
@@ -400,9 +401,10 @@ SCORM fixture. It checks the shared Claude and Codex skill folders at both
 scopes, with `host.claude` and `host.codex` items. An adapter missing some of
 this pack's skills, or holding changed copies, is `partial`; its message names
 those skills and its fix is the `praxity skills install` command that refreshes
-them. Install keeps a copy you edited, so for those the fix first asks you to
-move it out of the skills folder. `launcher.path` reports whether the first
-`praxity` on PATH is the Rubato launcher.
+them. Install replaces edited copies in recorded Rubato folders. Unrecorded
+same-name folders are preserved and block installation until you move them
+aside. `launcher.path` reports whether the first `praxity` on PATH is the
+Rubato launcher.
 Probes time out after 30 seconds and cap captured output at 1 MiB.
 Temporary probe documents are removed. It does not launch an editor or run a
 full Check audit.

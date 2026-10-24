@@ -14,12 +14,15 @@ import { installationPlan } from '../src/manifest.mjs';
 const passed = result => assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 test('POSIX bootstrap fresh install and idempotent rerun, with spaces and no profile edits', t => {
   const setup = installation(t);
+  const stale = join(setup.toolkit, '.install.abandoned');
+  mkdirSync(stale, { recursive: true }); writeFileSync(join(stale, 'partial'), 'Interrupted stage');
   const plan = installationPlan(setup.pack, 'darwin-arm64');
   assert.deepEqual(plan.map(item => item.id), ['node', 'typst', 'studio', 'trace', 'print']);
   for (const item of plan) assert.equal(new URL(item.url).protocol, 'file:');
   writeFileSync(join(setup.home, '.profile'), 'User profile\n');
   writeFileSync(join(setup.home, 'AGENTS.md'), 'User instructions\n');
   passed(setup.install());
+  assert.equal(existsSync(stale), false);
   const current = join(setup.toolkit, '0.1.0');
   assert.ok(existsSync(join(current, 'state.json')));
   assert.deepEqual(JSON.parse(readFileSync(join(current, 'state.json'))).installed, ['studio', 'trace', 'print']);
@@ -221,4 +224,22 @@ test('uninstall removes the entire installer-owned toolkit and launcher', t => {
   passed(setup.action('uninstall'));
   assert.equal(existsSync(setup.toolkit), false);
   assert.equal(existsSync(join(setup.home, '.praxity/bin/praxity')), false);
+});
+
+test('a pack published by another run is not replaced or given a nested stage', t => {
+  const setup = installation(t);
+  const node = join(setup.root, 'fake node/bin/node');
+  writeFileSync(node, readFileSync(node, 'utf8').replace('\nexec ', '\n') + `
+status=$?
+if [ "$status" = 0 ] && [ "${'$'}{2:-}" = finalize ]; then
+  cp -R "$5" "$6/0.1.0"
+  printf 'Other run\\n' > "$6/0.1.0/concurrent.txt"
+fi
+exit "$status"
+`);
+  setup.pack.runtimes.node.archives['darwin-arm64'] = archive(join(setup.root, 'fake node'), join(setup.root, 'concurrent node.tar.gz'));
+  setup.save(); passed(setup.install());
+  assert.equal(readFileSync(join(setup.toolkit, '0.1.0/concurrent.txt'), 'utf8'), 'Other run\n');
+  assert.equal(existsSync(join(setup.toolkit, '0.1.0/stage')), false);
+  assert.equal(readFileSync(join(setup.toolkit, 'active'), 'utf8'), '0.1.0\n\n');
 });
