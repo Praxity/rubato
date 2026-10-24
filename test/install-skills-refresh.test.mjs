@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { installation, archive, posix, quote, shell, replaceInstalled } from './installer-fixture.mjs';
+import { installation, archive, posix, quote, shell } from './installer-fixture.mjs';
 
 const passed = result => assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 
@@ -49,26 +49,14 @@ test('an upgrade refreshes changed tool skills for both recorded adapters', t =>
   assert.deepEqual(JSON.parse(readFileSync(join(setup.home, '.praxity/toolkit-skills.json'))).hosts, ['claude', 'codex']);
 });
 
-test('a refused skill refresh exits nonzero, keeps the active pack and names the refresh command', t => {
+test('a reinstall replaces edited skill folders and removes added files', t => {
   const setup = installation(t);
   passed(setup.install());
   passed(shell(`${quote(posix(join(setup.home, '.praxity/bin/praxity')))} skills install --host claude --scope user`, { env: setup.env }));
-  const edited = join(setup.home, '.claude/skills/prax-format/SKILL.md');
-  writeFileSync(edited, 'MY EDITS');
-  setup.pack.version = '0.2.0'; setup.save();
-  const upgrade = setup.install(); assert.equal(upgrade.status, 1, `${upgrade.stdout}\n${upgrade.stderr}`);
-  assert.match(upgrade.stderr, /Owned adapter changed/);
-  assert.match(upgrade.stderr, /then run praxity skills refresh --scope user\. Their ownership record is ~\/\.praxity\/toolkit-skills\.json\./);
-  assert.equal(readFileSync(join(setup.toolkit, 'active'), 'utf8'), '0.2.0\n0.1.0\n');
-  assert.equal(readFileSync(edited, 'utf8'), 'MY EDITS');
-});
-
-test('reactivating a pack whose CLI predates skills refresh skips the refresh quietly', t => {
-  const setup = installation(t);
+  const folder = join(setup.home, '.claude/skills/prax-format');
+  writeFileSync(join(folder, 'SKILL.md'), 'MY EDITS');
+  writeFileSync(join(folder, 'extra.txt'), 'STALE FILE');
   passed(setup.install());
-  // Packs before 0.1.0 answer skills refresh with their usage line.
-  replaceInstalled(setup, '0.1.0', 'src/cli.mjs', "if (process.argv[2] === 'version') { console.log('{}'); process.exit(0); }\nconsole.error('Usage: praxity skills install|uninstall'); process.exit(1);\n");
-  const rerun = setup.install(); passed(rerun);
-  assert.doesNotMatch(rerun.stderr, /Usage|not refreshed/);
-  assert.match(rerun.stdout, /Installed pack 0\.1\.0/);
+  assert.equal(readFileSync(join(folder, 'SKILL.md'), 'utf8'), '---\nname: prax-format\ndescription: Write a course.\n---\nTool-owned skill.\n');
+  assert.equal(existsSync(join(folder, 'extra.txt')), false);
 });

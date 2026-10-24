@@ -176,7 +176,7 @@ the metadata API; asset downloads use the server's default representation.
 Local fixtures check these headers. The tests include no recorded or live
 GitHub asset response.
 The installer verifies runtime and tool archives and activates the pack with
-its existing ownership journal and atomic version switch. The previous pack
+its atomic version switch. The previous pack
 remains available to `praxity rollback`. Downloads or checksum failures leave
 the old pack active. A doctor failure after activation restores the previous
 activation and exits nonzero. A failed first activation removes its active
@@ -193,9 +193,9 @@ Installation refreshes owned user skills. Update also runs the same skill
 refresh command at project scope in the nearest parent directory with a
 Rubato skills ownership record, including the current directory. The home
 directory remains user scope. No ownership record means no project skills
-are added. Modified owned files and unowned files are
-preserved; a refused refresh names the command to retry after resolving the
-reported file. A pack can be active even when a skill refresh refuses.
+are added. Refresh replaces Rubato skill folders, including local edits, and
+preserves skills with other names. A failed refresh names the command to retry.
+A pack can be active even when a skill refresh fails.
 Start a new host session if it needs to discover changed skills.
 
 `praxity version`, also available as `praxity --version`, reports the active pack and `studioSha`. New releases record
@@ -270,35 +270,19 @@ export it with Studio before replacing your working course.
 ## Recovery
 
 Rerun the same installer after a failed download or interruption. Complete
-verified archives remain in the cache; partial downloads restart. A stale lock
-is reclaimed only if the ownership ledger records its creation and its process
-is dead. A live lock stops the run.
-The installer writes its intended paths and hashes to `.install-ledger.tsv`
-before downloading, extracting, copying or moving files. Reruns discard recorded
-unfinished writes and rebuild the stage, or finish activating a verified version
-that was already moved into place. Files absent from the journal are preserved
-and stop recovery. Completed files with changed bytes also stop recovery.
+SHA-256-verified archives remain in the cache; partial downloads restart.
+Each run builds in a fresh temporary directory. A crashed run is repaired by
+rerunning install.
 
-If the journal is corrupted, close Studio and keep the reported files. Move
-`~/.praxity/toolkit` and `~/.praxity/bin/praxity` to a backup folder outside
-`~/.praxity`, then rerun the reviewed installer. If present, move
-`~/.praxity-toolkit-bootstrap.tsv` to that backup too. Do not delete the journal
-and run uninstall, since the installer would no longer know which files it owns.
-Keep the backup until you have recovered any personal files from it.
-Checksum failures publish no version or launcher. Installed file damage is
-refused. Roll back to an intact previous pack, or use the backup procedure above
-before reinstalling. A different manifest needs a new pack version.
+The installer owns everything in `~/.praxity/toolkit` and the launcher at
+`~/.praxity/bin/praxity`. Keep personal files outside these paths. Checksum
+failures publish no version or launcher. Installed file damage is refused.
+Roll back to an intact previous pack, or uninstall and reinstall. A different
+manifest needs a new pack version. There is no migration of prerelease installs.
 
-Release candidates 1 and 2 labelled themselves 0.1.0 and installed to
-`~/.praxity/toolkit/0.1.0`. When you install any pack, the installer recognises
-either candidate by its manifest's SHA-256, checks its files, and moves it to
-`~/.praxity/toolkit/0.1.0-rc.1`. The version pointers follow it, so rollback
-still reaches it. While Studio or another praxity command runs from that
-folder, the installer refuses and lists those processes. Any other manifest in
-that folder is refused as before. Every install checks for a candidate first,
-so a damaged one blocks installing any version. Rollback can't help, because
-the candidate is the pack it returns to. Move it aside with the backup steps
-under Recovery, then rerun.
+Activation writes both version pointers to a temporary file, then renames it to
+`active`. If the version check or doctor fails, it restores the previous `active`
+with another rename. After an interruption, rerun install to check the pack again.
 
 Updates retain the previous version. Both version pointers change in one atomic
 rename. Rollback checks the destination pack and keeps the outgoing pack, even
@@ -310,10 +294,9 @@ a pack. Rollback and uninstall do not detect dirty editor sessions.
 sh /absolute/path/to/rubato/install.sh uninstall
 ```
 
-Uninstall removes owned pack versions, staged downloads and its unchanged
-launcher. It preserves optional tool components, generated host skills and
-unrelated `~/.praxity` data. User additions inside packs, caches and stages, and modified or unowned files
-are refused before removal. Host skills retain their separate ownership record.
+Uninstall removes `~/.praxity/toolkit` and `~/.praxity/bin/praxity`, including
+any modified files inside them. It preserves optional tool components,
+generated host skills and other `~/.praxity` data.
 
 ## Skills
 
@@ -336,29 +319,19 @@ the current directory. Install at the actual project root. There are two
 adapters: `claude` and `codex`. `t3` remains an alias for `claude`.
 
 Both adapters may coexist in one scope. Installing another adapter retains the
-first. Each host gets one copy per skill. A same-host copy in the other scope,
-a legacy Codex skill in `.codex/skills`, or an unowned Praxity plugin blocks a
-competing installation. Unowned skills for a different host are preserved.
+first. A same-host copy in the other scope blocks a competing installation.
 Rubato does not edit host settings, shell profiles or AGENTS files.
 
-Ownership and recovery intents live in `.praxity/toolkit-skills.json`. Existing
-single-host records migrate automatically. The former owned Claude plugin moves
-to plain skills, and its unchanged files are removed. Modified or unowned files
-are preserved and stop migration or removal. Install recreates owned files you
-deleted or moved away, and so does the next pack install, because it refreshes
-skills. To stop using Rubato's skills for a host, run
-`praxity skills uninstall` with that `--host`; it tolerates files you already
-deleted. Stop active host sessions before
-migrating the plugin, then start a new session without its old `--plugin-dir`.
-The generator emits only the two current layouts into a fresh output directory.
+Rubato owns its installed skill folders by name. Install and refresh delete
+those folders and copy fresh content, including replacing local edits and
+removing added files. Keep custom skills under different names. There is no
+migration of former plugin layouts or prerelease records.
 
-Installing a new pack runs `praxity skills refresh --scope user`. It regenerates
-only the adapters recorded in `~/.praxity/toolkit-skills.json`, so new tool
-skills appear and unowned skills stay as they are. A record from an early
-release candidate's `t3` or `codex` adapter moves to the current format on
-refresh. One for the former Claude plugin waits for `praxity skills install`,
-since it needs host sessions stopped. Refresh project-scope
-adapters yourself with `praxity skills refresh --scope project` in the project.
+`.praxity/toolkit-skills.json` records installed hosts and folder names.
+Installing a pack runs `praxity skills refresh --scope user` for recorded hosts,
+so new tool skills appear. Refresh project-scope adapters yourself with
+`praxity skills refresh --scope project` in the project. A failed or interrupted
+copy is repaired by rerunning the same command.
 
 Remove one adapter with `praxity skills uninstall --host claude --scope user`
 or `--host codex`. The other adapter remains installed. `--host t3` removes the

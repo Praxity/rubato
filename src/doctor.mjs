@@ -113,11 +113,9 @@ export function doctor(context, run = probeProcess) {
       let presence;
       try { presence = skillPresence({ base, host, outputs: generated }); }
       catch (error) { items.push(item(`host.${host}.${scope}`, 'failed', error.message, `Restore the record from a backup, or move it and the Rubato skills in ${adapters[host].skills} aside, then run ${install}`)); continue; }
-      const { current, stale, missing, edited } = presence;
-      // Install keeps edited owned files, but recreates moved or deleted ones.
-      const fix = edited.length ? `Move your edited copies of ${edited.join(', ')} out of ${adapters[host].skills}, then run ${install}` : install;
-      if (!stale.length && !missing.length && !edited.length) items.push(item(`host.${host}.${scope}`, 'ok', `Skill files current in ${adapters[host].skills}; verify invocation in the host`));
-      else items.push(item(`host.${host}.${scope}`, !current.length && !stale.length ? 'not-installed' : 'partial', [missing.length && `Missing skills: ${missing.join(', ')}.`, stale.length && `Changed or out-of-date skills: ${stale.join(', ')}.`, edited.length && `Edited skill files: ${edited.join(', ')}.`].filter(Boolean).join(' '), fix));
+      const { current, stale, missing } = presence;
+      if (!stale.length && !missing.length) items.push(item(`host.${host}.${scope}`, 'ok', `Skill files current in ${adapters[host].skills}; verify invocation in the host`));
+      else items.push(item(`host.${host}.${scope}`, !current.length && !stale.length ? 'not-installed' : 'partial', [missing.length && `Missing skills: ${missing.join(', ')}.`, stale.length && `Changed or out-of-date skills: ${stale.join(', ')}.`].filter(Boolean).join(' '), install));
     }
     // T3 actions call the launcher by its full path, so a missing PATH entry
     // only affects typed commands. The doctor names the line; it never edits it.

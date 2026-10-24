@@ -11,11 +11,3 @@ contained() (
     CURSOR=${CURSOR%/*}
   done
 )
-check_stage() {
-  contained "$1"
-  if [ -d "$1" ]; then
-    # Node checks every resumed link against the whole stage. Recorded internal
-    # archive links remain valid; extraction still checks its own ancestors.
-    "$NODE" "$SCRIPT_DIR/src/install.mjs" inspect "${MANIFEST_FILE:-$ROOT/.manifest.json}" "$PLATFORM" "$1"
-  fi
-}
