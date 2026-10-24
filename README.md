@@ -273,13 +273,15 @@ Rerun the same installer after a failed download or interruption. Complete
 SHA-256-verified archives remain in the cache; partial downloads restart.
 Each run builds in a fresh temporary directory. A crashed run is repaired by
 rerunning install.
+If a stopped run left `~/.praxity/toolkit/.install.lock`, delete that directory
+before rerunning.
 
 The installer owns everything in `~/.praxity/toolkit` and the launcher at
 `~/.praxity/bin/praxity`. Keep personal files outside these paths. Checksum
 failures publish no version or launcher. Installed file damage is refused.
 Roll back to an intact previous pack, or uninstall and reinstall. A different
 manifest needs a new pack version. There is no migration of prerelease installs.
-Old files `~/.praxity-toolkit-bootstrap.tsv`, `~/.praxity/toolkit/.install-ledger.tsv` and `~/.praxity/toolkit/.bootstrap-*` can be deleted.
+Old files `~/.praxity-toolkit-bootstrap.tsv`, `~/.praxity/toolkit/.install-ledger.tsv`, `~/.praxity/toolkit/.bootstrap-*` and `~/.praxity/toolkit-skills.json` can be deleted.
 
 Activation writes both version pointers to a temporary file, then renames it to
 `active`. If the version check or doctor fails, it restores the previous `active`

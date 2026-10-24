@@ -28,28 +28,36 @@ BIN="$INSTALL_HOME/.praxity/bin"
 . "$SCRIPT_DIR/scripts/install-paths.sh"
 contained "$ROOT"
 contained "$BIN/praxity"
-if [ "$ACTION" = uninstall ]; then
-  rm -rf "$ROOT"
-  rm -f "$BIN/praxity"
-  printf '%s\n' 'Rubato removed. Host skills and optional tool components remain installed.'
-  exit 0
-fi
-command -v shasum >/dev/null 2>&1 || die 'Install needs shasum -a 256'
 mkdir -p "$ROOT"
-rm -rf "$ROOT"/.install.*
-WORK=$(mktemp -d "$ROOT/.install.XXXXXX")
+mkdir "$ROOT/.install.lock" 2>/dev/null || die "Another install is running; if not, delete $ROOT/.install.lock and rerun."
+WORK=
 LAUNCHER_TEMP=
 cleanup() {
   STATUS=$?
   trap - EXIT
   [ -z "$LAUNCHER_TEMP" ] || rm -f "$LAUNCHER_TEMP"
-  rm -rf "$WORK"
+  [ -z "$WORK" ] || rm -rf "$WORK"
+  rmdir "$ROOT/.install.lock"
+  if [ "$ACTION" = uninstall ] && [ "$STATUS" -eq 0 ]; then rmdir "$ROOT"; fi
   if [ "$STATUS" -ne 0 ]; then printf '%s\n' 'Install did not finish. Resolve the error and rerun install; rerunning also repairs an interrupted install.' >&2; fi
   exit "$STATUS"
 }
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+if [ "$ACTION" = uninstall ]; then
+  for ENTRY in "$ROOT"/* "$ROOT"/.[!.]* "$ROOT"/..?*; do
+    [ "$ENTRY" = "$ROOT/.install.lock" ] || rm -rf "$ENTRY"
+  done
+  rm -f "$BIN/praxity"
+  printf '%s\n' 'Rubato removed. Host skills and optional tool components remain installed.'
+  exit 0
+fi
+command -v shasum >/dev/null 2>&1 || die 'Install needs shasum -a 256'
+for STALE in "$ROOT"/.install.*; do
+  [ "$STALE" = "$ROOT/.install.lock" ] || rm -rf "$STALE"
+done
+WORK=$(mktemp -d "$ROOT/.install.XXXXXX")
 new_temp() { mktemp "$WORK/item.XXXXXX"; }
 capture() { OUTPUT=$1; shift; "$@" > "$OUTPUT"; }
 sha256() { shasum -a 256 "$1" | awk '{print $1}'; }
@@ -195,12 +203,7 @@ else
   for FILE in install.sh package.json; do cp "$SCRIPT_DIR/$FILE" "$STAGE/$FILE"; done
   cp "$MANIFEST_FILE" "$STAGE/pack.json"
   "$NODE" "$SCRIPT_DIR/src/install.mjs" finalize "$STAGE/pack.json" "$PLATFORM" "$STAGE" "$ROOT"
-  if [ -e "$ROOT/$VERSION" ]; then
-    rm -rf "$STAGE"
-    "$NODE" "$SCRIPT_DIR/src/install.mjs" verify "$MANIFEST_FILE" "$PLATFORM" "$ROOT/$VERSION"
-  else
-    mv "$STAGE" "$ROOT/$VERSION"
-  fi
+  mv "$STAGE" "$ROOT/$VERSION"
 fi
 mkdir -p "$BIN"
 LAUNCHER_TEMP=$(mktemp "$BIN/.praxity-launcher.XXXXXX")

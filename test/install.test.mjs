@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmdirSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -23,6 +23,7 @@ test('POSIX bootstrap fresh install and idempotent rerun, with spaces and no pro
   writeFileSync(join(setup.home, 'AGENTS.md'), 'User instructions\n');
   passed(setup.install());
   assert.equal(existsSync(stale), false);
+  assert.equal(existsSync(join(setup.toolkit, '.install.lock')), false);
   const current = join(setup.toolkit, '0.1.0');
   assert.ok(existsSync(join(current, 'state.json')));
   assert.deepEqual(JSON.parse(readFileSync(join(current, 'state.json'))).installed, ['studio', 'trace', 'print']);
@@ -41,6 +42,7 @@ test('checksum mismatch refuses publication and launchers', t => {
   setup.pack.tools[0].archives['darwin-arm64'].sha256 = 'a'.repeat(64); setup.save();
   const result = setup.install();
   assert.notEqual(result.status, 0); assert.match(result.stderr, /Checksum mismatch/);
+  assert.equal(existsSync(join(setup.toolkit, '.install.lock')), false);
   assert.equal(existsSync(join(setup.toolkit, 'active')), false);
   assert.equal(existsSync(join(setup.toolkit, '0.1.0')), false);
   assert.equal(existsSync(join(setup.home, '.praxity/bin/praxity')), false);
@@ -226,20 +228,20 @@ test('uninstall removes the entire installer-owned toolkit and launcher', t => {
   assert.equal(existsSync(join(setup.home, '.praxity/bin/praxity')), false);
 });
 
-test('a pack published by another run is not replaced or given a nested stage', t => {
+for (const action of ['install', 'rollback', 'uninstall']) test(`the install lock blocks ${action} before touching another run's files`, t => {
   const setup = installation(t);
-  const node = join(setup.root, 'fake node/bin/node');
-  writeFileSync(node, readFileSync(node, 'utf8').replace('\nexec ', '\n') + `
-status=$?
-if [ "$status" = 0 ] && [ "${'$'}{2:-}" = finalize ]; then
-  cp -R "$5" "$6/0.1.0"
-  printf 'Other run\\n' > "$6/0.1.0/concurrent.txt"
-fi
-exit "$status"
-`);
-  setup.pack.runtimes.node.archives['darwin-arm64'] = archive(join(setup.root, 'fake node'), join(setup.root, 'concurrent node.tar.gz'));
-  setup.save(); passed(setup.install());
-  assert.equal(readFileSync(join(setup.toolkit, '0.1.0/concurrent.txt'), 'utf8'), 'Other run\n');
-  assert.equal(existsSync(join(setup.toolkit, '0.1.0/stage')), false);
-  assert.equal(readFileSync(join(setup.toolkit, 'active'), 'utf8'), '0.1.0\n\n');
+  const lock = join(setup.toolkit, '.install.lock'), work = join(setup.toolkit, '.install.running');
+  mkdirSync(lock, { recursive: true }); mkdirSync(work);
+  writeFileSync(join(work, 'partial'), 'Another run');
+  const result = setup.action(action);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Another install is running; if not, delete .*\.install\.lock/);
+  assert.equal(existsSync(lock), true);
+  assert.equal(readFileSync(join(work, 'partial'), 'utf8'), 'Another run');
+  if (action === 'install') {
+    rmdirSync(lock);
+    passed(setup.install());
+    assert.equal(existsSync(work), false);
+    assert.equal(existsSync(lock), false);
+  }
 });

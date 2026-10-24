@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { delimiter, dirname, join, relative } from 'node:path';
 import { doctor } from '../src/doctor.mjs';
+import { runCli } from '../src/cli.mjs';
 import { loadSchema, validateSchema } from '../src/schema.mjs';
 import { fixture, fakeTool } from './helpers.mjs';
 
@@ -166,23 +167,34 @@ for (const bytes of ['null', '{"files":']) test(`an unreadable skills ownership 
   const item = result.items.find(item => item.id === 'host.codex.user');
   assert.equal(item.status, 'partial');
   assert.equal(item.message, `Unreadable skills ownership record: ${join(context.home, '.praxity/toolkit-skills.json')}`);
-  assert.equal(item.fix, `Delete ${join(context.home, '.praxity/toolkit-skills.json')}, then run praxity skills install --host codex --scope user`);
+  assert.equal(item.fix, `Delete ${join(context.home, '.praxity/toolkit-skills.json')} and the Rubato skill folders in ${join(context.home, '.agents/skills')}: assessment-writing, composer, install-praxity, studio-editor, then run praxity skills install --host codex --scope user`);
   assert.equal(result.items.find(item => item.id === 'host.codex.project').status, 'not-installed');
   assert.equal(result.exitCode, 1);
 });
 
-for (const scope of ['user', 'project']) test(`an old-shape ${scope} skills record does not fail doctor`, t => {
+for (const scope of ['user', 'project']) test(`an old-shape ${scope} skills record has a working doctor fix`, async t => {
   const { context } = fixture(t);
   const base = scope === 'user' ? context.home : context.cwd;
   const record = join(base, '.praxity/toolkit-skills.json');
   const bytes = '{"owner":"praxity-toolkit","schemaVersion":2,"hosts":["claude"],"files":{}}';
   mkdirSync(dirname(record), { recursive: true }); writeFileSync(record, bytes);
+  const folders = ['assessment-writing', 'composer', 'install-praxity', 'studio-editor'];
+  for (const name of folders) {
+    const folder = join(base, '.claude/skills', name);
+    mkdirSync(folder, { recursive: true }); writeFileSync(join(folder, 'SKILL.md'), 'Old Rubato skill');
+  }
   const result = doctor(context, () => ({ code: 0, stdout: 'v24.22.1', stderr: '' }));
   assert.equal(result.exitCode, 0);
   for (const host of ['claude', 'codex']) {
     const item = result.items.find(item => item.id === `host.${host}.${scope}`);
     assert.equal(item.status, 'partial');
-    assert.equal(item.fix, `Delete ${record}, then run praxity skills install --host ${host} --scope ${scope}`);
+    const adapter = host === 'claude' ? '.claude/skills' : '.agents/skills';
+    assert.equal(item.fix, `Delete ${record} and the Rubato skill folders in ${join(base, adapter)}: assessment-writing, composer, install-praxity, studio-editor, then run praxity skills install --host ${host} --scope ${scope}`);
   }
   assert.equal(readFileSync(record, 'utf8'), bytes);
+  rmSync(record);
+  for (const name of folders) rmSync(join(base, '.claude/skills', name), { recursive: true });
+  assert.equal(await runCli(['skills', 'install', '--host', 'claude', '--scope', scope], context, { print() {} }), 0);
+  const repaired = doctor(context, () => ({ code: 0, stdout: 'v24.22.1', stderr: '' }));
+  assert.equal(repaired.items.find(item => item.id === `host.claude.${scope}`).status, 'ok');
 });

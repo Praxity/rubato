@@ -124,7 +124,7 @@ function changeSkills({ base, otherBase, host, outputs, remove }) {
   const files = [];
   const changes = selected.map(value => {
     const root = adapters[value].skills;
-    const entries = [...outputs[value]];
+    const entries = remove ? [] : [...outputs[value]];
     const names = [...new Set(entries.map(([name]) => {
       if (!name.startsWith(`${root}/`)) throw new Error(`Unsafe adapter path: ${name}`);
       contained(base, name);
@@ -133,9 +133,9 @@ function changeSkills({ base, otherBase, host, outputs, remove }) {
       return skill;
     }))];
     const owned = state.skills[value] ?? [];
-    const directories = [...new Set([...owned, ...names])].map(name => {
+    const directories = [...new Set(remove ? owned : [...owned, ...names])].map(name => {
       const directory = contained(base, `${root}/${name}`);
-      if (existsSync(directory) && !owned.includes(name)) throw new Error(`Unowned skill folder: ${directory}; refusing ${remove ? 'removal' : 'overwrite'}. Move it aside before retrying.`);
+      if (!remove && existsSync(directory) && !owned.includes(name)) throw new Error(`Unowned skill folder: ${directory}; refusing overwrite. Move it aside before retrying.`);
       return directory;
     });
     if (!remove && otherBase && realpathSync(otherBase) !== base) for (const name of names) {

@@ -541,7 +541,7 @@ test('doctor reports changed skills and reinstall repairs them', async t => {
   assert.equal(host().status, 'ok');
 });
 
-for (const operation of ['install', 'uninstall']) for (const recorded of [false, true]) test(`${operation} refuses an unowned same-name skill folder, record=${recorded}`, async t => {
+for (const operation of ['install', 'uninstall']) for (const recorded of [false, true]) test(`${operation} ${operation === 'install' ? 'refuses' : 'preserves'} an unowned same-name skill folder, record=${recorded}`, async t => {
   const { context } = fixture(t);
   const folder = join(context.home, '.claude/skills/composer');
   mkdirSync(folder, { recursive: true }); writeFileSync(join(folder, 'notes.txt'), 'My own skill');
@@ -550,7 +550,9 @@ for (const operation of ['install', 'uninstall']) for (const recorded of [false,
     mkdirSync(join(context.home, '.praxity'));
     writeFileSync(join(context.home, '.praxity/toolkit-skills.json'), '{"owner":"praxity-toolkit","hosts":["claude"],"skills":{"claude":[]}}');
   }
-  await assert.rejects(runCli(['skills', operation, '--host', 'claude', '--scope', 'user'], context, { print() {} }), /Unowned skill folder.*composer.*refusing/i);
+  const command = () => runCli(['skills', operation, '--host', 'claude', '--scope', 'user'], context, { print() {} });
+  if (operation === 'install') await assert.rejects(command(), /Unowned skill folder.*composer.*refusing/i);
+  else assert.equal(await command(), 0);
   assert.equal(readFileSync(join(folder, 'notes.txt'), 'utf8'), 'My own skill');
   assert.equal(readFileSync(join(folder, 'SKILL.md'), 'utf8'), 'My own skill definition');
 });
