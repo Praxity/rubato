@@ -39,7 +39,7 @@ cleanup() {
   [ -z "$WORK" ] || rm -rf "$WORK"
   rmdir "$ROOT/.install.lock"
   if [ "$ACTION" = uninstall ] && [ "$STATUS" -eq 0 ]; then rmdir "$ROOT"; fi
-  if [ "$STATUS" -ne 0 ]; then printf '%s\n' 'Install did not finish. Resolve the error and rerun install; rerunning also repairs an interrupted install.' >&2; fi
+  if [ "$STATUS" -ne 0 ] && [ "${REFRESH_CODE:-0}" -eq 0 ]; then printf '%s\n' 'Install did not finish. Resolve the error and rerun install; rerunning also repairs an interrupted install.' >&2; fi
   exit "$STATUS"
 }
 trap cleanup EXIT

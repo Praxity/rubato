@@ -60,3 +60,15 @@ test('a reinstall replaces edited skill folders and removes added files', t => {
   assert.equal(readFileSync(join(folder, 'SKILL.md'), 'utf8'), '---\nname: prax-format\ndescription: Write a course.\n---\nTool-owned skill.\n');
   assert.equal(existsSync(join(folder, 'extra.txt')), false);
 });
+
+test('an upgrade with an unreadable skills record keeps the new pack and does not claim the install failed', t => {
+  const setup = installation(t);
+  passed(setup.install());
+  writeFileSync(join(setup.home, '.praxity/toolkit-skills.json'), '{"owner":"rubato","schemaVersion":2,"hosts":{},"files":[]}\n');
+  setup.pack.version = '0.2.0'; setup.save();
+  const upgrade = setup.install();
+  assert.equal(upgrade.status, 1, `${upgrade.stdout}\n${upgrade.stderr}`);
+  assert.equal(readFileSync(join(setup.home, '.praxity/toolkit/active'), 'utf8').split('\n')[0], '0.2.0');
+  assert.match(upgrade.stderr, /Host skills were not refreshed; the pack is active/);
+  assert.doesNotMatch(upgrade.stderr, /Install did not finish/);
+});
