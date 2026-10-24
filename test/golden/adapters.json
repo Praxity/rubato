@@ -1,6 +1,6 @@
 {
   "claude": {
-    ".claude/skills/assessment-writing/SKILL.md": "72ef998c8463f6110125a48de970af5c1002826271eee3f9d5eab61e24bbfb27",
+    ".claude/skills/assessment-writing/SKILL.md": "8f657840dd8b8d99bbf704d65dee81dc179957c2f6334f12579f00294bead619",
     ".claude/skills/composer/outline-template.md": "afea4a0ce1f8a924fb9fc57e8f7dc00ec4a513acdc4cb0acad02a94ca945da7e",
     ".claude/skills/composer/patterns.md": "f4d8e926d9ede4d3c0df7629a65e93d92ad61e94f2f1b3ce55587bd1e05b27e8",
     ".claude/skills/composer/SKILL.md": "145cbd81420ff66b0c29ee85b0a899178341bf74e512f460d88e5439c39182db",
@@ -12,7 +12,7 @@
     ".claude/skills/studio-editor/SKILL.md": "3ed81b58392064ebd32e804a5a762ad341c08a9e09125cd648d6015bed1e0ba1"
   },
   "codex": {
-    ".agents/skills/assessment-writing/SKILL.md": "72ef998c8463f6110125a48de970af5c1002826271eee3f9d5eab61e24bbfb27",
+    ".agents/skills/assessment-writing/SKILL.md": "8f657840dd8b8d99bbf704d65dee81dc179957c2f6334f12579f00294bead619",
     ".agents/skills/composer/outline-template.md": "afea4a0ce1f8a924fb9fc57e8f7dc00ec4a513acdc4cb0acad02a94ca945da7e",
     ".agents/skills/composer/patterns.md": "f4d8e926d9ede4d3c0df7629a65e93d92ad61e94f2f1b3ce55587bd1e05b27e8",
     ".agents/skills/composer/SKILL.md": "145cbd81420ff66b0c29ee85b0a899178341bf74e512f460d88e5439c39182db",
