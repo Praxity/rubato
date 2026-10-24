@@ -46,7 +46,7 @@ test('BSD tar completes the local installer fixture', { skip: process.platform !
   assert.equal(r.status, 0, r.stderr);
 });
 
-test('XZ archive hashes are journaled before extraction with BSD tar inventory', t => {
+test('XZ archives are verified before extraction with BSD tar inventory', t => {
   const setup = installation(t, { tool: false }), file = join(setup.root, 'typst.tar.xz');
   if (process.platform === 'win32') {
     // Native Node receives Windows paths from the fixture adapter. Use native

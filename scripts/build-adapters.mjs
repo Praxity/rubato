@@ -14,7 +14,7 @@ const tools = values.installed ? pack.tools.flatMap(tool => {
 }) : [];
 const output = resolve(values.output);
 if (existsSync(output)) throw new Error(`Output already exists: ${output}. Choose a fresh directory.`);
-const adapters = buildAdapters({ source: join(root, 'skills'), tools, packVersion: pack.version });
+const adapters = buildAdapters({ source: join(root, 'skills'), tools });
 for (const [host, files] of Object.entries(adapters)) for (const [name, bytes] of files) {
   const path = join(output, host, name);
   mkdirSync(dirname(path), { recursive: true });

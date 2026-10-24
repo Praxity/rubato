@@ -96,9 +96,9 @@ export function installVerifiedPack(context, { bootstrap, manifest }, dependenci
     if (errors.length) throw new Error(`Invalid pack manifest:\n${errors.join('\n')}`);
     if (digest(readFileSync(join(bootstrap, 'pack.json'))) !== digest(manifest)) throw new Error('Bootstrap manifest SHA-256 mismatch');
     assertStudioClosed(context, run);
-    // No timeout: interrupting the journaled installer leaves recovery to the next run.
+    // No timeout: rerunning the installer repairs an interrupted install.
     const installed = run({ command: 'sh', args: [join(bootstrap, 'install.sh'), '--manifest-sha256', digest(manifest), '--platform', context.state.platform], env: context.env }, { stdio: 'inherit', timeout: undefined });
-    if (installed.error || installed.code === null || installed.signal) throw new Error(`Release installer interrupted. Rerun the install command to recover its journal. ${installed.error ?? installed.signal ?? ''} ${installed.stderr ?? ''}`);
+    if (installed.error || installed.code === null || installed.signal) throw new Error(`Release installer interrupted. Rerun the install command to recover. ${installed.error ?? installed.signal ?? ''} ${installed.stderr ?? ''}`);
     const activeFile = join(context.home, '.praxity/toolkit/active');
     if (!existsSync(activeFile) || readFileSync(activeFile, 'utf8').split('\n')[0] !== pack.version) throw new Error(`Release installer failed (${installed.code}). Nothing activated; rerun after resolving the reported error. ${installed.stderr ?? ''}`);
     if (installed.code !== 0) print(`Release installer exited ${installed.code}. ${installed.stderr ?? ''} Resolve the reported file, then run praxity skills refresh --scope user.`);

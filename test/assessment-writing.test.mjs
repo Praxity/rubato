@@ -319,7 +319,7 @@ const loadGate = source => runInNewContext(`${source}\nguessingGate`);
 for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/skills']]) {
   test(`installed ${host} assessment skill uses inspect JSON and gates banks plus the pooled course`, async t => {
     const { context } = fixture(t);
-    const outputs = buildAdapters({ source: join(context.root, 'skills'), packVersion: context.pack.version });
+    const outputs = buildAdapters({ source: join(context.root, 'skills') });
     installSkills({ base: context.home, host, outputs });
     const name = `${folder}/assessment-writing/SKILL.md`;
     const path = join(context.home, name);

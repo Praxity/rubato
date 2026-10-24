@@ -112,7 +112,8 @@ test('update installs the verified release, refreshes both scopes, retains rollb
     assert.equal(readFileSync(join(base, folder, 'skills/prax-format/SKILL.md'), 'utf8'), f.updatedSkill);
   }
   assert.equal(readFileSync(unowned, 'utf8'), 'MY NOTES');
-  assert.match(f.cli('studio . --no-open').stdout, /NEW STUDIO/);
+  const launched = f.cli('studio . --no-open'); passed(launched);
+  assert.match(launched.stdout, /NEW STUDIO/);
   assert.ok(f.requests.includes(releaseBase + 'rubato-0.2.0.tar.gz'));
   const checksumNames = f.files.get('SHA256SUMS').toString().trim().split('\n').map(line => line.split('  ')[1]).sort();
   assert.deepEqual(checksumNames, ['pack.json', 'praxity-cli-0.3.0-macos-arm64.tar.gz', 'praxity-cli-0.3.0-macos-x64.tar.gz', 'rubato-0.2.0.tar.gz']);
@@ -121,16 +122,15 @@ test('update installs the verified release, refreshes both scopes, retains rollb
   assert.equal(JSON.parse(f.cli('version').stdout).pack, '0.1.0');
 });
 
-for (const scope of ['user', 'project']) test(`update preserves modified ${scope} skills and reports how to retry`, async t => {
+for (const scope of ['user', 'project']) test(`update replaces modified ${scope} skill folders`, async t => {
   const f = releaseFixture(t);
   passed(f.cli(`skills install --host claude --scope ${scope}`));
   const edited = join(scope === 'user' ? f.home : f.project, '.claude/skills/prax-format/SKILL.md');
   writeFileSync(edited, 'MY EDITS');
   const code = await f.update();
-  if (scope === 'project') assert.equal(code, 1);
-  assert.equal(readFileSync(edited, 'utf8'), 'MY EDITS');
+  assert.equal(code, 0);
+  assert.equal(readFileSync(edited, 'utf8'), f.updatedSkill);
   assert.equal(readFileSync(join(f.toolkit, 'active'), 'utf8'), '0.2.0\n0.1.0\n');
-  assert.match(f.output.join('\n'), new RegExp(`skills refresh --scope ${scope}`));
 });
 
 test('busy Studio refuses before downloading, preserves the session and gives save-and-close instructions', async t => {

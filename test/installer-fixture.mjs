@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, symlinkSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -9,8 +9,6 @@ import { fixture, repository, examplePack } from './helpers.mjs';
 export const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : 'bash';
 export const posix = path => process.platform === 'win32' ? path.replaceAll('\\', '/').replace(/^([A-Za-z]):/, (_, letter) => `/${letter.toLowerCase()}`) : path;
 export const quote = text => `'${text.replaceAll("'", "'\\''")}'`;
-// curl runs inside fetch subshells. Their parent PID need not be the installer.
-export const interruptInstaller = setup => `kill -KILL "$(cat ${quote(posix(join(setup.toolkit, '.install-lock/pid')))})"`;
 export function shell(command, options = {}) {
   return spawnSync(bash, ['-c', command], { encoding: 'utf8', timeout: 60_000, maxBuffer: 2 * 1024 * 1024, ...options });
 }
@@ -77,21 +75,7 @@ export function installation(t, options = {}) {
   return { root, home, pack, manifest, save, env, install, action, toolkit: join(home, '.praxity/toolkit') };
 }
 
-// Kills the installer once, after the first successful wrapped command whose
-// arguments meet the shell condition.
-export function crashAfter(setup, command, condition) {
-  const bin = join(setup.root, 'crash-bin'), marker = join(setup.root, 'crashed');
-  mkdirSync(bin);
-  const real = shell(`command -v ${command}`).stdout.trim();
-  writeFileSync(join(bin, command), `#!/bin/sh\n${quote(real)} "$@"\ncode=$?\nif [ "$code" = 0 ] && [ ! -e ${quote(posix(marker))} ]; then\n${condition}\nfi\nexit "$code"\n`, { mode: 0o755 });
-  const init = join(setup.root, 'crash-env');
-  writeFileSync(init, (setup.env.BASH_ENV ? readFileSync(setup.env.BASH_ENV.replace(/^\/([a-z])\//, '$1:/'), 'utf8') : '') + `\nexport PATH=${quote(posix(bin))}:"$PATH"\n`);
-  setup.env.BASH_ENV = posix(init);
-  return marker;
-}
-
-// Replaces one file of an installed pack as its installer would have written
-// it: the pack's inventory and the install journal agree on the new bytes.
+// Adjust an installed fixture while keeping the pack integrity inventory valid.
 export function replaceInstalled(setup, version, file, bytes) {
   const folder = join(setup.toolkit, version), stateFile = join(folder, 'state.json');
   const digest = data => createHash('sha256').update(data).digest('hex');
@@ -99,8 +83,5 @@ export function replaceInstalled(setup, version, file, bytes) {
   const state = JSON.parse(readFileSync(stateFile, 'utf8'));
   state.files[file] = digest(bytes);
   if (file === 'pack.json') state.manifestSha256 = digest(bytes);
-  const stateBytes = JSON.stringify(state, null, 2) + '\n';
-  writeFileSync(stateFile, stateBytes);
-  appendFileSync(join(setup.toolkit, '.install-ledger.tsv'),
-    `F\t${digest(bytes)}\t.praxity/toolkit/${version}/${file}\nF\t${digest(stateBytes)}\t.praxity/toolkit/${version}/state.json\n`);
+  writeFileSync(stateFile, JSON.stringify(state, null, 2) + '\n');
 }
