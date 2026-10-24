@@ -55,8 +55,10 @@ test('macOS installation plans select the reviewed Studio, Check and Trace prere
         'darwin-x64': 'd1d065ec15db06fccc23654748288c0d66325ac285c1f2cb16b71ca003d7c4dc' } },
     { id: 'check', version: '0.6.0-alpha.c61b1cb3c', revision: 'c61b1cb3ce3a4e7afb0a44f3dd70e82a52c1154d',
       url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz' },
-    { id: 'trace', version: '0.1.1-experimental.53ee25cc6', revision: '53ee25cc620fcbc669e0f00508962156f21bdce5',
-      url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019.5/praxity-trace-0.1.1-experimental.53ee25cc6-portable.tar.gz' },
+    { id: 'trace', version: '0.1.1-experimental.9036868d4', revision: '9036868d4ba3f55aced52077b5b548eb1374ac72',
+      url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261024.1/praxity-trace-0.1.1-experimental.9036868d4-portable.tar.gz',
+      digests: { 'darwin-arm64': '1100054db6565d04d186f2190946dc7309977ee805b32286e1f0fe613a08e0d8',
+        'darwin-x64': '1100054db6565d04d186f2190946dc7309977ee805b32286e1f0fe613a08e0d8' } },
   ];
   for (const candidate of candidates) {
     const tool = pack.tools.find(tool => tool.id === candidate.id);
@@ -77,7 +79,8 @@ test('macOS installation plans select the reviewed Studio, Check and Trace prere
 // `excludedByReason`, `maskedExcludedCount` and coded `excluded` records (#24). An older pin can't reach a verdict:
 // 09fcaaf has no masked probe, 92a164d holds every result, and 97e6de3 makes every gate return "tooling".
 // Add a revision here only after checking its payload.
-const maskedTraceRevisions = new Set(['53ee25cc620fcbc669e0f00508962156f21bdce5']);
+// 9036868 retains that contract with item-cues/14 and masked-only preparation by default (#25).
+const maskedTraceRevisions = new Set(['9036868d4ba3f55aced52077b5b548eb1374ac72']);
 const pinsMaskedTrace = pack => maskedTraceRevisions.has(pack.tools.find(tool => tool.id === 'trace')?.sourceRevision);
 
 test('the pinned Trace ships the masked item-cues contract the assessment skill gates on', () => {

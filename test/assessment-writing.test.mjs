@@ -49,6 +49,7 @@ function assertPassCap(skill) {
 function assertJudge(skill) {
   const judge = skill.split(/\r?\n\s*\r?\n/).find(paragraph => paragraph.includes('`coverJudgement:'));
   assert.ok(judge, 'The independent judge must write the response labels');
+  assert.match(judge, /If cover-the-options ran,/);
   assert.match(judge, /separate fresh judge agent/);
   assert.match(judge, /neither wrote the items nor answered either probe/);
   const labels = [...judge.match(/`coverJudgement:([^`]+)`/)[1].matchAll(/"(\w+)"/g)].map(([, label]) => label).sort();
@@ -145,7 +146,8 @@ function assertKeyCheck(skill) {
   const check = paragraphs(attack).find(paragraph => paragraph.includes('Run the key check'));
   assert.ok(check, 'A fresh judge checks for second keys');
   assert.match(check, /fresh judge that wrote no items, answered no probe and has never seen the key/);
-  assert.match(check, /stem from `cover-the-options\/items\.json` and its options from `choices-only\/items\.json`, matched by `ref`/);
+  assert.match(check, /stem and options from `<inspect\.json>`, matched by `ref`/);
+  assert.match(check, /with keys and feedback removed\./);
   assert.match(check, /marks every option that correctly answers the stem/);
   assert.match(check, /best or most likely answer, it marks only the single best option, and flags the item when two options are equally defensible as best/);
   assert.match(check, /Rewrite every item with more than one mark, a flag, or the key unmarked\./);
@@ -231,7 +233,7 @@ function assertReviewFolder(skill) {
 
 function assertSolverStrength(skill) {
   assert.match(skill, /^Every solver and judge must be a model at least as strong as the writer\. A weaker solver misses cues the writer can see/m);
-  assert.match(skill, /The explanations reviewer in step 4, and the plain and cover solvers of seeds 2 and 3, whose answers nothing reads, may be any model\. Seed 1's plain solver must meet the rule/);
+  assert.match(skill, /The explanations reviewer in step 4 may be any model\. Seed 1's plain solver, when requested, must meet the rule/);
   // A Haiku solver passed banks a Sonnet solver failed, so the skill names the masked solver.
   assert.match(skill, /Name the masked solver's model before the first run, and use it in all three runs: the writer's own model or a stronger one, so a Sonnet writer gets at least a Sonnet solver, never Haiku\./);
 }
@@ -242,10 +244,11 @@ function assertSeededRuns(skill) {
   assert.match(attack, /the gate pools all three/);
   assert.match(attack, /The run count is fixed before any run is solved: never prepare a fourth run in a pass, re-run a solver, or leave a run out to get a pass\./);
   assert.match(attack, /Gate the masked probe on its hits pooled across the three runs\./);
-  assert.match(attack, /Seeds 2 and 3 add masked evidence only\.[^\n]*nothing reads their answers: any model may give them, their cover answers need no judge, and those rows never block done\./);
-  assert.match(attack, /The cover judge, the key check, the explanations probe and the plain-hit rewrites below use seed 1's run only\./);
-  assert.match(attack, /^   - The independent judge has no unresolved decisions or "not judged" items in seed 1's run,/m);
-  assert.match(attack, /^   - The key check confirmed every distractor note on each item seed 1's plain solver got right\./m);
+  assert.match(attack, /Each seed runs only the masked solver by default\./);
+  assert.match(attack, /For requested diagnostics, add `--diagnostics` to seed 1's prepare command and run its `choices-only\/` and `cover-the-options\/` solvers too\./);
+  assert.match(attack, /The key check, the explanations probe and any diagnostics below use seed 1's run only\./);
+  assert.match(attack, /^   - If cover-the-options ran, the independent judge has no unresolved decisions or "not judged" items in seed 1's run,/m);
+  assert.match(attack, /^   - If choices-only ran, the key check confirmed every distractor note on each item seed 1's plain solver got right\./m);
 }
 
 // The v2 eval's keys were the longest option on 29 of 53 items, and usually the headline answer.
@@ -338,6 +341,7 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
     });
     await t.test('a separate judge supplies all supported labels and its actual model', () => {
       assertJudge(skill);
+      assert.throws(() => assertJudge(skill.replace('If cover-the-options ran, ', '')));
       const stripped = skill.replace(/[^\n]*`coverJudgement:[^\n]*(?:\n|$)/, '');
       assert.notEqual(stripped, skill);
       assert.throws(() => assertJudge(stripped));
@@ -363,6 +367,7 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
       for (const stripped of [
         skill.replace(' If no detail rules it out, it is a second key: rewrite it.', ''),
         skill.replace(/^   Run the key check[^\n]*\r?\n/m, ''),
+        skill.replace(', with keys and feedback removed.', '.'),
         skill.replace(' The writer never decides which items skip a rewrite.', ''),
         skill.replace('unless the key check confirmed every one of its distractor notes.', 'unless each of its distractors is right for a named neighbouring question or case.'),
         skill.replace(/^   - The key check marked exactly one option, the key, on every item, and flagged none\.\r?\n/m, ''),
@@ -439,7 +444,7 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
       for (const stripped of [
         skill.replace(/^Every solver and judge must be a model at least as strong as the writer\.[^\n]*\r?\n/m, ''),
         skill.replace('Every solver and judge must be', 'Every solver must be'),
-        skill.replace(" Seed 1's plain solver must meet the rule, because its hits decide which items need the blind notes check.", ''),
+        skill.replace(" Seed 1's plain solver, when requested, must meet the rule, because its hits decide which items need the blind notes check.", ''),
         skill.replace(', so a Sonnet writer gets at least a Sonnet solver, never Haiku', ''),
       ]) {
         assert.notEqual(stripped, skill);
@@ -451,8 +456,11 @@ for (const [host, folder] of [['claude', '.claude/skills'], ['codex', '.agents/s
       for (const stripped of [
         skill.replace('as three runs, with seeds 1, 2 and 3:', 'once:'),
         skill.replace(' never prepare a fourth run in a pass, re-run a solver, or leave a run out to get a pass.', ' re-run as needed.'),
-        skill.replace(', their cover answers need no judge, and those rows never block done', ''),
+        skill.replace('Each seed runs only the masked solver by default.', 'Each seed runs every solver.'),
+        skill.replace('For requested diagnostics, add `--diagnostics`', 'Always add `--diagnostics`'),
         skill.replace("use seed 1's run only.", 'use every run.'),
+        skill.replace('If choices-only ran, the key check confirmed', 'The key check confirmed'),
+        skill.replace('If cover-the-options ran, the independent judge', 'The independent judge'),
         skill.replace(' items in seed 1\'s run,', ' items,'),
         skill.replace("each item seed 1's plain solver got right.", 'each item the plain solver got right.'),
       ]) {

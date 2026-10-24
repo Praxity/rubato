@@ -16,12 +16,13 @@ or MCP server. `pack.json` pins every archive by URL and SHA-256.
 Studio reads grammar 4 courses; convert grammar 3 courses first.
 The checked-in manifest pins Studio CLI `0.3.0-main.42bd872a` at
 `42bd872a7ad28db885776410fbe9acfda19adc7d`, Check `0.6.0-alpha.c61b1cb3c`
-and Trace `0.1.1-experimental.53ee25cc6`.
+and Trace `0.1.1-experimental.9036868d4` (masked-only item-cues by default;
+choices-only and cover-the-options require `prepare item-cues --diagnostics`).
 Rubato's asset-only experimental prereleases host the verified CLI archives
 without a pack manifest or installer bootstrap: Studio downloads from
 `v0.1.1-tools.experimental.20261023.2`, Check from
 `v0.1.1-tools.experimental.20261019` and Trace from
-`v0.1.1-tools.experimental.20261019.5`.
+`v0.1.1-tools.experimental.20261024.1`.
 The remaining tool archives come from Rubato `v0.1.1`.
 These candidate pins support installation from a reviewed checkout; the published
 Rubato `v0.1.1` manifest and stable update channel remain unchanged.
