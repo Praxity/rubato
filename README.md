@@ -22,8 +22,7 @@ Rubato's asset-only experimental prereleases host the verified CLI archives
 without a pack manifest or installer bootstrap: Studio downloads from
 `v0.1.1-tools.experimental.20261023.2`, Check from
 `v0.1.1-tools.experimental.20261019` and Trace from
-`v0.1.1-tools.experimental.20261024.1`, prepared but awaiting publication.
-The Trace pin cannot be installed until that asset-only prerelease is published.
+`v0.1.1-tools.experimental.20261024.1`.
 The remaining tool archives come from Rubato `v0.1.1`.
 These candidate pins support installation from a reviewed checkout; the published
 Rubato `v0.1.1` manifest and stable update channel remain unchanged.

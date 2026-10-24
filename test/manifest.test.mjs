@@ -57,8 +57,8 @@ test('macOS installation plans select the reviewed Studio, Check and Trace prere
       url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261019/praxity-check-0.6.0-alpha.c61b1cb3c-portable.tar.gz' },
     { id: 'trace', version: '0.1.1-experimental.9036868d4', revision: '9036868d4ba3f55aced52077b5b548eb1374ac72',
       url: 'https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261024.1/praxity-trace-0.1.1-experimental.9036868d4-portable.tar.gz',
-      digests: { 'darwin-arm64': '1baf82faf64cb1bdad2921fea634b5dee76f8107bc59a86c628a1d06960ba56c',
-        'darwin-x64': '1baf82faf64cb1bdad2921fea634b5dee76f8107bc59a86c628a1d06960ba56c' } },
+      digests: { 'darwin-arm64': '1100054db6565d04d186f2190946dc7309977ee805b32286e1f0fe613a08e0d8',
+        'darwin-x64': '1100054db6565d04d186f2190946dc7309977ee805b32286e1f0fe613a08e0d8' } },
   ];
   for (const candidate of candidates) {
     const tool = pack.tools.find(tool => tool.id === candidate.id);

@@ -180,14 +180,14 @@
         "darwin-arm64": {
           "status": "published",
           "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261024.1/praxity-trace-0.1.1-experimental.9036868d4-portable.tar.gz",
-          "sha256": "1baf82faf64cb1bdad2921fea634b5dee76f8107bc59a86c628a1d06960ba56c",
+          "sha256": "1100054db6565d04d186f2190946dc7309977ee805b32286e1f0fe613a08e0d8",
           "format": "tar.gz",
           "stripComponents": 1
         },
         "darwin-x64": {
           "status": "published",
           "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261024.1/praxity-trace-0.1.1-experimental.9036868d4-portable.tar.gz",
-          "sha256": "1baf82faf64cb1bdad2921fea634b5dee76f8107bc59a86c628a1d06960ba56c",
+          "sha256": "1100054db6565d04d186f2190946dc7309977ee805b32286e1f0fe613a08e0d8",
           "format": "tar.gz",
           "stripComponents": 1
         },
