@@ -50,7 +50,7 @@ test('--version reports the same installed revision as version', async t => {
   const f = fixture(t), lines = [];
   await runCli(['--version'], f.context, { print: value => lines.push(value) });
   assert.equal(JSON.parse(lines[0]).pack, '0.1.0');
-  assert.equal(JSON.parse(lines[0]).studioSha, '42bd872a7ad28db885776410fbe9acfda19adc7d');
+  assert.equal(JSON.parse(lines[0]).studioSha, '83b09e7a642d13808faed0b8d3acb39bdea0dc5c');
 });
 
 for (const result of [{code:null,signal:'SIGINT'},{code:null},{code:130,error:'interrupted'}]) test(`interrupted installer is not a skills failure ${JSON.stringify(result)}`,t=>{

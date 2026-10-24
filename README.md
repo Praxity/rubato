@@ -14,13 +14,13 @@ T3 course actions and skills for T3, Claude Code and Codex CLI. There is no SDK
 or MCP server. `pack.json` pins every archive by URL and SHA-256.
 
 Studio reads grammar 4 courses; convert grammar 3 courses first.
-The checked-in manifest pins Studio CLI `0.3.0-main.42bd872a` at
-`42bd872a7ad28db885776410fbe9acfda19adc7d`, Check `0.6.0-alpha.c61b1cb3c`
+The checked-in manifest pins Studio CLI `0.3.0-main.83b09e7a` at
+`83b09e7a642d13808faed0b8d3acb39bdea0dc5c`, Check `0.6.0-alpha.c61b1cb3c`
 and Trace `0.1.1-experimental.9036868d4` (masked-only item-cues by default;
 choices-only and cover-the-options require `prepare item-cues --diagnostics`).
 Rubato's asset-only experimental prereleases host the verified CLI archives
 without a pack manifest or installer bootstrap: Studio downloads from
-`v0.1.1-tools.experimental.20261023.2`, Check from
+`v0.1.1-tools.experimental.20261024.2`, Check from
 `v0.1.1-tools.experimental.20261019` and Trace from
 `v0.1.1-tools.experimental.20261024.1`.
 The remaining tool archives come from Rubato `v0.1.1`.
