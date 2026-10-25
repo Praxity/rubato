@@ -94,8 +94,8 @@
   "tools": [
     {
       "id": "studio",
-      "version": "0.3.0-main.83b09e7a",
-      "sourceRevision": "83b09e7a642d13808faed0b8d3acb39bdea0dc5c",
+      "version": "0.3.0-main.b6a465b0",
+      "sourceRevision": "b6a465b017467e92de8b466035c326d1562100e7",
       "entry": "praxity.mjs",
       "runner": "node",
       "license": "PolyForm Perimeter 1.0.1",
@@ -104,15 +104,15 @@
       "archives": {
         "darwin-arm64": {
           "status": "published",
-          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261024.2/praxity-studio-cli-0.3.0-darwin-arm64.tar.gz",
-          "sha256": "7a03d3c1dfe845ec439db0c9cfd173c658ba6fb550e9e9dbebd3793f809fbeff",
+          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261024.3/praxity-studio-cli-0.3.0-darwin-arm64.tar.gz",
+          "sha256": "fcf0c5bde8227de86b2d52e05c72e34373d45524645adb988a30ec2052b96dcc",
           "format": "tar.gz",
           "stripComponents": 1
         },
         "darwin-x64": {
           "status": "published",
-          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261024.2/praxity-studio-cli-0.3.0-darwin-x64.tar.gz",
-          "sha256": "50361fb17e0e4c750d88fcdaab03f0e2b40e62d450498dd3aedfd8bba571d42c",
+          "url": "https://github.com/Praxity/rubato/releases/download/v0.1.1-tools.experimental.20261024.3/praxity-studio-cli-0.3.0-darwin-x64.tar.gz",
+          "sha256": "82882bbdfb04429a2317a40770e02ab95c9d553fd8d0774bd3d534e7b750194e",
           "format": "tar.gz",
           "stripComponents": 1
         },
