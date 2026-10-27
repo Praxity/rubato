@@ -140,6 +140,7 @@ case "$NODE_ENTRY" in bin/node) ;; *) die 'Unsupported bootstrap Node entry' ;; 
 case "$NODE_FORMAT" in tar.gz|tar.xz) ;; *) die 'Unsupported bootstrap Node archive' ;; esac
 download() (
   URL=$1; HASH=$2; FORMAT=$3
+  NAME=${URL##*/}
   case "$URL" in https://*|file:///*) ;; *) die 'Artifact URL must use https:// or file:///' ;; esac
   [ "${#HASH}" = 64 ] || die 'Invalid SHA-256'
   case "$HASH" in *[!a-f0-9]*) die 'Invalid SHA-256' ;; esac
@@ -147,7 +148,9 @@ download() (
   FILE="$HASH.$FORMAT"
   if [ -f "$ROOT/.cache/$FILE" ]; then
     contained "$ROOT/.cache/$FILE"
-    [ "$(sha256 "$ROOT/.cache/$FILE")" = "$HASH" ] || die "Cached checksum mismatch: $FILE. Remove the damaged cache file and rerun."
+    ACTUAL=$(sha256 "$ROOT/.cache/$FILE")
+    [ "$ACTUAL" = "$HASH" ] || die "Cached checksum mismatch: $FILE. $NAME sha256 $ACTUAL (expected $HASH). Remove the damaged cache file and rerun."
+    printf 'verified %s sha256 %s (expected %s)\n' "$NAME" "$ACTUAL" "$HASH"
     exit 0
   fi
   mkdir -p "$ROOT/.cache"
@@ -160,7 +163,9 @@ download() (
   else
     fetch "$PARTIAL" "$URL" "$HASH" || die 'Download interrupted or failed; rerun the same install command'
   fi
-  [ "$(sha256 "$PARTIAL")" = "$HASH" ] || { rm -f "$PARTIAL"; die "Checksum mismatch: $URL. Nothing activated."; }
+  ACTUAL=$(sha256 "$PARTIAL")
+  [ "$ACTUAL" = "$HASH" ] || { rm -f "$PARTIAL"; die "Checksum mismatch: $URL. $NAME sha256 $ACTUAL (expected $HASH). Nothing activated."; }
+  printf 'verified %s sha256 %s (expected %s)\n' "$NAME" "$ACTUAL" "$HASH"
   mv "$PARTIAL" "$ROOT/.cache/$FILE"
 )
 extract() (
@@ -194,7 +199,14 @@ else
   mkdir "$STAGE"
   TAB=$(printf '\t')
   # Check every download before publishing a version or launcher.
-  while IFS="$TAB" read -r KIND ID URL HASH FORMAT STRIP ENTRY; do download "$URL" "$HASH" "$FORMAT"; done < "$PLAN"
+  while IFS="$TAB" read -r KIND ID URL HASH FORMAT STRIP ENTRY; do
+    if [ "$KIND:$ID" = runtime:node ]; then
+      # Bootstrap already logged Node; retain the plan's cache verification.
+      download "$URL" "$HASH" "$FORMAT" > /dev/null
+    else
+      download "$URL" "$HASH" "$FORMAT"
+    fi
+  done < "$PLAN"
   while IFS="$TAB" read -r KIND ID URL HASH FORMAT STRIP ENTRY; do
     case "$KIND" in runtime) CATEGORY=runtimes ;; tool) CATEGORY=tools ;; *) die 'Invalid install plan' ;; esac
     extract "$ROOT/.cache/$HASH.$FORMAT" "$STAGE/$CATEGORY/$ID" "$STRIP"
