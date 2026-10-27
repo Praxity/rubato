@@ -339,10 +339,18 @@ changed, existing only or packaged only and exits nonzero without changing
 anything. Changed files include byte counts and short SHA-256 fingerprints.
 Review that summary before adding `--yes`. This rule is the same in terminals
 and scripts; Rubato never prompts or assumes consent. Confirmed adoption prints
-the summary again, moves each unowned folder to a timestamped backup under
-`.praxity/skill-backups/<host>/` in the selected scope, and prints its backup
-path before recording ownership and installing. Keep those backups until you
-have recovered any local changes. Folders with other names stay untouched.
+the summary again for every existing folder it will replace or remove. It
+separates unowned adoption from owned replacement or removal and names files
+that will disappear from the installed folder. It backs up each unowned folder
+and any owned folder containing changed or extra files before replacing them.
+Backups for both scopes stay under `~/.praxity/skill-backups/`, outside the
+project: `user/<host>/` for user scope, `project-<path-hash>/<host>/` for project
+scope. Each backup has a timestamp and a unique suffix. Rubato copies the entire
+folder and publishes the complete backup before recording ownership or deleting
+originals, including when home and project are on different volumes. It prints
+each completed backup path. Keep those backups until you have recovered any
+local changes. Project ownership and installed files stay in the project.
+Unowned folders with other names stay untouched.
 The competing-scope and path-safety checks still apply.
 
 Rubato owns its installed skill folders by name. Install and refresh delete

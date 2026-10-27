@@ -70,7 +70,7 @@ export async function runCli(args, context, dependencies = {}) {
       return 0;
     }
     const result = (rest[0] === 'install' ? installSkills : uninstallSkills)({ base: values.scope === 'user' ? context.home : context.cwd,
-      otherBase: values.scope === 'user' ? context.cwd : context.home, host: values.host, outputs, adopt: values.adopt, yes: values.yes, print });
+      home: context.home, otherBase: values.scope === 'user' ? context.cwd : context.home, host: values.host, outputs, adopt: values.adopt, yes: values.yes, print });
     print(`${rest[0] === 'install' ? 'Installed' : 'Removed'} ${result.host} skills at ${values.scope} scope. Active adapters: ${result.hosts.join(', ') || 'none'}. Restart the host and verify invocation.`);
     return 0;
   }
