@@ -132,7 +132,7 @@ test('doctor names the PATH line when the Rubato launcher is not first on PATH, 
   writeFileSync(join(bin, 'praxity'), '#!/bin/sh\n', { mode: 0o755 });
   assert.equal(path(context.root, bin).status, 'ok');
   // A relative entry depends on the current folder, so it never counts.
-  assert.equal(path(relative(process.cwd(), bin)).status, 'not-installed');
+  assert.equal(path(relative(context.home, bin)).status, 'not-installed');
   writeFileSync(join(other, 'praxity'), '#!/bin/sh\n', { mode: 0o755 });
   const shadowed = path(other, bin);
   assert.equal(shadowed.status, 'not-installed');
@@ -167,7 +167,7 @@ for (const bytes of ['null', '{"files":']) test(`an unreadable skills ownership 
   const item = result.items.find(item => item.id === 'host.codex.user');
   assert.equal(item.status, 'partial');
   assert.equal(item.message, `Unreadable skills ownership record: ${join(context.home, '.praxity/toolkit-skills.json')}`);
-  assert.equal(item.fix, `Delete ${join(context.home, '.praxity/toolkit-skills.json')} and the Rubato skill folders in ${join(context.home, '.agents/skills')}: assessment-writing, composer, install-praxity, studio-editor, then run praxity skills install --host codex --scope user`);
+  assert.equal(item.fix, `Move aside ${join(context.home, '.praxity/toolkit-skills.json')}, then run praxity skills install --host codex --scope user --adopt to review differences. After review, run praxity skills install --host codex --scope user --adopt --yes to back up and replace.`);
   assert.equal(result.items.find(item => item.id === 'host.codex.project').status, 'not-installed');
   assert.equal(result.exitCode, 1);
 });
@@ -188,13 +188,26 @@ for (const scope of ['user', 'project']) test(`an old-shape ${scope} skills reco
   for (const host of ['claude', 'codex']) {
     const item = result.items.find(item => item.id === `host.${host}.${scope}`);
     assert.equal(item.status, 'partial');
-    const adapter = host === 'claude' ? '.claude/skills' : '.agents/skills';
-    assert.equal(item.fix, `Delete ${record} and the Rubato skill folders in ${join(base, adapter)}: assessment-writing, composer, install-praxity, studio-editor, then run praxity skills install --host ${host} --scope ${scope}`);
+    assert.equal(item.fix, `Move aside ${record}, then run praxity skills install --host ${host} --scope ${scope} --adopt to review differences. After review, run praxity skills install --host ${host} --scope ${scope} --adopt --yes to back up and replace.`);
   }
   assert.equal(readFileSync(record, 'utf8'), bytes);
   rmSync(record);
-  for (const name of folders) rmSync(join(base, '.claude/skills', name), { recursive: true });
-  assert.equal(await runCli(['skills', 'install', '--host', 'claude', '--scope', scope], context, { print() {} }), 0);
+  await assert.rejects(runCli(['skills', 'install', '--host', 'claude', '--scope', scope, '--adopt'], context, { print() {} }), /Adoption preview only/);
+  assert.equal(await runCli(['skills', 'install', '--host', 'claude', '--scope', scope, '--adopt', '--yes'], context, { print() {} }), 0);
   const repaired = doctor(context, () => ({ code: 0, stdout: 'v24.22.1', stderr: '' }));
   assert.equal(repaired.items.find(item => item.id === `host.claude.${scope}`).status, 'ok');
+});
+
+test('doctor suggests adoption for an unowned shipped folder even if its files are current', async t => {
+  const { context } = fixture(t);
+  const folder = join(context.home, '.claude/skills/composer');
+  mkdirSync(folder, { recursive: true }); writeFileSync(join(folder, 'SKILL.md'), 'Manually copied skill');
+  const host = () => doctor(context, () => ({ code: 0, stdout: 'v24.22.1', stderr: '' })).items.find(item => item.id === 'host.claude.user');
+  assert.deepEqual(host(), {
+    id: 'host.claude.user', status: 'partial', message: 'Unowned skill folders: composer.',
+    fix: 'praxity skills install --host claude --scope user --adopt to review differences. After review, run praxity skills install --host claude --scope user --adopt --yes to back up and replace.',
+  });
+  await runCli(['skills', 'install', '--host', 'claude', '--scope', 'user', '--adopt', '--yes'], context, { print() {} });
+  rmSync(join(context.home, '.praxity/toolkit-skills.json'));
+  assert.equal(host().message, 'Unowned skill folders: assessment-writing, composer, install-praxity, studio-editor.');
 });

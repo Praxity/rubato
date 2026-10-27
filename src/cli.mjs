@@ -55,9 +55,10 @@ export async function runCli(args, context, dependencies = {}) {
     return result.code ?? 1;
   }
   if (command === 'skills') {
-    if (!['install', 'uninstall', 'refresh'].includes(rest[0])) throw new Error('Usage: praxity skills install|uninstall --host t3|claude|codex --scope user|project, or praxity skills refresh --scope user|project');
-    const { values, positionals } = parseArgs({ args: rest.slice(1), allowPositionals: true, options: { host: { type: 'string' }, scope: { type: 'string' } } });
+    if (!['install', 'uninstall', 'refresh'].includes(rest[0])) throw new Error('Usage: praxity skills install --host t3|claude|codex --scope user|project [--adopt [--yes]], praxity skills uninstall --host t3|claude|codex --scope user|project, or praxity skills refresh --scope user|project');
+    const { values, positionals } = parseArgs({ args: rest.slice(1), allowPositionals: true, options: { host: { type: 'string' }, scope: { type: 'string' }, adopt: { type: 'boolean' }, yes: { type: 'boolean' } } });
     if (positionals.length || !['user', 'project'].includes(values.scope) || (rest[0] === 'refresh' ? values.host !== undefined : !['t3', 'claude', 'codex'].includes(values.host))) throw new Error('Specify a valid --host and --scope');
+    if ((rest[0] !== 'install' && (values.adopt || values.yes)) || (values.yes && !values.adopt)) throw new Error('Only skills install accepts --adopt; --yes requires --adopt');
     const tools = context.pack.tools.flatMap(tool => {
       const path = join(context.root, 'tools', tool.id, tool.skillPath ?? 'skill');
       return context.state.installed.includes(tool.id) && existsSync(path) ? [path] : [];
@@ -69,7 +70,7 @@ export async function runCli(args, context, dependencies = {}) {
       return 0;
     }
     const result = (rest[0] === 'install' ? installSkills : uninstallSkills)({ base: values.scope === 'user' ? context.home : context.cwd,
-      otherBase: values.scope === 'user' ? context.cwd : context.home, host: values.host, outputs });
+      home: context.home, otherBase: values.scope === 'user' ? context.cwd : context.home, host: values.host, outputs, adopt: values.adopt, yes: values.yes, print });
     print(`${rest[0] === 'install' ? 'Installed' : 'Removed'} ${result.host} skills at ${values.scope} scope. Active adapters: ${result.hosts.join(', ') || 'none'}. Restart the host and verify invocation.`);
     return 0;
   }

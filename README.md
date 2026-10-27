@@ -326,6 +326,33 @@ Both adapters may coexist in one scope. Installing another adapter retains the
 first. A same-host copy in the other scope blocks a competing installation.
 Rubato does not edit host settings, shell profiles or AGENTS files.
 
+An unowned folder with a shipped skill's name blocks install. To adopt skills
+copied by hand, preview the file differences first:
+
+```sh
+praxity skills install --host claude --scope user --adopt
+praxity skills install --host claude --scope user --adopt --yes
+```
+
+Use `--host codex` for Codex. `--adopt` alone lists each file as unchanged,
+changed, existing only or packaged only and exits nonzero without changing
+anything. Changed files include byte counts and short SHA-256 fingerprints.
+Review that summary before adding `--yes`. This rule is the same in terminals
+and scripts; Rubato never prompts or assumes consent. Confirmed adoption prints
+the summary again for every existing folder it will replace or remove. It
+separates unowned adoption from owned replacement or removal and names files
+that will disappear from the installed folder. It backs up each unowned folder
+and any owned folder containing changed or extra files before replacing them.
+Backups for both scopes stay under `~/.praxity/skill-backups/`, outside the
+project: `user/<host>/` for user scope, `project-<path-hash>/<host>/` for project
+scope. Each backup has a timestamp and a unique suffix. Rubato copies the entire
+folder and publishes the complete backup before recording ownership or deleting
+originals, including when home and project are on different volumes. It prints
+each completed backup path. Keep those backups until you have recovered any
+local changes. Project ownership and installed files stay in the project.
+Unowned folders with other names stay untouched.
+The competing-scope and path-safety checks still apply.
+
 Rubato owns its installed skill folders by name. Install and refresh delete
 recorded folders and copy fresh content, including replacing local edits and
 removing added files. Keep custom skills under different names. There is no

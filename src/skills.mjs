@@ -1,4 +1,5 @@
-import { existsSync, lstatSync, readFileSync, readdirSync, mkdirSync, writeFileSync, rmSync, renameSync, realpathSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, readFileSync, readdirSync, mkdirSync, mkdtempSync, writeFileSync, rmSync, renameSync, realpathSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, join, relative, resolve, sep, isAbsolute, win32 } from 'node:path';
 import { loadSchema, validateSchema } from './schema.mjs';
 
@@ -115,13 +116,28 @@ function writeState(base, state) {
   renameSync(temp, record);
 }
 
-function changeSkills({ base, otherBase, host, outputs, remove }) {
+function adoptionDiff(directory, packaged) {
+  const existing = filesIn(directory);
+  const modified = [...existing].some(([name, bytes]) => !packaged.get(name)?.equals(bytes));
+  const fingerprint = bytes => `${bytes.length} bytes, sha256 ${createHash('sha256').update(bytes).digest('hex').slice(0, 12)}`;
+  const diff = [...new Set([...existing.keys(), ...packaged.keys()])].sort().map(name => {
+    const before = existing.get(name), after = packaged.get(name);
+    if (!before) return `  packaged only ${name}: ${after.length} bytes`;
+    if (!after) return `  existing only ${name}: ${before.length} bytes (removed from installed folder; preserved in backup)`;
+    if (before.equals(after)) return `  unchanged ${name}: ${before.length} bytes`;
+    return `  changed ${name}: existing ${fingerprint(before)}; packaged ${fingerprint(after)}`;
+  }).join('\n') || '  (no files)';
+  return { diff, modified };
+}
+
+function changeSkills({ base, home, otherBase, host, outputs, remove, adopt = false, yes = false, print = console.log }) {
   host = host === undefined ? undefined : canonicalHost(host);
   if (host !== undefined && !Object.hasOwn(adapters, host)) throw new Error('Host must be t3, claude or codex');
   base = realpathSync(base);
   const state = readState(base);
   const selected = host ? [host] : state.hosts;
   const files = [];
+  const previews = [];
   const changes = selected.map(value => {
     const root = adapters[value].skills;
     const entries = remove ? [] : [...outputs[value]];
@@ -135,7 +151,16 @@ function changeSkills({ base, otherBase, host, outputs, remove }) {
     const owned = state.skills[value] ?? [];
     const directories = [...new Set(remove ? owned : [...owned, ...names])].map(name => {
       const directory = contained(base, `${root}/${name}`);
-      if (!remove && existsSync(directory) && !owned.includes(name)) throw new Error(`Unowned skill folder: ${directory}; refusing overwrite. Move it aside before retrying.`);
+      if (!remove && existsSync(directory)) {
+        const unowned = !owned.includes(name);
+        if (unowned && !adopt) throw new Error(`Unowned skill folder: ${directory}; refusing overwrite. Run the install with --adopt to review file differences, then --adopt --yes to back up and replace.`);
+        if (!adopt) return directory;
+        const prefix = `${root}/${name}/`;
+        const packaged = new Map(entries.filter(([file]) => file.startsWith(prefix)).map(([file, bytes]) => [file.slice(prefix.length), bytes]));
+        const { diff, modified } = adoptionDiff(directory, packaged);
+        previews.push({ host: value, name, directory, diff, backup: unowned || modified,
+          action: unowned ? 'Adopt' : names.includes(name) ? 'Replace owned' : 'Remove owned' });
+      }
       return directory;
     });
     if (!remove && otherBase && realpathSync(otherBase) !== base) for (const name of names) {
@@ -144,6 +169,31 @@ function changeSkills({ base, otherBase, host, outputs, remove }) {
     }
     return { value, entries, names, directories };
   });
+  const backups = previews.filter(preview => preview.backup);
+  if (backups.length) {
+    home = realpathSync(home);
+    const backupRoot = contained(home, '.praxity/skill-backups');
+    const scope = base === home ? 'user' : `project-${createHash('sha256').update(base).digest('hex').slice(0, 16)}`;
+    for (const backup of backups) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      backup.prefix = contained(backupRoot, `${scope}/${backup.host}/${backup.name}-${timestamp}-`);
+    }
+  }
+  for (const { action, name, directory, diff, backup } of previews) print(`${action} ${name}: ${directory}\nFile differences (existing -> packaged):\n${diff}\n${backup ? 'Backup required before replacement.' : 'No local file changes; no backup needed.'}`);
+  if (adopt && !yes) {
+    if (!previews.some(preview => preview.action === 'Adopt')) print('No unowned skill folders to adopt.');
+    throw new Error('Adoption preview only; no files changed. Review the differences, then rerun with --adopt --yes to back up and replace.');
+  }
+  // Copy and publish in home before claiming names or deleting originals, even across volumes.
+  for (const { name, directory, prefix } of backups) {
+    mkdirSync(dirname(prefix), { recursive: true });
+    const container = mkdtempSync(prefix);
+    const pending = contained(container, '.pending');
+    const backup = contained(container, name);
+    cpSync(directory, pending, { recursive: true, errorOnExist: true, force: false });
+    renameSync(pending, backup);
+    print(`Backed up ${name} to ${backup}`);
+  }
   // Record names before copying so a rerun can replace a partial install.
   if (!remove) {
     for (const { value, names } of changes) {
@@ -172,8 +222,8 @@ function changeSkills({ base, otherBase, host, outputs, remove }) {
 }
 
 export function skillPresence({ base, host, outputs }) {
-  readState(realpathSync(base));
-  const adapter = adapters[canonicalHost(host)], result = { current: [], stale: [], missing: [] };
+  const state = readState(realpathSync(base));
+  const adapter = adapters[canonicalHost(host)], result = { current: [], stale: [], missing: [], unowned: [] };
   const skills = new Map();
   for (const [name, bytes] of outputs[canonicalHost(host)]) {
     const skill = name.slice(adapter.skills.length + 1).split('/')[0];
@@ -182,6 +232,7 @@ export function skillPresence({ base, host, outputs }) {
   }
   for (const [skill, current] of skills) {
     result[current ? 'current' : existsSync(join(base, adapter.skills, skill, 'SKILL.md')) ? 'stale' : 'missing'].push(skill);
+    if (existsSync(join(base, adapter.skills, skill)) && !(state.skills[canonicalHost(host)] ?? []).includes(skill)) result.unowned.push(skill);
   }
   return result;
 }
