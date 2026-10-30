@@ -53,6 +53,11 @@ jobs:
       - run: npm run validate
       - run: node --test
       - run: npm run validate:release
+      - name: Manifest changes raise the pack version
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --depth=1 origin "$GITHUB_BASE_REF"
+          node scripts/check-pack-bump.mjs FETCH_HEAD
   macos-install:
     if: github.event_name != 'workflow_dispatch' || !inputs.stage_release_assets
     permissions:

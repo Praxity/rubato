@@ -44,3 +44,11 @@ export function installationPlan(pack, platform) {
   }
   return entries;
 }
+
+// An installed pack refuses a second manifest under its version, so a manifest
+// change that keeps the version can't reach any machine already on it.
+export function manifestBumpError(base, head) {
+  if (base.version !== head.version) return null;
+  const pins = pack => JSON.stringify({ ...pack, version: undefined });
+  return pins(base) === pins(head) ? null : `pack.json changed but version is still ${head.version}; raise it`;
+}

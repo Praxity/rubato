@@ -86,7 +86,7 @@ test('dry-run creates a schema-valid pack with exact hashes and tested SHA, with
   assert.match(names, /rubato\/install.sh/);
   assert.doesNotMatch(names, /(?:\.git\/|test\/|build-inputs|studio-cli-review)/);
   const original = realPack();
-  assert.equal(original.version, '0.1.1');
+  assert.equal(original.version, '0.1.2');
   assert.ok(pack.tools.find(tool => tool.id === 'check').archives['darwin-arm64'].url.startsWith('https://github.com/Praxity/rubato/'));
 });
 
@@ -310,7 +310,7 @@ for (const failing of ['assertNewImmutableRelease', 'createDraft', 'upload', 've
 
 for (const [name, change, message] of [
   ['downgrade', f => { f.options.version = '0.1.0'; }, /Pack version must increase/],
-  ['same version', f => { f.options.version = '0.1.1'; }, /Pack version must increase/],
+  ['same version', f => { f.options.version = '0.1.2'; }, /Pack version must increase/],
   ['duplicate archive', f => cpSync(join(f.options.archivesDir, 'praxity-cli-0.3.0-macos-arm64.tar.gz'), join(f.options.archivesDir, 'praxity-cli-0.3.1-macos-arm64.tar.gz')), /Exactly one archive/],
   ['missing archive', f => rmSync(join(f.options.archivesDir, 'praxity-cli-0.3.0-macos-x64.tar.gz')), /Exactly one archive/],
   ['missing build digest', f => { delete f.options.expectedDigests.arm64; }, /Expected build digest/],
