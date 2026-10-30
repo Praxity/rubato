@@ -11,6 +11,10 @@ Change adapters through the generator, then update and review the golden files.
 Use `node --test` and `npm run validate`. Installer tests use local archives and
 temporary homes only. Real installs run in CI on GitHub-hosted macOS and on the owner's Mac.
 Keep unpublished artifacts explicit. Never infer release URLs or checksums.
+Every `pack.json` change raises the patch version, published or not: an installed
+pack refuses a second manifest under its version, and CI enforces this. Keep the
+version numeric. `praxity update` treats a pre-release suffix as older than the
+stable release, so it would replace a newer pin.
 
 Preserve unowned files and modified adapter files. Keep activation atomic and
 test recovery when changing installation or ownership rules.

@@ -24,8 +24,9 @@ without a pack manifest or installer bootstrap: Studio downloads from
 `v0.1.1-tools.experimental.20261019` and Trace from
 `v0.1.1-tools.experimental.20261024.1`.
 The remaining tool archives come from Rubato `v0.1.1`.
-These candidate pins support installation from a reviewed checkout; the published
-Rubato `v0.1.1` manifest and stable update channel remain unchanged.
+These candidate pins support installation from a reviewed checkout. The checked-in
+pack version is ahead of Rubato `v0.1.1`, whose published manifest and stable update
+channel remain unchanged.
 The installer supports Apple Silicon and Intel macOS and chooses native arm64
 runtimes when launched through Rosetta. Studio has an archive for each
 architecture. Check, Trace, Print and Import share portable archives across both.

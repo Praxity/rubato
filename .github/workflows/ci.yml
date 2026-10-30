@@ -53,6 +53,11 @@ jobs:
       - run: npm run validate
       - run: node --test
       - run: npm run validate:release
+      - name: Manifest changes raise the pack version
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --depth=1 origin "$GITHUB_BASE_REF"
+          node scripts/check-pack-bump.mjs FETCH_HEAD
   macos-install:
     if: github.event_name != 'workflow_dispatch' || !inputs.stage_release_assets
     permissions:
@@ -86,11 +91,14 @@ jobs:
           trap 'rm -rf -- "$task_home"' EXIT
           manifest="file://$PWD/pack.json"
           tag=$(node -p '"v" + require("./pack.json").version')
-          # A read-only PR token cannot see drafts. If the tag is unpublished,
-          # consume the manual staging run for this exact commit, then check pins.
+          # A read-only PR token cannot see drafts. If the manifest downloads from
+          # an unpublished tag, consume the manual staging run for this exact
+          # commit, then check pins. A version with no release of its own pins
+          # only assets that are already public, so it installs as it stands.
           releases=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100")
           published=$(printf '%s' "$releases" | jq --arg tag "$tag" '[.[] | select(.tag_name == $tag and .draft == false)] | length')
-          if [ "$published" = 0 ]; then
+          own_assets=$(jq --arg path "/releases/download/$tag/" '[.. | .url? // empty | select(type == "string" and contains($path))] | length' pack.json)
+          if [ "$published" = 0 ] && [ "$own_assets" != 0 ]; then
             runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?event=workflow_dispatch&head_sha=$RELEASE_REVISION&status=success&per_page=100")
             stage_run=$(printf '%s' "$runs" | jq -r --arg sha "$RELEASE_REVISION" '[.workflow_runs[] | select(.head_sha == $sha)] | first | .id // empty')
             [ -n "$stage_run" ] || { echo "Stage draft assets for commit $RELEASE_REVISION with workflow_dispatch first" >&2; exit 1; }

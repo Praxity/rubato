@@ -3,8 +3,17 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { examplePack, realPack, repository } from './helpers.mjs';
-import { validateManifest, validateReleaseManifest, installationPlan } from '../src/manifest.mjs';
+import { manifestBumpError, validateManifest, validateReleaseManifest, installationPlan } from '../src/manifest.mjs';
 import { loadSchema, validateSchema } from '../src/schema.mjs';
+
+test('a manifest change must raise the pack version', () => {
+  const base = examplePack(), head = examplePack();
+  assert.equal(manifestBumpError(base, head), null);
+  head.tools[0].version = 'changed';
+  assert.match(manifestBumpError(base, head), /raise it/);
+  head.version = '9.9.9';
+  assert.equal(manifestBumpError(base, head), null);
+});
 
 test('a tool can record its full source revision, with malformed revisions refused', () => {
   const pack = examplePack(), studio = pack.tools.find(tool => tool.id === 'studio');
@@ -18,7 +27,7 @@ test('a tool can record its full source revision, with malformed revisions refus
 
 test('real pack validates and every published archive has a complete contract', () => {
   const pack = realPack();
-  assert.equal(pack.version, '0.1.1');
+  assert.equal(pack.version, '0.1.2');
   assert.equal(JSON.parse(readFileSync(join(repository, 'package.json'), 'utf8')).version, pack.version);
   assert.deepEqual(validateSchema(pack, loadSchema('pack')), []);
   assert.deepEqual(validateManifest(pack), []);
@@ -35,7 +44,7 @@ test('real pack validates and every published archive has a complete contract', 
 
 test('real pack preserves the unchanged tool archive URLs from v0.1.1', () => {
   const pack = realPack();
-  const prefix = `https://github.com/Praxity/praxity-toolkit/releases/download/v${pack.version}/`;
+  const prefix = 'https://github.com/Praxity/praxity-toolkit/releases/download/v0.1.1/';
   for (const tool of pack.tools) {
     if (['studio', 'check', 'trace'].includes(tool.id)) continue;
     for (const archive of Object.values(tool.archives)) {

@@ -51,7 +51,7 @@ function candidate(t, mutate = () => {}, mutateInventory = () => {}, mutateStage
     async verifyDraft(id, expected) { calls.push(['verify', id, expected]); },
     async verifyPublished(id, expected) { calls.push(['readback', id, expected]); },
   };
-  const options = { version: '0.1.2', studioSha: sha, archivesDir: archives,
+  const options = { version: '0.1.3', studioSha: sha, archivesDir: archives,
     outputDir: join(root, 'output'), repositoryRoot: repository, dryRun: true,
     expectedDigests: Object.fromEntries(['arm64', 'x64'].map(arch => [arch,
       hash(readFileSync(join(archives, `praxity-cli-0.3.0-macos-${arch}.tar.gz`)))])) };
@@ -61,19 +61,19 @@ function candidate(t, mutate = () => {}, mutateInventory = () => {}, mutateStage
 test('dry-run creates a schema-valid pack with exact hashes and tested SHA, without publishing', async t => {
   const { options, calls, release } = candidate(t);
   const pack = await publishStudioPack(options, release);
-  assert.equal(pack.version, '0.1.2');
+  assert.equal(pack.version, '0.1.3');
   const studio = pack.tools.find(tool => tool.id === 'studio');
   assert.equal(studio.sourceRevision, sha);
   assert.equal(studio.version, '0.3.0-main.12345678');
   for (const arch of ['arm64', 'x64']) {
     const name = `praxity-cli-0.3.0-macos-${arch}.tar.gz`;
-    assert.equal(studio.archives[`darwin-${arch}`].url, `https://github.com/Praxity/rubato/releases/download/v0.1.2/${name}`);
+    assert.equal(studio.archives[`darwin-${arch}`].url, `https://github.com/Praxity/rubato/releases/download/v0.1.3/${name}`);
     assert.equal(studio.archives[`darwin-${arch}`].sha256, hash(readFileSync(join(options.archivesDir, name))));
   }
   assert.deepEqual(validateReleaseManifest(pack), []);
-  assert.deepEqual(calls, [['check', 'v0.1.2']]);
-  assert.deepEqual(readdirSync(options.outputDir).sort(), ['SHA256SUMS', 'pack.json', 'rubato-0.1.2.tar.gz']);
-  const bootstrap = join(options.outputDir, 'rubato-0.1.2.tar.gz');
+  assert.deepEqual(calls, [['check', 'v0.1.3']]);
+  assert.deepEqual(readdirSync(options.outputDir).sort(), ['SHA256SUMS', 'pack.json', 'rubato-0.1.3.tar.gz']);
+  const bootstrap = join(options.outputDir, 'rubato-0.1.3.tar.gz');
   const embedded = JSON.parse(execFileSync('tar', ['-xOf', bootstrap, 'rubato/pack.json']));
   assert.deepEqual(embedded, pack);
   const sums = readFileSync(join(options.outputDir, 'SHA256SUMS'), 'utf8').trim().split('\n');
@@ -86,7 +86,7 @@ test('dry-run creates a schema-valid pack with exact hashes and tested SHA, with
   assert.match(names, /rubato\/install.sh/);
   assert.doesNotMatch(names, /(?:\.git\/|test\/|build-inputs|studio-cli-review)/);
   const original = realPack();
-  assert.equal(original.version, '0.1.1');
+  assert.equal(original.version, '0.1.2');
   assert.ok(pack.tools.find(tool => tool.id === 'check').archives['darwin-arm64'].url.startsWith('https://github.com/Praxity/rubato/'));
 });
 
@@ -97,7 +97,7 @@ test('publication creates a new draft, uploads an allowlist, then activates last
   assert.equal(calls[3][1], 42);
   assert.equal(calls[4][1], 42);
   assert.equal(calls[3][2].length, 5);
-  assert.deepEqual(calls[2][1].sort(), ['SHA256SUMS', 'pack.json', 'praxity-cli-0.3.0-macos-arm64.tar.gz', 'praxity-cli-0.3.0-macos-x64.tar.gz', 'rubato-0.1.2.tar.gz']);
+  assert.deepEqual(calls[2][1].sort(), ['SHA256SUMS', 'pack.json', 'praxity-cli-0.3.0-macos-arm64.tar.gz', 'praxity-cli-0.3.0-macos-x64.tar.gz', 'rubato-0.1.3.tar.gz']);
 });
 
 function thinCanvas({ files }) {
@@ -215,15 +215,15 @@ for (const [failure, message] of [
     const route = args.find(arg => arg.startsWith('repos/'));
     if (failure === 'network error') throw new Error('unavailable');
     if (route.endsWith('immutable-releases')) return JSON.stringify({ enabled: failure !== 'immutability disabled' });
-    if (route.includes('/releases?')) return JSON.stringify([failure === 'existing release' ? [{ tag_name: 'v0.1.2', draft: true }] : []]);
+    if (route.includes('/releases?')) return JSON.stringify([failure === 'existing release' ? [{ tag_name: 'v0.1.3', draft: true }] : []]);
     if (route.endsWith('/releases/latest')) return '{"tag_name":"v0.1.1"}';
-    if (route.includes('/tags?')) return JSON.stringify([failure === 'existing tag' ? [{ name: 'v0.1.2' }] : []]);
+    if (route.includes('/tags?')) return JSON.stringify([failure === 'existing tag' ? [{ name: 'v0.1.3' }] : []]);
     if (route.endsWith('/releases') && args.includes('POST')) return '{"id":42}';
     throw new Error(`Unexpected GitHub call: ${JSON.stringify(args)}`);
   });
   await assert.rejects(async () => {
-    await adapter.assertNewImmutableRelease('v0.1.2');
-    await adapter.createDraft('v0.1.2');
+    await adapter.assertNewImmutableRelease('v0.1.3');
+    await adapter.createDraft('v0.1.3');
   }, message);
   assert.equal(calls.some(args => args.includes('POST') || args.includes('PATCH')), false);
 });
@@ -238,9 +238,9 @@ test('dry-run accepts the v0.1.1 payload shape with inventoried split chunks and
     inventory.dependencies.push({ name: 'typst', version: '0.15.1', license: 'Apache-2.0', notices: ['licenses/example/LICENSE'] });
   });
   const pack = await publishStudioPack(f.options, f.release);
-  assert.equal(pack.version, '0.1.2');
+  assert.equal(pack.version, '0.1.3');
   assert.deepEqual(validateReleaseManifest(pack), []);
-  assert.deepEqual(f.calls, [['check', 'v0.1.2']]);
+  assert.deepEqual(f.calls, [['check', 'v0.1.3']]);
 });
 
 for (const name of ['praxity.mjs', 'main-K7BNWGL3.mjs', 'editor/entry.js', 'export-assets/runtime.js']) test(`private path in Studio-built ${name} refuses`, async t => {
@@ -310,7 +310,7 @@ for (const failing of ['assertNewImmutableRelease', 'createDraft', 'upload', 've
 
 for (const [name, change, message] of [
   ['downgrade', f => { f.options.version = '0.1.0'; }, /Pack version must increase/],
-  ['same version', f => { f.options.version = '0.1.1'; }, /Pack version must increase/],
+  ['same version', f => { f.options.version = '0.1.2'; }, /Pack version must increase/],
   ['duplicate archive', f => cpSync(join(f.options.archivesDir, 'praxity-cli-0.3.0-macos-arm64.tar.gz'), join(f.options.archivesDir, 'praxity-cli-0.3.1-macos-arm64.tar.gz')), /Exactly one archive/],
   ['missing archive', f => rmSync(join(f.options.archivesDir, 'praxity-cli-0.3.0-macos-x64.tar.gz')), /Exactly one archive/],
   ['missing build digest', f => { delete f.options.expectedDigests.arm64; }, /Expected build digest/],
@@ -382,7 +382,7 @@ test('publisher CLI refuses conflicting modes', () => {
   assert.match(run.stderr, /Choose --publish or --dry-run/);
 });
 
-function githubFixture({ releases = [], latest = 'v0.1.1', immutable = true, changedBytes = false, changedDigest = false, missingAsset = false, wrongId = false, assetId = 77, initialDraft = true, duplicateAsset = false, draftTag = 'v0.1.2', nextLatest } = {}) {
+function githubFixture({ releases = [], latest = 'v0.1.1', immutable = true, changedBytes = false, changedDigest = false, missingAsset = false, wrongId = false, assetId = 77, initialDraft = true, duplicateAsset = false, draftTag = 'v0.1.3', nextLatest } = {}) {
   const calls = [], bytes = Buffer.from('fixture bytes');
   let draft = initialDraft, latestReads = 0;
   const assets = [{ id: assetId, name: 'pack.json', digest: `sha256:${hash(bytes)}` }];
@@ -413,8 +413,8 @@ function githubFixture({ releases = [], latest = 'v0.1.1', immutable = true, cha
 
 test('GitHub adapter uploads, verifies and activates the exact draft ID, then reads immutable digests back', async () => {
   const f = githubFixture();
-  await f.adapter.assertNewImmutableRelease('v0.1.2');
-  const id = await f.adapter.createDraft('v0.1.2');
+  await f.adapter.assertNewImmutableRelease('v0.1.3');
+  const id = await f.adapter.createDraft('v0.1.3');
   assert.equal(id, 42);
   await f.adapter.upload(id, ['pack.json']);
   await f.adapter.verifyDraft(id, f.expected);
@@ -427,11 +427,11 @@ test('GitHub adapter uploads, verifies and activates the exact draft ID, then re
 
 for (const [name, config] of [
   ['older than Latest', { latest: 'v0.1.5' }],
-  ['equal to Latest', { latest: 'v0.1.2' }],
+  ['equal to Latest', { latest: 'v0.1.3' }],
   ['older than another published release', { releases: [{ tag_name: 'v0.1.5', draft: false }] }],
 ]) test(`GitHub adapter refuses version ${name}`, async () => {
   const f = githubFixture(config);
-  await assert.rejects(f.adapter.assertNewImmutableRelease('v0.1.2'), /greater than/);
+  await assert.rejects(f.adapter.assertNewImmutableRelease('v0.1.3'), /greater than/);
   assert.equal(f.calls.some(args => args.includes('POST') || args.includes('PATCH')), false);
 });
 
@@ -443,9 +443,9 @@ for (const config of [{ changedBytes: true }, { changedDigest: true }, { missing
 
 test('draft creation requires admission and a numeric release ID', async () => {
   const f = githubFixture({ wrongId: true });
-  await assert.rejects(f.adapter.createDraft('v0.1.2'), /not admitted/);
-  await f.adapter.assertNewImmutableRelease('v0.1.2');
-  await assert.rejects(f.adapter.createDraft('v0.1.2'), /Invalid draft release ID/);
+  await assert.rejects(f.adapter.createDraft('v0.1.3'), /not admitted/);
+  await f.adapter.assertNewImmutableRelease('v0.1.3');
+  await assert.rejects(f.adapter.createDraft('v0.1.3'), /Invalid draft release ID/);
 });
 
 test('verifying a draft refuses an already active release', async () => {
@@ -455,14 +455,14 @@ test('verifying a draft refuses an already active release', async () => {
 
 for (const config of [{ initialDraft: false }, { draftTag: 'v0.1.0' }, { nextLatest: 'v0.1.5' }]) test(`activation rechecks the admitted draft and Latest: ${JSON.stringify(config)}`, async () => {
   const f = githubFixture(config);
-  await f.adapter.assertNewImmutableRelease('v0.1.2');
+  await f.adapter.assertNewImmutableRelease('v0.1.3');
   await assert.rejects(f.adapter.activate(42), /draft|greater than/);
   assert.equal(f.calls.some(args => args.includes('PATCH')), false);
 });
 
 for (const config of [{ immutable: false }, { changedDigest: true }, { missingAsset: true }]) test(`live readback fails loudly: ${JSON.stringify(config)}`, async () => {
   const f = githubFixture(config);
-  await f.adapter.assertNewImmutableRelease('v0.1.2');
+  await f.adapter.assertNewImmutableRelease('v0.1.3');
   await f.adapter.activate(42);
   await assert.rejects(f.adapter.verifyPublished(42, f.expected), /immutable|asset|digest/);
 });
@@ -470,7 +470,7 @@ for (const config of [{ immutable: false }, { changedDigest: true }, { missingAs
 test('generated release installs using its exported installer and local archive transport', { skip: process.platform === 'win32' }, async t => {
   const f = candidate(t), generated = await publishStudioPack(f.options, f.release);
   const extracted = join(f.root, 'extracted'); mkdirSync(extracted);
-  execFileSync('tar', ['-xzf', join(f.options.outputDir, 'rubato-0.1.2.tar.gz'), '-C', extracted]);
+  execFileSync('tar', ['-xzf', join(f.options.outputDir, 'rubato-0.1.3.tar.gz'), '-C', extracted]);
   const setup = installation(t, { tools: ['studio', 'check', 'trace', 'print', 'import'] });
   for (const [id, runtime] of Object.entries(generated.runtimes)) runtime.archives['darwin-arm64'] = setup.pack.runtimes[id].archives['darwin-arm64'];
   for (const tool of generated.tools) {
@@ -480,9 +480,9 @@ test('generated release installs using its exported installer and local archive 
   writeFileSync(setup.manifest, JSON.stringify(generated));
   const run = shell(`sh ${quote(posix(join(extracted, 'rubato/install.sh')))} --manifest ${quote(pathToFileURL(setup.manifest).href)} --platform darwin-arm64`, { env: setup.env });
   assert.equal(run.status, 0, run.stderr);
-  assert.equal(readFileSync(join(setup.toolkit, 'active'), 'utf8').split('\n')[0], '0.1.2');
+  assert.equal(readFileSync(join(setup.toolkit, 'active'), 'utf8').split('\n')[0], '0.1.3');
   const version = shell(`${quote(posix(join(setup.home, '.praxity/bin/praxity')))} version`, { env: setup.env });
   assert.equal(version.status, 0, version.stderr);
-  assert.equal(JSON.parse(version.stdout).pack, '0.1.2');
+  assert.equal(JSON.parse(version.stdout).pack, '0.1.3');
   assert.equal(JSON.parse(version.stdout).tools.find(tool => tool.id === 'studio').version, '0.3.0-main.12345678');
 });
