@@ -211,8 +211,8 @@ Run `praxity init [folder]` in a course with `course.yaml` or `.prax` lessons.
 It writes a commit-ready `t3.json` with Open in Studio, Export HTML, Export PDF,
 Check accessibility and Doctor actions. Exports write `course-html.zip` and
 `course.pdf`; export HTML before running the accessibility check.
-Open in Studio and both export actions first run Studio's `identity init .`
-for the same course. If initialization fails, including pending identity or a
+Open in Studio and both export actions use `praxity action studio|export <course> [options]`.
+This runs Studio's `identity init <course>` for the same course before the target command. If initialization fails, including pending identity or a
 need for `--rederive`, the action stops, shows Studio's report and asks you to
 ask your agent how to proceed. The actions never rederive identity automatically.
 Other keys and scripts stay intact, including commands you customised.
@@ -232,7 +232,9 @@ upgrades recognised actions written by earlier versions.
 T3 keeps a saved copy of imported actions. After init changes those actions,
 delete each stale saved Praxity action in T3's project Actions settings and import
 it again from `t3.json`, or edit its saved command to match `t3.json`.
-`praxity doctor` warns per project when saved Praxity actions differ from that
+`praxity doctor` also warns when a course's `t3.json` actions differ from the
+current generator; rerun `praxity init` in that course, then reimport the actions.
+It warns per project when saved Praxity actions differ from that
 project's file. Optional settings and project JSON reads are limited to 4 MiB
 each. It queries the project mapping from a private copy of `statev2.sqlite`
 and its committed WAL, with a 128 MiB limit per snapshot file. It never opens

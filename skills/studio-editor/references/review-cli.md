@@ -21,12 +21,9 @@ Give this warning yourself even if Studio does not print it.
 
 Read the course root's `t3.json`. Use the first `scripts[]` entry named
 `Open in Studio`. Its `command` must have the generated
-form below, either alone (older actions) or after Rubato's identity gate:
-
-`"$HOME/.praxity/bin/praxity" identity init . || { printf '%s\n' 'Ask your agent how to proceed.' >&2; exit 1; }; `
-
-The final command is executable `praxity` or `"$HOME/.praxity/bin/praxity"`, followed by
-`studio . --port N` and optionally `--no-open`, with no other arguments.
+form: executable `praxity` or `"$HOME/.praxity/bin/praxity"`, followed by
+`action studio . --port N` and optionally `--no-open`, with no other arguments.
+Older generated actions use `studio . --port N` without `action`.
 Copy only the decimal port from `--port N`; do not execute the action's command.
 If this reserved action exists, replace `N` below with that port:
 

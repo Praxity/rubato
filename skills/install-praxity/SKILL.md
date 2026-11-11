@@ -33,6 +33,6 @@ The installed pack is older than the skill you are following. Run `~/.praxity/bi
 
 ## Add T3 course actions
 
-Before every export, run `~/.praxity/bin/praxity identity init <course-folder>` and follow the prax-format skill's identity rule. The generated actions don't run it yet, so run it before Open in Studio too.
+Before every export, run `~/.praxity/bin/praxity identity init <course-folder>` and follow the prax-format skill's identity rule. Actions saved in T3 before this update may still skip initialization. Rerun Rubato init and reimport them; until then, initialize identity before Open in Studio too.
 
 Run `~/.praxity/bin/praxity init <course-folder>` on a folder that holds `course.yaml` or `.prax` lessons. It merges five actions into the course's `t3.json` (Open in Studio, Export HTML, Export PDF, Check accessibility, Doctor) and keeps other keys and scripts; Check accessibility reads the `course-html.zip` that Export HTML writes. Open in Studio and both export actions initialize identity for the same course first. If initialization fails, including pending identity or a need for rederivation, they stop, show Studio's report and tell the person to ask their agent how to proceed. They never rederive automatically. Init reserves a Studio port for the course and hides `.praxity/` in VS Code settings. Commit `t3.json` with the course. If init refuses, nothing changed; fix the reported error and rerun. If T3 keeps running an old saved action, follow the repair note init prints.

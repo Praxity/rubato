@@ -19,9 +19,9 @@ test('all five T3 actions execute the installed launcher without it on PATH', as
   const { scripts } = JSON.parse(readFileSync(join(context.cwd, 't3.json'), 'utf8'));
   const port = new URL(scripts[0].previewUrl).port;
   const expected = [
-    [['identity', 'init', '.'], ['studio', '.', '--port', port, '--no-open']],
-    [['identity', 'init', '.'], ['export', '.', '--format', 'html', '--output', 'course-html.zip']],
-    [['identity', 'init', '.'], ['export', '.', '--format', 'pdf', '--output', 'course.pdf']],
+    [['action', 'studio', '.', '--port', port, '--no-open']],
+    [['action', 'export', '.', '--format', 'html', '--output', 'course-html.zip']],
+    [['action', 'export', '.', '--format', 'pdf', '--output', 'course.pdf']],
     [['check', 'check', 'course-html.zip', '--checks', 'accessibility']],
     [['doctor']],
   ];

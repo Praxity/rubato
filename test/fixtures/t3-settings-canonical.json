@@ -8,8 +8,8 @@
       { "id": "old-export", "name": "Export PDF", "command": "praxity export . --format pdf --output course.pdf", "icon": "build", "runOnWorktreeCreate": false }
     ] },
     "current": { "defaultProjectScripts": [
-      { "id": "current-studio", "name": "Open in Studio", "command": "\"$HOME/.praxity/bin/praxity\" identity init . || { printf '%s\\n' 'Ask your agent how to proceed.' >&2; exit 1; }; \"$HOME/.praxity/bin/praxity\" studio . --port 41702 --no-open", "icon": "play", "runOnWorktreeCreate": false, "async": true, "previewUrl": "http://127.0.0.1:41702/launch", "autoOpenPreview": true },
-      { "id": "current-export", "name": "Export PDF", "command": "\"$HOME/.praxity/bin/praxity\" identity init . || { printf '%s\\n' 'Ask your agent how to proceed.' >&2; exit 1; }; \"$HOME/.praxity/bin/praxity\" export . --format pdf --output course.pdf", "icon": "build", "runOnWorktreeCreate": false, "autoOpenPreview": false }
+      { "id": "current-studio", "name": "Open in Studio", "command": "\"$HOME/.praxity/bin/praxity\" action studio . --port 41702 --no-open", "icon": "play", "runOnWorktreeCreate": false, "async": true, "previewUrl": "http://127.0.0.1:41702/launch", "autoOpenPreview": true },
+      { "id": "current-export", "name": "Export PDF", "command": "\"$HOME/.praxity/bin/praxity\" action export . --format pdf --output course.pdf", "icon": "build", "runOnWorktreeCreate": false, "autoOpenPreview": false }
     ] },
     "reset": { "defaultAutoPull": true },
     "custom": { "defaultProjectScripts": [{ "id": "custom", "name": "Custom", "command": "echo custom", "icon": "play", "runOnWorktreeCreate": false }] },

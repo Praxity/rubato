@@ -375,3 +375,32 @@ test('init notes new actions, but not a schema or formatting change with identic
   await runCli(['init'], context, { print });
   assert.equal(output.length, 1);
 });
+
+test('doctor flags outdated project actions even when saved actions match, without writing', async t => {
+  const { context } = fixture(t);
+  const paths = await projects(context, ['outdated']);
+  const folder = paths.get('outdated'), file = join(folder, 't3.json');
+  const project = JSON.parse(readFileSync(file));
+  project.scripts[0].command = '"$HOME/.praxity/bin/praxity" studio . --port 41700 --no-open';
+  writeFileSync(file, JSON.stringify(project));
+  const settingsFile = settings(context, 'canonical');
+  writeFileSync(settingsFile, JSON.stringify({ projectSettingsOverrides: { outdated: { defaultProjectScripts: project.scripts } } }));
+  const before = [file, settingsFile].map(path => [readFileSync(path), statSync(path).mtimeMs]);
+  const warnings = t3Items(report({ ...context, cwd: folder }));
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0].message, /t3.json.*current.*Open in Studio/);
+  assert.match(warnings[0].fix, /praxity init/);
+  assert.match(warnings[0].fix, /import it again from t3.json/);
+  assert.deepEqual([file, settingsFile].map(path => [readFileSync(path), statSync(path).mtimeMs]), before);
+});
+
+test('doctor flags outdated current project actions without T3 settings or mapping', t => {
+  const { context } = fixture(t);
+  writeFileSync(join(context.cwd, 't3.json'), JSON.stringify({ scripts: [
+    { name: 'Export HTML', command: 'praxity export . --format html --output course-html.zip' },
+  ] }));
+  const warnings = t3Items(report(context));
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0].message, /Export HTML/);
+  assert.equal(existsSync(join(context.home, '.t3')), false);
+});

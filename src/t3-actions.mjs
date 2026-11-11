@@ -9,13 +9,11 @@ const maxSnapshotFileBytes = 128n * 1024n * 1024n;
 
 export const t3ActionsRepairNote = "T3 keeps a saved copy of imported actions. In T3's project Actions settings, delete each stale saved Praxity action and import it again from t3.json, or edit its saved command to match t3.json.";
 
-export const identityInitGate = `${launcher} identity init . || { printf '%s\\n' 'Ask your agent how to proceed.' >&2; exit 1; }; `;
-
 export function courseActions(port) {
   return [
-    { name: 'Open in Studio', command: `${identityInitGate}${launcher} studio . --port ${port} --no-open`, icon: 'play', previewUrl: `http://127.0.0.1:${port}/launch`, autoOpenPreview: true },
-    { name: 'Export HTML', command: `${identityInitGate}${launcher} export . --format html --output course-html.zip`, icon: 'build' },
-    { name: 'Export PDF', command: `${identityInitGate}${launcher} export . --format pdf --output course.pdf`, icon: 'build' },
+    { name: 'Open in Studio', command: `${launcher} action studio . --port ${port} --no-open`, icon: 'play', previewUrl: `http://127.0.0.1:${port}/launch`, autoOpenPreview: true },
+    { name: 'Export HTML', command: `${launcher} action export . --format html --output course-html.zip`, icon: 'build' },
+    { name: 'Export PDF', command: `${launcher} action export . --format pdf --output course.pdf`, icon: 'build' },
     { name: 'Check accessibility', command: `${launcher} check check course-html.zip --checks accessibility`, icon: 'lint' },
     { name: 'Doctor', command: `${launcher} doctor`, icon: 'configure' },
   ];
@@ -98,16 +96,25 @@ function actionFields(action) {
     action.previewUrl ? (action.autoOpenPreview ?? false) : false];
 }
 
-export function t3ActionWarnings({ home }) {
+export function t3ActionWarnings({ home, cwd }) {
   const directory = join(home, '.t3/userdata'), settings = optionalJson(join(directory, 'settings.json'));
-  if (!record(settings)) return [];
-  const saved = savedActions(settings);
-  if (!saved.size) return [];
+  const saved = record(settings) ? savedActions(settings) : new Map();
   const warnings = [];
-  for (const { id, title, folder } of projectFolders(directory)) {
-    if (!saved.has(id) || typeof folder !== 'string' || !isAbsolute(folder)) continue;
+  const folders = projectFolders(directory);
+  if (cwd && !folders.some(project => project.folder === cwd)) folders.push({ id: 'current', title: 'current course', folder: cwd });
+  for (const { id, title, folder } of folders) {
+    if (typeof folder !== 'string' || !isAbsolute(folder)) continue;
     const project = optionalJson(join(folder, 't3.json'));
     if (!Array.isArray(project?.scripts) || !project.scripts.every(validAction)) continue;
+    const studio = project.scripts.find(action => action.name === 'Open in Studio');
+    const port = Number(studio?.command.match(/ --port (\d+)(?: --no-open)?$/)?.[1] ?? 0);
+    const current = new Map(courseActions(port).map(action => [action.name.toLowerCase(), action]));
+    const outdated = project.scripts.filter(action => managed(action) &&
+      JSON.stringify(actionFields(action)) !== JSON.stringify(actionFields(current.get(action.name.trim().toLowerCase()))));
+    if (outdated.length) warnings.push({ id: `t3.actions.${id}.project`, status: 'partial',
+      message: `Praxity actions in ${folder}/t3.json differ from the current generator: ${outdated.map(action => action.name).join(', ')}.`,
+      fix: `Run praxity init in ${folder}, then reimport the actions in T3. ${t3ActionsRepairNote}` });
+    if (!saved.has(id)) continue;
     const expected = new Map(project.scripts.map(action => [action.name.trim().toLowerCase(), action]));
     const changed = saved.get(id).filter(action => {
       if (!managed(action) || !validAction(action)) return false;

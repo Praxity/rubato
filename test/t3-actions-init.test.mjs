@@ -4,7 +4,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { courseActions } from '../src/t3-actions.mjs';
-import { fixture, realPack } from './helpers.mjs';
+import { pathToFileURL } from 'node:url';
+import { fixture, realPack, fakeTool } from './helpers.mjs';
 
 const shell = process.env.PRAXITY_TEST_SHELL ?? (process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : '/bin/bash');
 const quote = value => `'${value.replaceAll("'", "'\"'\"'")}'`;
@@ -18,7 +19,12 @@ const targets = [
 function launcher(context, body) {
   const bin = join(context.home, '.praxity/bin');
   mkdirSync(bin, { recursive: true });
-  writeFileSync(join(bin, 'record.mjs'), body);
+  fakeTool(context, 'studio', body);
+  writeFileSync(join(bin, 'record.mjs'), `import { runCli } from ${JSON.stringify(pathToFileURL(join(import.meta.dirname, '../src/cli.mjs')).href)};
+const context = ${JSON.stringify(context)};
+context.env = process.env;
+process.exitCode = await runCli(process.argv.slice(2), context);
+`);
   writeFileSync(join(bin, 'praxity'), `#!/bin/sh\nexec ${quote(process.execPath.replaceAll('\\', '/'))} ${quote(join(bin, 'record.mjs').replaceAll('\\', '/'))} "$@"\n`, { mode: 0o755 });
 }
 
@@ -29,7 +35,7 @@ function execute(action, context, env = {}) {
 }
 
 for (const [index, action] of actions.entries()) {
-  for (const [state, code] of [['success', 0], ['failure', 2], ['pending', 1], ['rederive', 1]]) {
+  for (const [state, code, targetCode = 0] of [['success', 0], ['failure', 2], ['pending', 1], ['rederive', 1], ['target failure', 0, 7]]) {
     test(`${action.name}: ${state} identity initialization gates the target process`, t => {
       const { context } = fixture(t);
       const log = join(context.home, 'calls.jsonl');
@@ -41,18 +47,37 @@ if (args[0] === 'identity') {
   console.error('Studio readable report: ' + process.env.INIT_STATE);
   process.exit(Number(process.env.INIT_CODE));
 }
+process.exit(Number(process.env.TARGET_CODE));
 `);
-      const result = execute(action, context, { CALL_LOG: log, INIT_STATE: state, INIT_CODE: String(code) });
+      const result = execute(action, context, { CALL_LOG: log, INIT_STATE: state, INIT_CODE: String(code), TARGET_CODE: String(targetCode) });
       const calls = readFileSync(log, 'utf8').trim().split('\n').map(JSON.parse);
       assert.deepEqual(calls.map(call => call.args), code === 0 ? [['identity', 'init', '.'], targets[index]] : [['identity', 'init', '.']]);
       assert.ok(calls.every(call => call.cwd === context.cwd));
-      assert.equal(result.status === 0, code === 0);
+      assert.equal(result.status, code || targetCode);
       assert.match(result.stdout, new RegExp('Studio JSON report: ' + state));
       assert.match(result.stderr, new RegExp('Studio readable report: ' + state));
       if (code !== 0) assert.match(result.stderr, /Ask your agent how to proceed\./);
     });
   }
 }
+
+test('failed init leaves the interactive action shell alive with its report', t => {
+  const { context } = fixture(t);
+  const log = join(context.home, 'interactive-calls.jsonl');
+  launcher(context, `import { appendFileSync } from 'node:fs';
+appendFileSync(${JSON.stringify(log)}, JSON.stringify(process.argv.slice(2)) + '\\n');
+console.log('Studio failure report'); process.exit(1);`);
+  const result = spawnSync(shell, ['--noprofile', '--norc', '-i'], {
+    cwd: context.cwd, encoding: 'utf8', timeout: 10000,
+    env: { ...process.env, HOME: context.home.replaceAll('\\', '/'), BASH_ENV: undefined },
+    input: ` ${actions[0].command}\nprintf 'SHELL-STILL-ALIVE\\n'\nexit\n`,
+  });
+  assert.ifError(result.error);
+  assert.match(result.stdout, /Studio failure report/);
+  assert.match(result.stderr, /Ask your agent how to proceed\./);
+  assert.match(result.stdout, /SHELL-STILL-ALIVE/);
+  assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n').map(JSON.parse), [['identity', 'init', '.']]);
+});
 
 const studio = process.env.PRAXITY_TEST_STUDIO_CLI;
 test('pinned Studio CLI refuses pending identity and required rederivation', { skip: !studio && 'Set PRAXITY_TEST_STUDIO_CLI to the packaged pinned Studio CLI.' }, t => {
