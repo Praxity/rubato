@@ -30,7 +30,7 @@ export async function runCli(args, context, dependencies = {}) {
     if (!studio) throw new Error('Studio is absent from the manifest');
     const code = await execute(context, studio, ['identity', 'init', rest[1]]);
     if (code !== 0) {
-      console.error('Ask your agent how to proceed.');
+      if (code < 128) console.error('Ask your agent how to proceed.');
       return code;
     }
     return execute(context, studio, rest);

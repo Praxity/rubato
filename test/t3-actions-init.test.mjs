@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
-import { courseActions } from '../src/t3-actions.mjs';
+import { courseActions } from '../src/init.mjs';
 import { pathToFileURL } from 'node:url';
 import { fixture, realPack, fakeTool } from './helpers.mjs';
 
@@ -35,7 +35,7 @@ function execute(action, context, env = {}) {
 }
 
 for (const [index, action] of actions.entries()) {
-  for (const [state, code, targetCode = 0] of [['success', 0], ['failure', 2], ['pending', 1], ['rederive', 1], ['target failure', 0, 7]]) {
+  for (const [state, code, targetCode = 0] of [['success', 0], ['failure', 2], ['pending', 1], ['rederive', 1], ['target failure', 0, 7], ['interrupted', 130]]) {
     test(`${action.name}: ${state} identity initialization gates the target process`, t => {
       const { context } = fixture(t);
       const log = join(context.home, 'calls.jsonl');
@@ -56,7 +56,8 @@ process.exit(Number(process.env.TARGET_CODE));
       assert.equal(result.status, code || targetCode);
       assert.match(result.stdout, new RegExp('Studio JSON report: ' + state));
       assert.match(result.stderr, new RegExp('Studio readable report: ' + state));
-      if (code !== 0) assert.match(result.stderr, /Ask your agent how to proceed\./);
+      if (code !== 0 && code < 128) assert.match(result.stderr, /Ask your agent how to proceed\./);
+      if (code >= 128) assert.doesNotMatch(result.stderr, /Ask your agent how to proceed\./);
     });
   }
 }

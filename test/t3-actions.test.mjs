@@ -404,3 +404,14 @@ test('doctor flags outdated current project actions without T3 settings or mappi
   assert.match(warnings[0].message, /Export HTML/);
   assert.equal(existsSync(join(context.home, '.t3')), false);
 });
+
+for (const [name, command] of [
+  ['Export PDF', '"$HOME/.praxity/bin/praxity" action export . --format pdf --output dist/course.pdf'],
+  ['Doctor', 'flutter doctor'],
+]) {
+  test(`doctor ignores a non-generated ${name} command`, t => {
+    const { context } = fixture(t);
+    writeFileSync(join(context.cwd, 't3.json'), JSON.stringify({ scripts: [{ name, command }] }));
+    assert.deepEqual(t3Items(report(context)), []);
+  });
+}

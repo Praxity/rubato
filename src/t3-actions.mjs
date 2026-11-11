@@ -2,22 +2,12 @@ import { closeSync, copyFileSync, mkdtempSync, openSync, readSync, rmSync, statS
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { courseActions, recognizesCourseAction, studioPort } from './init.mjs';
 
-const launcher = '"$HOME/.praxity/bin/praxity"';
 const maxJsonBytes = 4 * 1024 * 1024;
 const maxSnapshotFileBytes = 128n * 1024n * 1024n;
 
 export const t3ActionsRepairNote = "T3 keeps a saved copy of imported actions. In T3's project Actions settings, delete each stale saved Praxity action and import it again from t3.json, or edit its saved command to match t3.json.";
-
-export function courseActions(port) {
-  return [
-    { name: 'Open in Studio', command: `${launcher} action studio . --port ${port} --no-open`, icon: 'play', previewUrl: `http://127.0.0.1:${port}/launch`, autoOpenPreview: true },
-    { name: 'Export HTML', command: `${launcher} action export . --format html --output course-html.zip`, icon: 'build' },
-    { name: 'Export PDF', command: `${launcher} action export . --format pdf --output course.pdf`, icon: 'build' },
-    { name: 'Check accessibility', command: `${launcher} check check course-html.zip --checks accessibility`, icon: 'lint' },
-    { name: 'Doctor', command: `${launcher} doctor`, icon: 'configure' },
-  ];
-}
 
 const managedNames = new Set(courseActions(0).map(action => action.name.toLowerCase()));
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -106,11 +96,10 @@ export function t3ActionWarnings({ home, cwd }) {
     if (typeof folder !== 'string' || !isAbsolute(folder)) continue;
     const project = optionalJson(join(folder, 't3.json'));
     if (!Array.isArray(project?.scripts) || !project.scripts.every(validAction)) continue;
-    const studio = project.scripts.find(action => action.name === 'Open in Studio');
-    const port = Number(studio?.command.match(/ --port (\d+)(?: --no-open)?$/)?.[1] ?? 0);
-    const current = new Map(courseActions(port).map(action => [action.name.toLowerCase(), action]));
-    const outdated = project.scripts.filter(action => managed(action) &&
-      JSON.stringify(actionFields(action)) !== JSON.stringify(actionFields(current.get(action.name.trim().toLowerCase()))));
+    const port = studioPort(project)[0] ?? 0;
+    const current = new Map(courseActions(port).map(action => [action.name, action]));
+    const outdated = project.scripts.filter(action => recognizesCourseAction(action, current.get(action.name)) &&
+      JSON.stringify(actionFields(action)) !== JSON.stringify(actionFields(current.get(action.name))));
     if (outdated.length) warnings.push({ id: `t3.actions.${id}.project`, status: 'partial',
       message: `Praxity actions in ${folder}/t3.json differ from the current generator: ${outdated.map(action => action.name).join(', ')}.`,
       fix: `Run praxity init in ${folder}, then reimport the actions in T3. ${t3ActionsRepairNote}` });

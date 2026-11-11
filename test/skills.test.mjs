@@ -7,8 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { buildAdapters, installSkills, uninstallSkills } from '../src/skills.mjs';
 import { runCli } from '../src/cli.mjs';
 import { doctor } from '../src/doctor.mjs';
-import { courseActions } from '../src/t3-actions.mjs';
-import { initCourse } from '../src/init.mjs';
+import { courseActions, initCourse } from '../src/init.mjs';
 import { fixture, fakeTool, repository } from './helpers.mjs';
 
 const outputsFor = context => buildAdapters({ source: join(context.root, 'skills') });

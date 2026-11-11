@@ -215,6 +215,12 @@ Open in Studio and both export actions use `praxity action studio|export <course
 This runs Studio's `identity init <course>` for the same course before the target command. If initialization fails, including pending identity or a
 need for `--rederive`, the action stops, shows Studio's report and asks you to
 ask your agent how to proceed. The actions never rederive identity automatically.
+T3 opens the Open in Studio preview when the action starts, even if initialization
+fails; the terminal shows why it stopped.
+These actions require a Rubato pack with the `action` command. If an older pack
+reports an expected-command error, run `praxity update`. After a deliberate
+rollback, rerun that pack's `praxity init` to restore its compatible actions and
+reimport them in T3.
 Other keys and scripts stay intact, including commands you customised.
 Invalid JSON is refused unchanged.
 
