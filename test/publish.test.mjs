@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import childProcess, { execFileSync, spawnSync } from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
@@ -57,6 +58,63 @@ function candidate(t, mutate = () => {}, mutateInventory = () => {}, mutateStage
       hash(readFileSync(join(archives, `praxity-cli-0.3.0-macos-${arch}.tar.gz`)))])) };
   return { root, calls, release, options };
 }
+
+// Replace only the external process seam; verification and extraction still use real tar.
+function bootstrapArchive(t, f, kind = 'padded') {
+  const execute = execFileSync;
+  const extracted = [];
+  t.mock.method(childProcess, 'execFileSync', (command, args, options) => {
+    if (command === 'git' && args[0] === 'archive') {
+      const bytes = execute(command, args, options);
+      return kind === 'malformed' ? Buffer.from('not a tar archive') :
+        Buffer.concat([bytes, Buffer.alloc(16 * 1024 * 1024)]);
+    }
+    if (command === 'tar' && args[0] === '-xf') {
+      // Model an extractor that will not consume stdin; main fails here deterministically.
+      assert.notEqual(args[1], '-', 'bootstrap extraction must use a file');
+      assert.equal(options?.input, undefined);
+      assert.equal(readFileSync(args[1]).length > 0, true);
+      assert.equal(args[1].endsWith('.tar'), true);
+      if (process.platform !== 'win32') {
+        assert.equal(statSync(args[1]).mode & 0o777, 0o600);
+        assert.equal(statSync(join(f.options.outputDir, 'bootstrap')).mode & 0o777, 0o700);
+      }
+      extracted.push(args[1]);
+      if (kind === 'nonzero') return execute(command, ['--rubato-invalid-option'], options);
+    }
+    return execute(command, args, options);
+  });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  return () => {
+    assert.equal(extracted.length, 1);
+    assert.equal(existsSync(extracted[0]), false);
+    assert.equal(existsSync(join(f.options.outputDir, 'bootstrap')), false);
+  };
+}
+
+test('padded bootstrap archive extracts and its private temporary archive is removed', async t => {
+  const f = candidate(t), assertCleaned = bootstrapArchive(t, f);
+  const pack = await publishStudioPack(f.options, f.release);
+  const bootstrap = join(f.options.outputDir, 'rubato-0.1.3.tar.gz');
+  assert.deepEqual(JSON.parse(execFileSync('tar', ['-xOf', bootstrap, 'rubato/pack.json'])), pack);
+  const members = execFileSync('tar', ['-tf', bootstrap], { encoding: 'utf8' });
+  assert.match(members, /rubato\/install.sh/);
+  assert.doesNotMatch(members, /bootstrap\.tar/);
+  assertCleaned();
+});
+
+for (const kind of ['malformed', 'nonzero']) test(`bootstrap ${kind} tar failure rejects and removes the temporary archive`, async t => {
+  const f = candidate(t), assertCleaned = bootstrapArchive(t, f, kind);
+  await assert.rejects(publishStudioPack({ ...f.options, dryRun: false }, f.release), error => {
+    assert.equal(typeof error.status, 'number');
+    assert.notEqual(error.status, 0);
+    return true;
+  });
+  assert.deepEqual(f.calls, [['check', 'v0.1.3']]);
+  assert.equal(existsSync(join(f.options.outputDir, 'rubato-0.1.3.tar.gz')), false);
+  assertCleaned();
+});
 
 test('dry-run creates a schema-valid pack with exact hashes and tested SHA, without publishing', async t => {
   const { options, calls, release } = candidate(t);
@@ -467,8 +525,10 @@ for (const config of [{ immutable: false }, { changedDigest: true }, { missingAs
   await assert.rejects(f.adapter.verifyPublished(42, f.expected), /immutable|asset|digest/);
 });
 
-test('generated release installs using its exported installer and local archive transport', { skip: process.platform === 'win32' }, async t => {
-  const f = candidate(t), generated = await publishStudioPack(f.options, f.release);
+test('padded generated release installs using its exported installer and local archive transport', { skip: process.platform === 'win32' }, async t => {
+  const f = candidate(t), assertCleaned = bootstrapArchive(t, f);
+  const generated = await publishStudioPack(f.options, f.release);
+  assertCleaned();
   const extracted = join(f.root, 'extracted'); mkdirSync(extracted);
   execFileSync('tar', ['-xzf', join(f.options.outputDir, 'rubato-0.1.3.tar.gz'), '-C', extracted]);
   const setup = installation(t, { tools: ['studio', 'check', 'trace', 'print', 'import'] });

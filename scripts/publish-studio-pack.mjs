@@ -110,13 +110,16 @@ export async function publishStudioPack({ version, studioSha, archivesDir, outpu
   await release.assertNewImmutableRelease(tag);
   mkdirSync(outputDir);
   const staging = join(outputDir, 'bootstrap');
-  mkdirSync(staging);
+  mkdirSync(staging, { mode: 0o700 });
   try {
     // Only the public install payload is exported. Never archive a working tree.
     const archive = execFileSync('git', ['archive', '--format=tar', '--prefix=rubato/', 'HEAD',
       'install.sh', 'LICENSE', 'package.json', 'src', 'scripts', 'schemas', 'skills', 'fixtures'],
     { cwd: repositoryRoot, maxBuffer: 32 * 1024 * 1024 });
-    execFileSync('tar', ['-xf', '-', '-C', staging], { input: archive });
+    // File input lets tar stop at archive EOF without closing a producer's pipe.
+    const archiveFile = join(staging, 'bootstrap.tar');
+    writeFileSync(archiveFile, archive, { flag: 'wx', mode: 0o600 });
+    tar(['-xf', archiveFile, '-C', staging]);
     const manifest = `${JSON.stringify(pack, null, 2)}\n`;
     writeFileSync(join(outputDir, 'pack.json'), manifest, { flag: 'wx' });
     writeFileSync(join(staging, 'rubato/pack.json'), manifest);
