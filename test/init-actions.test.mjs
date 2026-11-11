@@ -11,7 +11,7 @@ test('all five T3 actions execute the installed launcher without it on PATH', as
   writeFileSync(join(context.cwd, 'course.yaml'), 'course fixture\n');
   mkdirSync(join(context.home, '.praxity/bin'), { recursive: true });
   // The launcher is the shell boundary; capture exactly what each action passes.
-  writeFileSync(join(context.home, '.praxity/bin/praxity'), '#!/bin/sh\nprintf \'%s\\n\' "$@"\n', { mode: 0o755 });
+  writeFileSync(join(context.home, '.praxity/bin/praxity'), '#!/bin/sh\nprintf \'%s\\n\' "$@"\nprintf \'\\n\'\n', { mode: 0o755 });
   const env = { ...process.env, HOME: posix(context.home), BASH_ENV: undefined };
   const run = command => shell(`PATH=/usr/bin:/bin; export PATH; ${command}`, { env });
   assert.notEqual(run('command -v praxity').status, 0);
@@ -19,16 +19,16 @@ test('all five T3 actions execute the installed launcher without it on PATH', as
   const { scripts } = JSON.parse(readFileSync(join(context.cwd, 't3.json'), 'utf8'));
   const port = new URL(scripts[0].previewUrl).port;
   const expected = [
-    ['studio', '.', '--port', port, '--no-open'],
-    ['export', '.', '--format', 'html', '--output', 'course-html.zip'],
-    ['export', '.', '--format', 'pdf', '--output', 'course.pdf'],
-    ['check', 'check', 'course-html.zip', '--checks', 'accessibility'],
-    ['doctor'],
+    [['identity', 'init', '.'], ['studio', '.', '--port', port, '--no-open']],
+    [['identity', 'init', '.'], ['export', '.', '--format', 'html', '--output', 'course-html.zip']],
+    [['identity', 'init', '.'], ['export', '.', '--format', 'pdf', '--output', 'course.pdf']],
+    [['check', 'check', 'course-html.zip', '--checks', 'accessibility']],
+    [['doctor']],
   ];
   assert.equal(scripts.length, 5);
   for (const [index, script] of scripts.entries()) {
     const result = run(script.command);
     assert.equal(result.status, 0, `${script.name}: ${result.stderr}`);
-    assert.deepEqual(result.stdout.trim().split('\n'), expected[index], script.name);
+    assert.deepEqual(result.stdout.trim().split('\n\n').map(call => call.split('\n')), expected[index], script.name);
   }
 });
