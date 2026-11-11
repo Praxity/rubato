@@ -170,9 +170,9 @@ test('documented reserved-port forms round trip generated actions and the init m
   assertReservedReviewPort(section);
   const form = section.match(/`(studio \. --port N)`/)[1];
   const action = courseActions(4311).find(action => action.name === 'Open in Studio');
-  assert.equal(action.command, `"$HOME/.praxity/bin/praxity" ${form.replace('N', '4311')} --no-open`);
+  assert.equal(action.command, `"$HOME/.praxity/bin/praxity" identity init . || { printf '%s\\n' 'Ask your agent how to proceed.' >&2; exit 1; }; "$HOME/.praxity/bin/praxity" ${form.replace('N', '4311')} --no-open`);
   for (const launcher of ['praxity', '"$HOME/.praxity/bin/praxity"']) {
-    const command = action.command.replace('"$HOME/.praxity/bin/praxity"', launcher);
+    const command = action.command.replace('; "$HOME/.praxity/bin/praxity" studio', `; ${launcher} studio`);
     assert.equal(Number(command.match(/ --port (\d+)(?: --no-open)?$/)[1]), 4311);
     // Exercise studioCommand through init's public interface, using a port in its reservation range.
     const { context } = fixture(t);

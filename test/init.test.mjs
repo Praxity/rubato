@@ -28,9 +28,9 @@ test('init defaults to the current course and writes portable T3 actions', async
   assert.deepEqual(project, {
     $schema: 'https://t3.codes/schema/t3.json',
     scripts: [
-      { name: 'Open in Studio', command: `${launcher} studio . --port ${port} --no-open`, icon: 'play', previewUrl: `http://127.0.0.1:${port}/launch`, autoOpenPreview: true },
-      { name: 'Export HTML', command: `${launcher} export . --format html --output course-html.zip`, icon: 'build' },
-      { name: 'Export PDF', command: `${launcher} export . --format pdf --output course.pdf`, icon: 'build' },
+      { name: 'Open in Studio', command: `${launcher} identity init . || { printf '%s\\n' 'Ask your agent how to proceed.' >&2; exit 1; }; ${launcher} studio . --port ${port} --no-open`, icon: 'play', previewUrl: `http://127.0.0.1:${port}/launch`, autoOpenPreview: true },
+      { name: 'Export HTML', command: `${launcher} identity init . || { printf '%s\\n' 'Ask your agent how to proceed.' >&2; exit 1; }; ${launcher} export . --format html --output course-html.zip`, icon: 'build' },
+      { name: 'Export PDF', command: `${launcher} identity init . || { printf '%s\\n' 'Ask your agent how to proceed.' >&2; exit 1; }; ${launcher} export . --format pdf --output course.pdf`, icon: 'build' },
       { name: 'Check accessibility', command: `${launcher} check check course-html.zip --checks accessibility`, icon: 'lint' },
       { name: 'Doctor', command: `${launcher} doctor`, icon: 'configure' },
     ],
@@ -177,7 +177,7 @@ for (const command of [
     ] }));
     await runCli(['init'], context, quiet);
     const scripts = readProject(context.cwd).scripts;
-    assert.equal(scripts[0].command, `${launcher} studio . --port 41873 --no-open`);
+    assert.equal(scripts[0].command, `${launcher} identity init . || { printf '%s\\n' 'Ask your agent how to proceed.' >&2; exit 1; }; ${launcher} studio . --port 41873 --no-open`);
     assert.equal(scripts[0].previewUrl, 'http://127.0.0.1:41873/launch');
     assert.equal(scripts[1].command, `${launcher} doctor`);
     const before = readFileSync(join(context.cwd, 't3.json'), 'utf8');
@@ -310,5 +310,23 @@ for (const name of ['Export HTML', 'Export PDF', 'Check accessibility', 'Doctor'
     writeFileSync(file, JSON.stringify(project, null, 2) + '\n');
     await runCli(['init'], context, quiet);
     assert.deepEqual(readProject(context.cwd).scripts, project.scripts);
+  });
+}
+
+for (const executable of ['praxity', launcher]) {
+  test(`init upgrades old exports from ${executable} and keeps the gated actions on rerun`, async t => {
+    const { context } = fixture(t);
+    course(context.cwd);
+    writeFileSync(join(context.cwd, 't3.json'), JSON.stringify({ scripts: [
+      { name: 'Export HTML', command: `${executable} export . --format html --output course-html.zip` },
+      { name: 'Export PDF', command: `${executable} export . --format pdf --output course.pdf` },
+    ] }));
+    await runCli(['init'], context, quiet);
+    for (const script of readProject(context.cwd).scripts.slice(0, 2)) {
+      assert.ok(script.command.startsWith(`${launcher} identity init . || {`));
+    }
+    const before = readFileSync(join(context.cwd, 't3.json'), 'utf8');
+    await runCli(['init'], context, quiet);
+    assert.equal(readFileSync(join(context.cwd, 't3.json'), 'utf8'), before);
   });
 }

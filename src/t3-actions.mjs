@@ -9,11 +9,13 @@ const maxSnapshotFileBytes = 128n * 1024n * 1024n;
 
 export const t3ActionsRepairNote = "T3 keeps a saved copy of imported actions. In T3's project Actions settings, delete each stale saved Praxity action and import it again from t3.json, or edit its saved command to match t3.json.";
 
+export const identityInitGate = `${launcher} identity init . || { printf '%s\\n' 'Ask your agent how to proceed.' >&2; exit 1; }; `;
+
 export function courseActions(port) {
   return [
-    { name: 'Open in Studio', command: `${launcher} studio . --port ${port} --no-open`, icon: 'play', previewUrl: `http://127.0.0.1:${port}/launch`, autoOpenPreview: true },
-    { name: 'Export HTML', command: `${launcher} export . --format html --output course-html.zip`, icon: 'build' },
-    { name: 'Export PDF', command: `${launcher} export . --format pdf --output course.pdf`, icon: 'build' },
+    { name: 'Open in Studio', command: `${identityInitGate}${launcher} studio . --port ${port} --no-open`, icon: 'play', previewUrl: `http://127.0.0.1:${port}/launch`, autoOpenPreview: true },
+    { name: 'Export HTML', command: `${identityInitGate}${launcher} export . --format html --output course-html.zip`, icon: 'build' },
+    { name: 'Export PDF', command: `${identityInitGate}${launcher} export . --format pdf --output course.pdf`, icon: 'build' },
     { name: 'Check accessibility', command: `${launcher} check check course-html.zip --checks accessibility`, icon: 'lint' },
     { name: 'Doctor', command: `${launcher} doctor`, icon: 'configure' },
   ];

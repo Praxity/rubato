@@ -211,6 +211,10 @@ Run `praxity init [folder]` in a course with `course.yaml` or `.prax` lessons.
 It writes a commit-ready `t3.json` with Open in Studio, Export HTML, Export PDF,
 Check accessibility and Doctor actions. Exports write `course-html.zip` and
 `course.pdf`; export HTML before running the accessibility check.
+Open in Studio and both export actions first run Studio's `identity init .`
+for the same course. If initialization fails, including pending identity or a
+need for `--rederive`, the action stops, shows Studio's report and asks you to
+ask your agent how to proceed. The actions never rederive identity automatically.
 Other keys and scripts stay intact, including commands you customised.
 Invalid JSON is refused unchanged.
 
