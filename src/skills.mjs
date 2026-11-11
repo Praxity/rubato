@@ -108,13 +108,25 @@ export function refreshSkills({ base, outputs, home = homedir(), print = console
   return changeSkills({ base, home, outputs, print, remove: false });
 }
 
-function writeState(base, state) {
-  state.hosts.sort();
-  const record = contained(base, '.praxity/toolkit-skills.json');
-  const temp = contained(base, '.praxity/toolkit-skills.json.tmp');
+function writeRecord(base, name, state) {
+  const record = contained(base, `.praxity/${name}.json`);
+  const temp = contained(base, `.praxity/${name}.json.tmp`);
   mkdirSync(dirname(record), { recursive: true });
   writeFileSync(temp, JSON.stringify(state, null, 2) + '\n');
   renameSync(temp, record);
+}
+
+function writeState(base, state) {
+  state.hosts.sort();
+  writeRecord(base, 'toolkit-skills', state);
+}
+
+function readDigests(base) {
+  // Optional metadata cannot prevent recovery with an older pack or a fresh baseline.
+  try {
+    const digests = JSON.parse(readFileSync(contained(base, '.praxity/toolkit-skills-digests.json'), 'utf8'));
+    return validateSchema(digests, loadSchema('skills-digests')).length ? {} : digests;
+  } catch { return {}; }
 }
 
 function skillDigest(files) {
@@ -140,6 +152,9 @@ function changeSkills({ base, home = base, otherBase, host, outputs, remove, ado
   if (host !== undefined && !Object.hasOwn(adapters, host)) throw new Error('Host must be t3, claude or codex');
   base = realpathSync(base);
   const state = readState(base);
+  const digests = readDigests(base);
+  const observed = new Map();
+  const changedDuringRefresh = directory => new Error(`A file changed during the refresh: ${directory}. Run the command again.`);
   const selected = host ? [host] : state.hosts;
   const files = [];
   const previews = [];
@@ -157,19 +172,20 @@ function changeSkills({ base, home = base, otherBase, host, outputs, remove, ado
     const owned = state.skills[value] ?? [];
     const directories = [...new Set(remove ? owned : [...owned, ...names])].map(name => {
       const directory = contained(base, `${root}/${name}`);
+      if (!remove) observed.set(directory, existsSync(directory) ? skillDigest(filesIn(directory)) : null);
       if (!remove && existsSync(directory)) {
         const unowned = !owned.includes(name);
         if (unowned && !adopt) throw new Error(`Unowned skill folder: ${directory}; refusing overwrite. Run the install with --adopt to review file differences, then --adopt --yes to back up and replace.`);
         if (!adopt) {
           // Older records have no digest; preserve their contents before the first refresh.
-          if (skillDigest(filesIn(directory)) !== state.digests?.[value]?.[name])
+          if (observed.get(directory) !== digests[value]?.[name])
             refreshBackups.push({ host: value, name, directory });
           return directory;
         }
         const prefix = `${root}/${name}/`;
         const packaged = new Map(entries.filter(([file]) => file.startsWith(prefix)).map(([file, bytes]) => [file.slice(prefix.length), bytes]));
         const { diff } = adoptionDiff(directory, packaged);
-        previews.push({ host: value, name, directory, diff, backup: unowned || skillDigest(filesIn(directory)) !== state.digests?.[value]?.[name],
+        previews.push({ host: value, name, directory, diff, backup: unowned || observed.get(directory) !== digests[value]?.[name],
           action: unowned ? 'Adopt' : names.includes(name) ? 'Replace owned' : 'Remove owned' });
       }
       return directory;
@@ -202,9 +218,12 @@ function changeSkills({ base, home = base, otherBase, host, outputs, remove, ado
     const pending = contained(container, '.pending');
     const backup = contained(container, name);
     cpSync(directory, pending, { recursive: true, errorOnExist: true, force: false });
+    if (skillDigest(filesIn(pending)) !== observed.get(directory)) throw changedDuringRefresh(directory);
     renameSync(pending, backup);
     print(`Backed up ${name} to ${backup}`);
   }
+  // A partial install must not leave an older baseline trusted for newly saved files.
+  writeRecord(base, 'toolkit-skills-digests', Object.fromEntries(Object.entries(digests).filter(([value]) => !selected.includes(value))));
   // Record names before copying so a rerun can replace a partial install.
   if (!remove) {
     for (const { value, names } of changes) {
@@ -214,11 +233,18 @@ function changeSkills({ base, home = base, otherBase, host, outputs, remove, ado
     writeState(base, state);
   }
   for (const { value, entries, names, directories } of changes) {
-    for (const directory of directories) rmSync(directory, { recursive: true, force: true });
+    for (const directory of directories) {
+      if (!remove) {
+        const current = existsSync(directory) ? skillDigest(filesIn(directory)) : null;
+        if (current !== observed.get(directory)) throw changedDuringRefresh(directory);
+      }
+      // shortcut: a save between this recheck and deletion is not covered; use retained originals if concurrent editing must be supported.
+      rmSync(directory, { recursive: true, force: true });
+    }
     if (remove) {
       state.hosts = state.hosts.filter(value => value !== host);
       delete state.skills[value];
-      if (state.digests) delete state.digests[value];
+      delete digests[value];
     } else {
       state.skills[value] = names;
       for (const [name, bytes] of entries) {
@@ -227,11 +253,14 @@ function changeSkills({ base, home = base, otherBase, host, outputs, remove, ado
         writeFileSync(path, bytes);
         files.push(name);
       }
-      state.digests ??= {};
-      state.digests[value] = Object.fromEntries(names.map(name => [name, skillDigest(filesIn(contained(base, `${adapters[value].skills}/${name}`)))]));
+      digests[value] = Object.fromEntries(names.map(name => {
+        const prefix = `${adapters[value].skills}/${name}/`;
+        return [name, skillDigest(entries.filter(([file]) => file.startsWith(prefix)).map(([file, bytes]) => [file.slice(prefix.length), bytes]))];
+      }));
     }
   }
   writeState(base, state);
+  writeRecord(base, 'toolkit-skills-digests', digests);
   return { host, hosts: state.hosts, files };
 }
 

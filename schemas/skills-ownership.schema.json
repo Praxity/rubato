@@ -13,17 +13,9 @@
         "claude": { "$ref": "#/$defs/names" },
         "codex": { "$ref": "#/$defs/names" }
       }
-    },
-    "digests": {
-      "type": "object", "additionalProperties": false,
-      "properties": {
-        "claude": { "$ref": "#/$defs/digests" },
-        "codex": { "$ref": "#/$defs/digests" }
-      }
     }
   },
   "$defs": {
-    "names": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9-]+$" } },
-    "digests": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }
+    "names": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9-]+$" } }
   }
 }

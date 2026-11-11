@@ -74,7 +74,7 @@ for (const [host, root] of [['claude', '.claude/skills'], ['codex', '.agents/ski
     assert.deepEqual(readFileSync(join(folder, 'SKILL.md')), expected.get(`${root}/composer/SKILL.md`));
     assert.equal(existsSync(join(folder, 'references/notes.txt')), false);
     const state = JSON.parse(readFileSync(join(context.home, '.praxity/toolkit-skills.json'), 'utf8'));
-    assert.deepEqual({ owner: state.owner, hosts: state.hosts, skills: state.skills }, { owner: 'praxity-toolkit', hosts: [host], skills: { [host]: ['assessment-writing', 'composer', 'install-praxity', 'studio-editor'] } });
+    assert.deepEqual(state, { owner: 'praxity-toolkit', hosts: [host], skills: { [host]: ['assessment-writing', 'composer', 'install-praxity', 'studio-editor'] } });
     assert.equal(await runCli(command, context, { print() {} }), 0);
     assert.equal(readFileSync(join(backup, 'SKILL.md'), 'utf8'), 'My old skill\n');
     assert.equal(readFileSync(join(other, 'SKILL.md'), 'utf8'), 'My old skill\n');

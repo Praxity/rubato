@@ -360,7 +360,10 @@ under `~/.praxity/skill-backups` first, including added files. Folders installed
 before file digests were recorded are backed up on their first refresh.
 Keep custom skills under different names. There is no migration of former plugin layouts or prerelease records.
 
-`.praxity/toolkit-skills.json` records installed hosts, folder names and content digests.
+`.praxity/toolkit-skills.json` records installed hosts and folder names.
+The optional `.praxity/toolkit-skills-digests.json` sidecar records packaged
+content digests. Missing or unreadable digests cause a backup on the next refresh.
+If a file changes during refresh, Rubato stops and asks you to run it again.
 Installing a pack runs `praxity skills refresh --scope user` for recorded hosts,
 so new tool skills appear. Refresh project-scope adapters yourself with
 `praxity skills refresh --scope project` in the project. A failed or interrupted
