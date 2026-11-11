@@ -21,6 +21,13 @@ const checkResult = { components: [
   { id: 'verapdf', usable: false, source: 'setup', version: '1.30.2', inventory: 'damaged', reason: 'Inventory damaged' },
 ], exitCode: 1 };
 
+for (const platform of ['darwin-arm64', 'darwin-x64']) test(`doctor reports the installed ${platform} platform`, t => {
+  const context = prepared(t);
+  context.state.platform = platform;
+  assert.deepEqual(doctor(context, runner(context)).items.find(item => item.id === 'platform'), {
+    id: 'platform', status: 'ok', message: platform, fix: '',
+  });
+});
 function runner(context, check = checkResult) {
   return ({ command, args }) => {
     if (args[0] === '--version') return { code: 0, stdout: `v${context.pack.runtimes.node.version}`, stderr: '' };

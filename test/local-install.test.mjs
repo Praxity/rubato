@@ -32,6 +32,13 @@ test('verified local bootstrap passes its digest and refreshes recorded project 
   assert.match(readFileSync(join(f.home, '.praxity/toolkit/active'), 'utf8'), /^0\.1\.0/);
 });
 
+for (const result of [{code:null,signal:'SIGINT'},{code:null},{code:130,error:'interrupted'}]) test(`interrupted installer is not a skills failure ${JSON.stringify(result)}`,t=>{
+ const f=fixture(t),bootstrap=join(f.root,'bootstrap');mkdirSync(bootstrap);cpSync(join(repository,'schemas'),join(bootstrap,'schemas'),{recursive:true});
+ const pack=examplePack(),manifest=Buffer.from(JSON.stringify(pack));writeFileSync(join(bootstrap,'pack.json'),manifest);
+ mkdirSync(join(f.home,'.praxity/toolkit'),{recursive:true});writeFileSync(join(f.home,'.praxity/toolkit/active'),`${pack.version}\n\n`);
+ const calls=[];assert.throws(()=>installVerifiedPack({...f.context,home:f.home},{bootstrap,manifest},{updateProcess:call=>{calls.push(call);return call.command==='ps'?{code:0,stdout:'',stderr:''}:result;}}),/interrupted.*recover/);
+ assert.equal(calls.length,2);
+});
 test('pack refresh discovers the project and reports a conflicting user file',t=>{
  const f=fixture(t);mkdirSync(join(f.root,'course/.praxity'),{recursive:true});writeFileSync(join(f.root,'course/.praxity/toolkit-skills.json'),'{"owner":"praxity-toolkit","hosts":["claude"],"skills":{"claude":["prax-format"]}}');mkdirSync(join(f.root,'course/lesson'));
  const calls=[],output=[];
