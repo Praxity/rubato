@@ -20,7 +20,6 @@ function verifyStudioArchive(file, arch, studioSha, expectedDigest, studio) {
   requireValue(lstatSync(file).isFile() && !lstatSync(file).isSymbolicLink(), 'Archive must be a regular file');
   const name = file.split(/[\\/]/).at(-1);
   const digest = hash(readFileSync(file));
-  requireValue(/^[a-f0-9]{64}$/.test(expectedDigest), 'Expected build digest is required');
   requireValue(digest === expectedDigest, 'Build archive digest mismatch');
   requireValue(readFileSync(`${file}.sha256`, 'utf8').trim() === `${digest} *${name}` ||
     readFileSync(`${file}.sha256`, 'utf8').trim() === `${digest}  ${name}`, 'Archive checksum mismatch');

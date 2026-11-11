@@ -42,8 +42,6 @@ test('real pack validates and every published archive has a complete contract', 
   }
 });
 
-
-
 test('macOS installation plans select the reviewed Studio, Check and Trace prereleases', () => {
   const pack = realPack();
   const candidates = [
