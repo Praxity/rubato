@@ -22,6 +22,19 @@ export async function runCli(args, context, dependencies = {}) {
   const execute = dependencies.execute ?? executeTool;
   const print = dependencies.print ?? console.log;
   const [command, ...rest] = args;
+  if (command === 'action') {
+    if (!['studio', 'export'].includes(rest[0]) || !rest[1] || rest[1].startsWith('-')) {
+      throw new Error('Usage: praxity action studio|export <course> [options]');
+    }
+    const studio = context.pack.tools.find(tool => tool.id === 'studio');
+    if (!studio) throw new Error('Studio is absent from the manifest');
+    const code = await execute(context, studio, ['identity', 'init', rest[1]]);
+    if (code !== 0) {
+      if (code < 128) console.error('Ask your agent how to proceed.');
+      return code;
+    }
+    return execute(context, studio, rest);
+  }
   if (command === 'init') {
     if (rest.length > 1 || rest[0]?.startsWith('-')) throw new Error('Usage: praxity init [folder]');
     const result = initCourse({ folder: resolve(context.cwd, rest[0] ?? '.'), home: context.home });

@@ -3,7 +3,8 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSy
 import { dirname, isAbsolute, join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { loadSchema, validateSchema } from './schema.mjs';
-import { courseActions } from './t3-actions.mjs';
+
+const launcher = '"$HOME/.praxity/bin/praxity"';
 
 const stateSchema = loadSchema('t3-actions-state');
 const portRule = stateSchema.properties.courses.items.properties.port;
@@ -16,6 +17,20 @@ const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 
 // T3 runs actions in a login shell that may not have ~/.praxity/bin on PATH
 // yet, so actions call the launcher by its home-relative path.
+
+export function courseActions(port) {
+  return [
+    { name: 'Open in Studio', command: `${launcher} action studio . --port ${port} --no-open`, icon: 'play', previewUrl: `http://127.0.0.1:${port}/launch`, autoOpenPreview: true },
+    { name: 'Export HTML', command: `${launcher} action export . --format html --output course-html.zip`, icon: 'build' },
+    { name: 'Export PDF', command: `${launcher} action export . --format pdf --output course.pdf`, icon: 'build' },
+    { name: 'Check accessibility', command: `${launcher} check check course-html.zip --checks accessibility`, icon: 'lint' },
+    { name: 'Doctor', command: `${launcher} doctor`, icon: 'configure' },
+  ];
+}
+
+function withoutAction(command) {
+  return command.replace(/^(praxity|"\$HOME\/\.praxity\/bin\/praxity") action (studio|export) /, '$1 $2 ');
+}
 
 function inspect(path) {
   try {
@@ -47,16 +62,19 @@ function projectAt(folder) {
   return { file, bytes, project };
 }
 
+export function recognizesCourseAction(script, action) {
+  return action !== undefined && script.name === action.name && (script.name === 'Open in Studio' ? studioCommand.test(withoutAction(script.command))
+    : withoutAction(script.command) === withoutAction(action.command) || withoutAction(script.command) === withoutAction(action.command).replace(/^"[^"]+" /, 'praxity '));
+}
+
 function merge(project, port) {
   const generated = new Map(courseActions(port).map(script => [script.name, script]));
   const pending = new Map(generated);
   const scripts = [];
   for (const script of project.scripts ?? []) {
     const action = generated.get(script.name);
-    const recognized = action && (script.name === 'Open in Studio' ? studioCommand.test(script.command)
-      : script.command === action.command || script.command === action.command.replace(/^"[^"]+" /, 'praxity '));
     // A familiar name alone does not make a command ours to replace.
-    if (!recognized) { scripts.push(script); pending.delete(script.name); }
+    if (!recognizesCourseAction(script, action)) { scripts.push(script); pending.delete(script.name); }
     else if (pending.has(script.name)) { scripts.push(pending.get(script.name)); pending.delete(script.name); }
   }
   scripts.push(...pending.values());
@@ -64,9 +82,9 @@ function merge(project, port) {
   return { ...project, ...(!Object.hasOwn(project, '$schema') ? { $schema: schemaUrl } : {}), scripts };
 }
 
-function studioPort(project) {
+export function studioPort(project) {
   const script = project.scripts?.find(script => script.name === 'Open in Studio');
-  const command = script?.command.match(studioCommand);
+  const command = script && withoutAction(script.command).match(studioCommand);
   const preview = script?.previewUrl?.match?.(/^http:\/\/127\.0\.0\.1:(\d+)\/launch$/);
   return [...new Set([command, preview].filter(Boolean).map(match => Number(match[1])))];
 }

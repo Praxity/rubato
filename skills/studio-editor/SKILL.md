@@ -16,6 +16,10 @@ Before every open or restart, run identity init for the folder:
 
 If init reports anything other than `ok: true`, stop: don't open Studio, and follow the prax-format skill's identity rule.
 
+The generated T3 Open in Studio and export actions run this initialization gate
+for the same course. On failure they show Studio's report and stop; ask the person
+how to proceed under the prax-format identity rule. Never auto-rederive.
+
 When the person is reviewing with comments, use [Studio review comments](#studio-review-comments) to enable review and keep `--review` on every restart.
 
 Launch Studio as a background process through the host's process tool. Keep its process handle and stdout in this session. Don't redirect its output to a file or start a second Studio for the same folder. Wait for the ready URL on stdout and capture all of it, including `#session=...`; never guess a port. The fragment is a capability token. Keep the URL out of files, project settings, shell history and logs; the host's tool transcript may still retain it, so say so if it matters.

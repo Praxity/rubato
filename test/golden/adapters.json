@@ -4,23 +4,23 @@
     ".claude/skills/composer/outline-template.md": "afea4a0ce1f8a924fb9fc57e8f7dc00ec4a513acdc4cb0acad02a94ca945da7e",
     ".claude/skills/composer/patterns.md": "f4d8e926d9ede4d3c0df7629a65e93d92ad61e94f2f1b3ce55587bd1e05b27e8",
     ".claude/skills/composer/SKILL.md": "145cbd81420ff66b0c29ee85b0a899178341bf74e512f460d88e5439c39182db",
-    ".claude/skills/install-praxity/SKILL.md": "85b15d9e716afd95ec959c4f5946248d035805e760bb585f1181e8f20548569c",
+    ".claude/skills/install-praxity/SKILL.md": "4040b6a90962756ad4162a8132a52b2fedb998ca236f3a67e3d77ce9b4e582ee",
     ".claude/skills/studio-editor/references/annotation-examples.md": "f2fb3bdcea363192e69a29baf901d7865098575d7b8ec2acbe5d00adbc1982ef",
-    ".claude/skills/studio-editor/references/review-cli.md": "ebe4e5293844007b0efbe7406b61e21e777af1560a2212695d16587a73b5ccb5",
+    ".claude/skills/studio-editor/references/review-cli.md": "bcf6aaeb70227b0b38ef6b750edcfaa718f8b5d22ee33b6c789ce2e4dc9487ca",
     ".claude/skills/studio-editor/scripts/resolve-annotation.mjs": "cea369258564deee15134d76622bda8192c543dfd1a2baec4287a8528b1004d3",
     ".claude/skills/studio-editor/scripts/run-praxity.mjs": "3646aac1221e1b4872228849f216956dbd7d07f9a438c3bfbdefe47581d9ad26",
-    ".claude/skills/studio-editor/SKILL.md": "699a0f9a1b9c0b5a13d24072dfe5c7a6654de4d01602ca685f3aacd33a6f47b5"
+    ".claude/skills/studio-editor/SKILL.md": "d2f6db1ffd7279c28b6436c34d5f10acb322ba2f6ff3ccbc53b188f244f03fb1"
   },
   "codex": {
     ".agents/skills/assessment-writing/SKILL.md": "8f657840dd8b8d99bbf704d65dee81dc179957c2f6334f12579f00294bead619",
     ".agents/skills/composer/outline-template.md": "afea4a0ce1f8a924fb9fc57e8f7dc00ec4a513acdc4cb0acad02a94ca945da7e",
     ".agents/skills/composer/patterns.md": "f4d8e926d9ede4d3c0df7629a65e93d92ad61e94f2f1b3ce55587bd1e05b27e8",
     ".agents/skills/composer/SKILL.md": "145cbd81420ff66b0c29ee85b0a899178341bf74e512f460d88e5439c39182db",
-    ".agents/skills/install-praxity/SKILL.md": "85b15d9e716afd95ec959c4f5946248d035805e760bb585f1181e8f20548569c",
+    ".agents/skills/install-praxity/SKILL.md": "4040b6a90962756ad4162a8132a52b2fedb998ca236f3a67e3d77ce9b4e582ee",
     ".agents/skills/studio-editor/references/annotation-examples.md": "f2fb3bdcea363192e69a29baf901d7865098575d7b8ec2acbe5d00adbc1982ef",
-    ".agents/skills/studio-editor/references/review-cli.md": "ebe4e5293844007b0efbe7406b61e21e777af1560a2212695d16587a73b5ccb5",
+    ".agents/skills/studio-editor/references/review-cli.md": "bcf6aaeb70227b0b38ef6b750edcfaa718f8b5d22ee33b6c789ce2e4dc9487ca",
     ".agents/skills/studio-editor/scripts/resolve-annotation.mjs": "cea369258564deee15134d76622bda8192c543dfd1a2baec4287a8528b1004d3",
     ".agents/skills/studio-editor/scripts/run-praxity.mjs": "3646aac1221e1b4872228849f216956dbd7d07f9a438c3bfbdefe47581d9ad26",
-    ".agents/skills/studio-editor/SKILL.md": "699a0f9a1b9c0b5a13d24072dfe5c7a6654de4d01602ca685f3aacd33a6f47b5"
+    ".agents/skills/studio-editor/SKILL.md": "d2f6db1ffd7279c28b6436c34d5f10acb322ba2f6ff3ccbc53b188f244f03fb1"
   }
 }

@@ -7,8 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { buildAdapters, installSkills, uninstallSkills } from '../src/skills.mjs';
 import { runCli } from '../src/cli.mjs';
 import { doctor } from '../src/doctor.mjs';
-import { courseActions } from '../src/t3-actions.mjs';
-import { initCourse } from '../src/init.mjs';
+import { courseActions, initCourse } from '../src/init.mjs';
 import { fixture, fakeTool, repository } from './helpers.mjs';
 
 const outputsFor = context => buildAdapters({ source: join(context.root, 'skills') });
@@ -131,7 +130,7 @@ function assertReservedReviewPort(section) {
   const text = section.replace(/\s+/g, ' ');
   assert.match(text, /course root's `t3\.json`/);
   assert.match(text, /`scripts\[\]` entry named `Open in Studio`/);
-  assert.match(text, /`command`.*executable `praxity` or `"\$HOME\/\.praxity\/bin\/praxity"`, followed by `studio \. --port N` and optionally `--no-open`, with no other arguments/);
+  assert.match(text, /`command`.*executable `praxity` or `"\$HOME\/\.praxity\/bin\/praxity"`, followed by `action studio \. --port N` and optionally `--no-open`, with no other arguments/);
   assert.match(text, /Copy only the decimal port/);
   assert.match(text, /never invent a port/i);
   assert.match(text, /Without a reservation, unsent drafts do not survive a Studio restart\./);
@@ -168,7 +167,7 @@ test('documented reserved-port forms round trip generated actions and the init m
   const skill = readStudioWorkflow();
   const section = skill.split('## Open for review\n')[1].split('\n## ')[0];
   assertReservedReviewPort(section);
-  const form = section.match(/`(studio \. --port N)`/)[1];
+  const form = section.match(/`(action studio \. --port N)`/)[1];
   const action = courseActions(4311).find(action => action.name === 'Open in Studio');
   assert.equal(action.command, `"$HOME/.praxity/bin/praxity" ${form.replace('N', '4311')} --no-open`);
   for (const launcher of ['praxity', '"$HOME/.praxity/bin/praxity"']) {
