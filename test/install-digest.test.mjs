@@ -49,6 +49,7 @@ for (const cached of [false, true]) test(`checksum refusal logs both digests, ca
   assert.ok(result.stderr.includes(`${name} sha256 ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad (expected aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)`), result.stderr);
   assert.doesNotMatch(result.stdout, new RegExp(`^verified ${name} `, 'm'));
   assert.equal(existsSync(join(setup.toolkit, 'active')), false);
+  assert.equal(existsSync(join(setup.toolkit, '0.1.0')), false);
   assert.equal(existsSync(join(setup.toolkit, '.install.lock')), false);
   assert.equal(existsSync(join(setup.home, '.praxity/bin/praxity')), false);
 });

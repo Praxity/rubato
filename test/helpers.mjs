@@ -17,7 +17,7 @@ export function examplePack() {
   return pack;
 }
 export function fixture(t) {
-  // Crash hooks compare exact paths with modules that canonicalize their base.
+  // Modules canonicalize their base, so tests compare canonical paths (macOS /var is /private/var).
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'praxity toolkit ')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const home = join(root, 'home');

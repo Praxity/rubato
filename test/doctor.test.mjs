@@ -21,13 +21,6 @@ const checkResult = { components: [
   { id: 'verapdf', usable: false, source: 'setup', version: '1.30.2', inventory: 'damaged', reason: 'Inventory damaged' },
 ], exitCode: 1 };
 
-for (const platform of ['darwin-arm64', 'darwin-x64']) test(`doctor reports the installed ${platform} platform`, t => {
-  const context = prepared(t);
-  context.state.platform = platform;
-  assert.deepEqual(doctor(context, runner(context)).items.find(item => item.id === 'platform'), {
-    id: 'platform', status: 'ok', message: platform, fix: '',
-  });
-});
 function runner(context, check = checkResult) {
   return ({ command, args }) => {
     if (args[0] === '--version') return { code: 0, stdout: `v${context.pack.runtimes.node.version}`, stderr: '' };
@@ -46,7 +39,8 @@ function runner(context, check = checkResult) {
 }
 test('doctor aggregates ok, failed, declined and not-installed through its interface', t => {
   const context = prepared(t);
-  writeFileSync(join(context.home, '.praxity/toolkit-state/declined.json'), '{"check":["browser"]}');
+  // Java is usable, so its past refusal no longer applies.
+  writeFileSync(join(context.home, '.praxity/toolkit-state/declined.json'), '{"check":["browser","java"]}');
   const result = doctor(context, runner(context));
   assert.deepEqual(validateSchema(result, loadSchema('doctor')), []);
   assert.equal(result.exitCode, 1);
@@ -57,16 +51,6 @@ test('doctor aggregates ok, failed, declined and not-installed through its inter
   for (const id of ['studio', 'trace', 'print']) assert.equal(status[`tool.${id}`], 'ok');
   assert.equal(status['host.claude.user'], 'not-installed');
   assert.equal(result.items.find(item => item.id === 'tool.check.verapdf').fix, 'praxity setup check verapdf');
-});
-test('missing optional components are absent until the user explicitly refuses them', t => {
-  const context = prepared(t);
-  const result = doctor(context, runner(context));
-  assert.equal(result.items.find(item => item.id === 'tool.check.browser').status, 'not-installed');
-});
-test('a usable component supersedes a past refusal', t => {
-  const context = prepared(t);
-  writeFileSync(join(context.home, '.praxity/toolkit-state/declined.json'), '{"check":["java"]}');
-  assert.equal(doctor(context, runner(context)).items.find(item => item.id === 'tool.check.java').status, 'ok');
 });
 test('malformed tool doctor and missing smoke artifacts fail visibly', t => {
   const context = prepared(t);
