@@ -83,21 +83,6 @@ activate() {
     die 'Activation version or doctor failed; restored the previous active pack. Resolve the error and rerun install.'
   fi
 }
-if [ "$ACTION" = rollback ]; then
-  CURRENT=$(sed -n '1p' "$ROOT/active") || die 'No current pack'
-  PREVIOUS=$(sed -n '2p' "$ROOT/active") || die 'No previous pack to roll back to'
-  [ -n "$PREVIOUS" ] || die 'No previous pack to roll back to'
-  safe_version "$CURRENT"; safe_version "$PREVIOUS"
-  contained "$ROOT/$PREVIOUS"
-  NODE="$ROOT/$PREVIOUS/runtimes/node/bin/node"
-  "$NODE" "$SCRIPT_DIR/src/install.mjs" verify "$ROOT/$PREVIOUS/pack.json" darwin-arm64 "$ROOT/$PREVIOUS"
-  activate "$PREVIOUS" "$CURRENT"
-  printf 'Active pack: %s\n' "$PREVIOUS"
-  exit 0
-fi
-command -v curl >/dev/null 2>&1 || die 'Install needs curl'
-command -v tar >/dev/null 2>&1 || die 'Install needs tar'
-command -v mktemp >/dev/null 2>&1 || die 'Install needs mktemp'
 if [ -z "$PLATFORM" ]; then
   OS=$(uname -s); CPU=$(uname -m)
   case "$OS:$CPU" in
@@ -110,6 +95,21 @@ if [ -z "$PLATFORM" ]; then
   esac
 fi
 case "$PLATFORM" in darwin-arm64|darwin-x64) ;; *) die "Platform not implemented: $PLATFORM" ;; esac
+if [ "$ACTION" = rollback ]; then
+  CURRENT=$(sed -n '1p' "$ROOT/active") || die 'No current pack'
+  PREVIOUS=$(sed -n '2p' "$ROOT/active") || die 'No previous pack to roll back to'
+  [ -n "$PREVIOUS" ] || die 'No previous pack to roll back to'
+  safe_version "$CURRENT"; safe_version "$PREVIOUS"
+  contained "$ROOT/$PREVIOUS"
+  NODE="$ROOT/$PREVIOUS/runtimes/node/bin/node"
+  "$NODE" "$SCRIPT_DIR/src/install.mjs" verify "$ROOT/$PREVIOUS/pack.json" "$PLATFORM" "$ROOT/$PREVIOUS"
+  activate "$PREVIOUS" "$CURRENT"
+  printf 'Active pack: %s\n' "$PREVIOUS"
+  exit 0
+fi
+command -v curl >/dev/null 2>&1 || die 'Install needs curl'
+command -v tar >/dev/null 2>&1 || die 'Install needs tar'
+command -v mktemp >/dev/null 2>&1 || die 'Install needs mktemp'
 MANIFEST_FILE=$(new_temp)
 BOOTSTRAP_TSV=$(new_temp)
 if [ -z "$MANIFEST" ]; then capture "$MANIFEST_FILE" cat "$SCRIPT_DIR/pack.json";

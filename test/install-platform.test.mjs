@@ -39,3 +39,30 @@ for (const [name, os, cpu, translated, expected] of [
   assert.deepEqual(state.installed, ['studio', 'trace', 'print']);
   assert.equal(setup.action('uninstall').status, 0);
 });
+
+for (const [name, cpu, translated, expected, forced] of [
+  ['forced Intel', 'arm64', '0', 'darwin-x64', true],
+  ['Intel', 'x86_64', '0', 'darwin-x64', false],
+  ['Apple Silicon', 'arm64', '0', 'darwin-arm64', false],
+  ['Rosetta', 'x86_64', '1', 'darwin-arm64', false],
+]) test(`rollback verifies the native platform on ${name}`, t => {
+  const setup = installation(t);
+  // A single-platform previous pack makes using the wrong platform observable.
+  setup.pack.platforms = [expected];
+  for (const artifact of [...Object.values(setup.pack.runtimes), ...setup.pack.tools]) {
+    artifact.archives = { [expected]: artifact.archives['darwin-arm64'] };
+  }
+  setup.save();
+  const install = () => shell(`sh ${quote(posix(join(repository, 'install.sh')))} --manifest ${quote(pathToFileURL(setup.manifest).href)} --platform ${expected}`, { env: setup.env });
+  for (const version of ['0.1.0', '0.2.0']) {
+    setup.pack.version = version; setup.save();
+    const result = install();
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  }
+  const mock = join(setup.root, 'rollback-platform-bin'); mkdirSync(mock);
+  writeFileSync(join(mock, 'uname'), `#!/bin/sh\ncase "$1" in -s) echo Darwin;; -m) echo ${cpu};; *) exit 99;; esac\n`, { mode: 0o755 });
+  writeFileSync(join(mock, 'sysctl'), `#!/bin/sh\necho ${translated}\n`, { mode: 0o755 });
+  const result = shell(`export PATH=${quote(posix(mock))}:"$PATH"; sh ${quote(posix(join(repository, 'install.sh')))} rollback ${forced ? '--platform darwin-x64' : ''}`, { env: setup.env });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.equal(readFileSync(join(setup.toolkit, 'active'), 'utf8'), '0.1.0\n0.2.0\n');
+});

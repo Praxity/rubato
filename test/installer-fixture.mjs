@@ -60,16 +60,17 @@ export function installation(t, options = {}) {
   const save = () => writeFileSync(manifest, JSON.stringify(pack, null, 2));
   save();
   const env = { ...process.env, HOME: posix(home), USERPROFILE: home, MSYS_NO_PATHCONV: undefined };
+  const bin = join(root, 'fixture-bin'); mkdirSync(bin);
+  writeFileSync(join(bin, 'uname'), '#!/bin/sh\ncase "$1" in -s) echo Darwin;; -m) echo arm64;; *) exit 99;; esac\n', { mode: 0o755 });
   if (process.platform === 'win32') {
     // Git Bash lacks stock macOS shasum. Emulate its exact invocation locally.
-    const bin = join(root, 'fixture-bin'); mkdirSync(bin);
     writeFileSync(join(bin, 'shasum'), '#!/bin/sh\n[ "$1" = -a ] && [ "$2" = 256 ] || exit 99\nshift 2\nexec sha256sum "$@"\n', { mode: 0o755 });
     // Git Bash's ps lacks -o. The in-use test runs on POSIX only, so here no
     // process runs from a test pack.
     writeFileSync(join(bin, 'ps'), '#!/bin/sh\n[ "$*" = "-A -ww -o pid=,args=" ] || exit 99\n', { mode: 0o755 });
     const init = join(root, 'bash-env'); writeFileSync(init, `export PATH=${quote(posix(bin))}:"$PATH"\n`);
     env.BASH_ENV = posix(init);
-  }
+  } else env.PATH = `${bin}:${process.env.PATH}`;
   const install = (extra = '') => shell(`sh ${quote(posix(join(repository, 'install.sh')))} --manifest ${quote(pathToFileURL(manifest).href)} --platform darwin-arm64 ${extra}`, { env });
   const action = command => shell(`sh ${quote(posix(join(repository, 'install.sh')))} ${command}`, { env });
   return { root, home, pack, manifest, save, env, install, action, toolkit: join(home, '.praxity/toolkit') };
