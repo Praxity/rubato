@@ -53,9 +53,17 @@ function candidate(t, mutate = () => {}, mutateInventory = () => {}, mutateStage
     async verifyPublished(id, expected) { calls.push(['readback', id, expected]); },
   };
   const options = { version: '0.1.3', studioSha: sha, archivesDir: archives,
-    outputDir: join(root, 'output'), repositoryRoot: repository, dryRun: true,
+    outputDir: join(root, 'output'), repositoryRoot: root, dryRun: true,
     expectedDigests: Object.fromEntries(['arm64', 'x64'].map(arch => [arch,
       hash(readFileSync(join(archives, `praxity-cli-0.3.0-macos-${arch}.tar.gz`)))])) };
+  const pinned = realPack();
+  pinned.version = '0.1.2';
+  const studio = pinned.tools.find(tool => tool.id === 'studio');
+  studio.sourceRevision = sha;
+  for (const arch of ['arm64', 'x64']) studio.archives[`darwin-${arch}`].sha256 = options.expectedDigests[arch];
+  writeFileSync(join(root, 'pack.json'), JSON.stringify(pinned));
+  // Share only Git's read interface so the bootstrap still archives the real HEAD.
+  writeFileSync(join(root, '.git'), `gitdir: ${execFileSync('git', ['rev-parse', '--absolute-git-dir'], { cwd: repository, encoding: 'utf8' }).trim()}\n`);
   return { root, calls, release, options };
 }
 
@@ -144,7 +152,10 @@ test('dry-run creates a schema-valid pack with exact hashes and tested SHA, with
   assert.match(names, /rubato\/install.sh/);
   assert.doesNotMatch(names, /(?:\.git\/|test\/|build-inputs|studio-cli-review)/);
   const original = realPack();
-  assert.equal(original.version, '0.1.2');
+  assert.equal(original.version, '0.1.3');
+  for (const id of ['print', 'import']) {
+    assert.deepEqual(pack.tools.find(tool => tool.id === id).archives, original.tools.find(tool => tool.id === id).archives);
+  }
   assert.ok(pack.tools.find(tool => tool.id === 'check').archives['darwin-arm64'].url.startsWith('https://github.com/Praxity/rubato/'));
 });
 
@@ -371,9 +382,9 @@ for (const [name, change, message] of [
   ['same version', f => { f.options.version = '0.1.2'; }, /Pack version must increase/],
   ['duplicate archive', f => cpSync(join(f.options.archivesDir, 'praxity-cli-0.3.0-macos-arm64.tar.gz'), join(f.options.archivesDir, 'praxity-cli-0.3.1-macos-arm64.tar.gz')), /Exactly one archive/],
   ['missing archive', f => rmSync(join(f.options.archivesDir, 'praxity-cli-0.3.0-macos-x64.tar.gz')), /Exactly one archive/],
-  ['missing build digest', f => { delete f.options.expectedDigests.arm64; }, /Expected build digest/],
-  ['invalid build digest', f => { f.options.expectedDigests.x64 = 'bad'; }, /Expected build digest/],
-  ['swapped archive and checksum', f => { f.options.expectedDigests.arm64 = 'a'.repeat(64); }, /Build archive digest mismatch/],
+  ['missing build digest', f => { delete f.options.expectedDigests.arm64; }, /Expected arm64 SHA-256/],
+  ['invalid build digest', f => { f.options.expectedDigests.x64 = 'bad'; }, /Expected x64 SHA-256/],
+  ['swapped archive and checksum', f => { f.options.expectedDigests.arm64 = 'a'.repeat(64); }, /Studio arm64 SHA-256 does not match pack.json/],
 ]) test(`isolated refusal: ${name}`, async t => {
   const f = candidate(t);
   change(f);
@@ -420,7 +431,7 @@ test('extra inventory record refuses at coverage guard', async t => {
 test('invalid generated release manifest refuses at validation guard', async t => {
   const f = candidate(t), copy = join(f.root, 'repository');
   mkdirSync(copy);
-  const pack = realPack();
+  const pack = JSON.parse(readFileSync(join(f.options.repositoryRoot, 'pack.json')));
   pack.tools.find(tool => tool.id === 'print').archives['darwin-arm64'] = { status: 'unpublished', reason: 'Not released.' };
   writeFileSync(join(copy, 'pack.json'), JSON.stringify(pack));
   // Keep export usable if validation is removed, so a later Git error cannot mask it.
@@ -545,4 +556,19 @@ test('padded generated release installs using its exported installer and local a
   assert.equal(version.status, 0, version.stderr);
   assert.equal(JSON.parse(version.stdout).pack, '0.1.3');
   assert.equal(JSON.parse(version.stdout).tools.find(tool => tool.id === 'studio').version, '0.3.0-main.12345678');
+});
+
+for (const field of ['sourceRevision', 'arm64', 'x64']) test(`checkout pin mismatch refuses before output: ${field}`, async t => {
+  const f = candidate(t);
+  const manifest = join(f.options.repositoryRoot, 'pack.json');
+  const pack = JSON.parse(readFileSync(manifest));
+  const studio = pack.tools.find(tool => tool.id === 'studio');
+  if (field === 'sourceRevision') studio.sourceRevision = 'f'.repeat(40);
+  else studio.archives[`darwin-${field}`].sha256 = '0'.repeat(64);
+  writeFileSync(manifest, JSON.stringify(pack));
+  await assert.rejects(publishStudioPack({ ...f.options, dryRun: false }, f.release),
+    { message: field === 'sourceRevision' ? 'Studio sourceRevision does not match pack.json' : `Studio ${field} SHA-256 does not match pack.json` });
+  assert.deepEqual(f.calls, []);
+  assert.equal(existsSync(f.options.outputDir), false);
+  assert.equal(readFileSync(manifest, 'utf8'), JSON.stringify(pack));
 });
