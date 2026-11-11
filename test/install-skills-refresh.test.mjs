@@ -49,14 +49,18 @@ test('an upgrade refreshes changed tool skills for both recorded adapters', t =>
   assert.deepEqual(JSON.parse(readFileSync(join(setup.home, '.praxity/toolkit-skills.json'))).hosts, ['claude', 'codex']);
 });
 
-test('a reinstall replaces edited skill folders and removes added files', t => {
+test('a reinstall backs up edited skill folders before replacing them', t => {
   const setup = installation(t);
   passed(setup.install());
   passed(shell(`${quote(posix(join(setup.home, '.praxity/bin/praxity')))} skills install --host claude --scope user`, { env: setup.env }));
   const folder = join(setup.home, '.claude/skills/prax-format');
   writeFileSync(join(folder, 'SKILL.md'), 'MY EDITS');
   writeFileSync(join(folder, 'extra.txt'), 'STALE FILE');
-  passed(setup.install());
+  const result = setup.install(); passed(result);
+  const backup = result.stdout.match(/Backed up prax-format to ([^\r\n]+)/)?.[1];
+  assert.ok(backup);
+  assert.equal(readFileSync(join(backup, 'SKILL.md'), 'utf8'), 'MY EDITS');
+  assert.equal(readFileSync(join(backup, 'extra.txt'), 'utf8'), 'STALE FILE');
   assert.equal(readFileSync(join(folder, 'SKILL.md'), 'utf8'), '---\nname: prax-format\ndescription: Write a course.\n---\nTool-owned skill.\n');
   assert.equal(existsSync(join(folder, 'extra.txt')), false);
 });

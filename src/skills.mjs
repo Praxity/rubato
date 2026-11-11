@@ -1,4 +1,5 @@
 import { cpSync, existsSync, lstatSync, readFileSync, readdirSync, mkdirSync, mkdtempSync, writeFileSync, rmSync, renameSync, realpathSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { dirname, join, relative, resolve, sep, isAbsolute, win32 } from 'node:path';
 import { loadSchema, validateSchema } from './schema.mjs';
@@ -101,10 +102,10 @@ function readState(base) {
   return state;
 }
 
-export function refreshSkills({ base, outputs }) {
+export function refreshSkills({ base, outputs, home = homedir(), print = console.log }) {
   base = realpathSync(base);
   if (!readState(base).hosts.length) return { hosts: [], files: [] };
-  return changeSkills({ base, outputs, remove: false });
+  return changeSkills({ base, home, outputs, print, remove: false });
 }
 
 function writeState(base, state) {
@@ -116,9 +117,13 @@ function writeState(base, state) {
   renameSync(temp, record);
 }
 
+function skillDigest(files) {
+  return createHash('sha256').update(JSON.stringify([...files].map(([name, bytes]) =>
+    [name, createHash('sha256').update(bytes).digest('hex')]).sort(([a], [b]) => a.localeCompare(b)))).digest('hex');
+}
+
 function adoptionDiff(directory, packaged) {
   const existing = filesIn(directory);
-  const modified = [...existing].some(([name, bytes]) => !packaged.get(name)?.equals(bytes));
   const fingerprint = bytes => `${bytes.length} bytes, sha256 ${createHash('sha256').update(bytes).digest('hex').slice(0, 12)}`;
   const diff = [...new Set([...existing.keys(), ...packaged.keys()])].sort().map(name => {
     const before = existing.get(name), after = packaged.get(name);
@@ -127,10 +132,10 @@ function adoptionDiff(directory, packaged) {
     if (before.equals(after)) return `  unchanged ${name}: ${before.length} bytes`;
     return `  changed ${name}: existing ${fingerprint(before)}; packaged ${fingerprint(after)}`;
   }).join('\n') || '  (no files)';
-  return { diff, modified };
+  return { diff };
 }
 
-function changeSkills({ base, home, otherBase, host, outputs, remove, adopt = false, yes = false, print = console.log }) {
+function changeSkills({ base, home = base, otherBase, host, outputs, remove, adopt = false, yes = false, print = console.log }) {
   host = host === undefined ? undefined : canonicalHost(host);
   if (host !== undefined && !Object.hasOwn(adapters, host)) throw new Error('Host must be t3, claude or codex');
   base = realpathSync(base);
@@ -138,6 +143,7 @@ function changeSkills({ base, home, otherBase, host, outputs, remove, adopt = fa
   const selected = host ? [host] : state.hosts;
   const files = [];
   const previews = [];
+  const refreshBackups = [];
   const changes = selected.map(value => {
     const root = adapters[value].skills;
     const entries = remove ? [] : [...outputs[value]];
@@ -154,11 +160,16 @@ function changeSkills({ base, home, otherBase, host, outputs, remove, adopt = fa
       if (!remove && existsSync(directory)) {
         const unowned = !owned.includes(name);
         if (unowned && !adopt) throw new Error(`Unowned skill folder: ${directory}; refusing overwrite. Run the install with --adopt to review file differences, then --adopt --yes to back up and replace.`);
-        if (!adopt) return directory;
+        if (!adopt) {
+          // Older records have no digest; preserve their contents before the first refresh.
+          if (skillDigest(filesIn(directory)) !== state.digests?.[value]?.[name])
+            refreshBackups.push({ host: value, name, directory });
+          return directory;
+        }
         const prefix = `${root}/${name}/`;
         const packaged = new Map(entries.filter(([file]) => file.startsWith(prefix)).map(([file, bytes]) => [file.slice(prefix.length), bytes]));
-        const { diff, modified } = adoptionDiff(directory, packaged);
-        previews.push({ host: value, name, directory, diff, backup: unowned || modified,
+        const { diff } = adoptionDiff(directory, packaged);
+        previews.push({ host: value, name, directory, diff, backup: unowned || skillDigest(filesIn(directory)) !== state.digests?.[value]?.[name],
           action: unowned ? 'Adopt' : names.includes(name) ? 'Replace owned' : 'Remove owned' });
       }
       return directory;
@@ -169,7 +180,7 @@ function changeSkills({ base, home, otherBase, host, outputs, remove, adopt = fa
     }
     return { value, entries, names, directories };
   });
-  const backups = previews.filter(preview => preview.backup);
+  const backups = [...refreshBackups, ...previews.filter(preview => preview.backup)];
   if (backups.length) {
     home = realpathSync(home);
     const backupRoot = contained(home, '.praxity/skill-backups');
@@ -207,6 +218,7 @@ function changeSkills({ base, home, otherBase, host, outputs, remove, adopt = fa
     if (remove) {
       state.hosts = state.hosts.filter(value => value !== host);
       delete state.skills[value];
+      if (state.digests) delete state.digests[value];
     } else {
       state.skills[value] = names;
       for (const [name, bytes] of entries) {
@@ -215,6 +227,8 @@ function changeSkills({ base, home, otherBase, host, outputs, remove, adopt = fa
         writeFileSync(path, bytes);
         files.push(name);
       }
+      state.digests ??= {};
+      state.digests[value] = Object.fromEntries(names.map(name => [name, skillDigest(filesIn(contained(base, `${adapters[value].skills}/${name}`)))]));
     }
   }
   writeState(base, state);
