@@ -154,7 +154,7 @@ function changeSkills({ base, home = base, otherBase, host, outputs, remove, ado
   const state = readState(base);
   const digests = readDigests(base);
   const observed = new Map();
-  const changedDuringRefresh = directory => new Error(`A file changed during the refresh: ${directory}. Run the command again.`);
+  const changedDuringRefresh = directory => new Error(`A file changed during the refresh: ${directory}. Run the command again to ${remove ? 'finish removing the recorded skills' : 'restore any skills already removed'}.`);
   const selected = host ? [host] : state.hosts;
   const files = [];
   const previews = [];
@@ -172,11 +172,11 @@ function changeSkills({ base, home = base, otherBase, host, outputs, remove, ado
     const owned = state.skills[value] ?? [];
     const directories = [...new Set(remove ? owned : [...owned, ...names])].map(name => {
       const directory = contained(base, `${root}/${name}`);
-      if (!remove) observed.set(directory, existsSync(directory) ? skillDigest(filesIn(directory)) : null);
-      if (!remove && existsSync(directory)) {
+      observed.set(directory, existsSync(directory) ? skillDigest(filesIn(directory)) : null);
+      if (existsSync(directory)) {
         const unowned = !owned.includes(name);
         if (unowned && !adopt) throw new Error(`Unowned skill folder: ${directory}; refusing overwrite. Run the install with --adopt to review file differences, then --adopt --yes to back up and replace.`);
-        if (!adopt) {
+        if (!adopt || remove) {
           // Older records have no digest; preserve their contents before the first refresh.
           if (observed.get(directory) !== digests[value]?.[name])
             refreshBackups.push({ host: value, name, directory });
@@ -234,11 +234,9 @@ function changeSkills({ base, home = base, otherBase, host, outputs, remove, ado
   }
   for (const { value, entries, names, directories } of changes) {
     for (const directory of directories) {
-      if (!remove) {
-        const current = existsSync(directory) ? skillDigest(filesIn(directory)) : null;
-        if (current !== observed.get(directory)) throw changedDuringRefresh(directory);
-      }
-      // shortcut: a save between this recheck and deletion is not covered; use retained originals if concurrent editing must be supported.
+      const current = existsSync(directory) ? skillDigest(filesIn(directory)) : null;
+      if (current !== observed.get(directory)) throw changedDuringRefresh(directory);
+      // shortcut: a save after this recheck but before deletion finishes can still be lost; use retained originals if concurrent editing must be fully supported.
       rmSync(directory, { recursive: true, force: true });
     }
     if (remove) {
@@ -250,7 +248,12 @@ function changeSkills({ base, home = base, otherBase, host, outputs, remove, ado
       for (const [name, bytes] of entries) {
         const path = contained(base, name);
         mkdirSync(dirname(path), { recursive: true });
-        writeFileSync(path, bytes);
+        try { writeFileSync(path, bytes, { flag: 'wx' }); }
+        catch (error) {
+          if (error.code !== 'EEXIST') throw error;
+          const skill = name.slice(adapters[value].skills.length + 1).split('/')[0];
+          throw changedDuringRefresh(join(base, adapters[value].skills, skill));
+        }
         files.push(name);
       }
       digests[value] = Object.fromEntries(names.map(name => {
