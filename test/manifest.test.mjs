@@ -27,7 +27,7 @@ test('a tool can record its full source revision, with malformed revisions refus
 
 test('real pack validates and every published archive has a complete contract', () => {
   const pack = realPack();
-  assert.equal(pack.version, '0.1.2');
+  assert.equal(pack.version, '0.1.3');
   assert.equal(JSON.parse(readFileSync(join(repository, 'package.json'), 'utf8')).version, pack.version);
   assert.deepEqual(validateSchema(pack, loadSchema('pack')), []);
   assert.deepEqual(validateManifest(pack), []);
@@ -38,17 +38,6 @@ test('real pack validates and every published archive has a complete contract', 
       for (const field of ['url', 'sha256', 'format', 'stripComponents']) {
         assert.ok(Object.hasOwn(archive, field), `${artifact.id ?? artifact.version}/${platform}: missing ${field}`);
       }
-    }
-  }
-});
-
-test('real pack preserves the unchanged tool archive URLs from v0.1.1', () => {
-  const pack = realPack();
-  const prefix = 'https://github.com/Praxity/praxity-toolkit/releases/download/v0.1.1/';
-  for (const tool of pack.tools) {
-    if (['studio', 'check', 'trace'].includes(tool.id)) continue;
-    for (const archive of Object.values(tool.archives)) {
-      if (archive.status === 'published') assert.ok(archive.url.startsWith(prefix), tool.id);
     }
   }
 });

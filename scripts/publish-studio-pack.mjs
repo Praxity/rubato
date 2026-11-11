@@ -20,7 +20,6 @@ function verifyStudioArchive(file, arch, studioSha, expectedDigest, studio) {
   requireValue(lstatSync(file).isFile() && !lstatSync(file).isSymbolicLink(), 'Archive must be a regular file');
   const name = file.split(/[\\/]/).at(-1);
   const digest = hash(readFileSync(file));
-  requireValue(/^[a-f0-9]{64}$/.test(expectedDigest), 'Expected build digest is required');
   requireValue(digest === expectedDigest, 'Build archive digest mismatch');
   requireValue(readFileSync(`${file}.sha256`, 'utf8').trim() === `${digest} *${name}` ||
     readFileSync(`${file}.sha256`, 'utf8').trim() === `${digest}  ${name}`, 'Archive checksum mismatch');
@@ -83,6 +82,12 @@ export async function publishStudioPack({ version, studioSha, archivesDir, outpu
   const pack = readManifest(join(repositoryRoot, 'pack.json'));
   requireValue(newer(version, pack.version), 'Pack version must increase');
   const studio = pack.tools.find(tool => tool.id === 'studio');
+  requireValue(studio.sourceRevision === studioSha, 'Studio sourceRevision does not match pack.json');
+  for (const arch of ['arm64', 'x64']) {
+    requireValue(/^[a-f0-9]{64}$/.test(expectedDigests?.[arch]), `Expected ${arch} SHA-256 is required`);
+    requireValue(expectedDigests[arch] === studio.archives[`darwin-${arch}`].sha256,
+      `Studio ${arch} SHA-256 does not match pack.json`);
+  }
   const assets = [];
   let studioVersion;
   for (const arch of ['arm64', 'x64']) {
