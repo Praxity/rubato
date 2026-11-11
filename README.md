@@ -195,8 +195,8 @@ Installation refreshes owned user skills. Update also runs the same skill
 refresh command at project scope in the nearest parent directory with a
 Rubato skills ownership record, including the current directory. The home
 directory remains user scope. No ownership record means no project skills
-are added. Refresh replaces Rubato skill folders, including local edits, and
-preserves skills with other names. A failed refresh names the command to retry.
+are added. Refresh backs up locally edited Rubato skill folders before replacing
+them and preserves skills with other names. A failed refresh names the command to retry.
 A pack can be active even when a skill refresh fails.
 Start a new host session if it needs to discover changed skills.
 
@@ -367,11 +367,17 @@ Unowned folders with other names stay untouched.
 The competing-scope and path-safety checks still apply.
 
 Rubato owns its installed skill folders by name. Install and refresh delete
-recorded folders and copy fresh content, including replacing local edits and
-removing added files. Keep custom skills under different names. There is no
-migration of former plugin layouts or prerelease records.
+recorded folders and copy fresh content. Locally edited folders are backed up
+under `~/.praxity/skill-backups` first, including added files. Folders installed
+before file digests were recorded are backed up on their first refresh.
+`praxity skills uninstall` also backs up locally edited recorded folders before removing them.
+Keep custom skills under different names. There is no migration of former plugin layouts or prerelease records.
 
 `.praxity/toolkit-skills.json` records installed hosts and folder names.
+The optional `.praxity/toolkit-skills-digests.json` sidecar records packaged
+content digests. Missing or unreadable digests cause a backup on the next refresh.
+If a file changes during refresh, Rubato stops. Run the command again to restore
+any skills already removed.
 Installing a pack runs `praxity skills refresh --scope user` for recorded hosts,
 so new tool skills appear. Refresh project-scope adapters yourself with
 `praxity skills refresh --scope project` in the project. A failed or interrupted
@@ -444,8 +450,8 @@ SCORM fixture. It checks the shared Claude and Codex skill folders at both
 scopes, with `host.claude` and `host.codex` items. An adapter missing some of
 this pack's skills, or holding changed copies, is `partial`; its message names
 those skills and its fix is the `praxity skills install` command that refreshes
-them. Install replaces edited copies in recorded Rubato folders. Unrecorded
-same-name folders are preserved and block installation until you move them
+them. Install backs up edited copies before replacing recorded Rubato folders.
+Unrecorded same-name folders are preserved and block installation until you move them
 aside. `launcher.path` reports whether the first `praxity` on PATH is the
 Rubato launcher.
 Probes time out after 30 seconds and cap captured output at 1 MiB.

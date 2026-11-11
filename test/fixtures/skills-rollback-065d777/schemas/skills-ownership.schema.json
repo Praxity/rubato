@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Rubato installed skill folders",
+  "type": "object",
+  "required": ["owner", "hosts", "skills"],
+  "additionalProperties": false,
+  "properties": {
+    "owner": { "const": "praxity-toolkit" },
+    "hosts": { "type": "array", "items": { "enum": ["claude", "codex"] } },
+    "skills": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "claude": { "$ref": "#/$defs/names" },
+        "codex": { "$ref": "#/$defs/names" }
+      }
+    }
+  },
+  "$defs": {
+    "names": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9-]+$" } }
+  }
+}
