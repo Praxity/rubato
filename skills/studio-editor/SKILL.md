@@ -20,7 +20,11 @@ When the person is reviewing with comments, use [Studio review comments](#studio
 
 Launch Studio as a background process through the host's process tool. Keep its process handle and stdout in this session. Don't redirect its output to a file or start a second Studio for the same folder. Wait for the ready URL on stdout and capture all of it, including `#session=...`; never guess a port. The fragment is a capability token. Keep the URL out of files, project settings, shell history and logs; the host's tool transcript may still retain it, so say so if it matters.
 
-In T3, open the exact URL with `preview_open` or `preview_navigate` and `open: true`. If those tools are missing or refuse, or the host isn't T3, open it with the host's browser tool or give it to the person in this conversation. Never put Studio in an iframe or weaken its origin checks. A remote host needs its own supported loopback access.
+Search the host's available tools for preview tools before deciding they are missing. In T3, check `preview_status`, then open the exact URL with `preview_open` or `preview_navigate` and `open: true`. After opening or restarting, confirm the page loaded by checking its Studio title or an expected learner-page element with `preview_status` or `preview_snapshot`; an opened tab alone is not success.
+
+If the load fails, a snapshot times out, or the preview reports `visible: false`, say plainly that the preview did not load or is not confirmed visible, and give the actual error. Explain that Studio may be running on another machine than the one showing the preview; loopback refers to each machine itself. Offer to open the exact URL in a browser on the machine running Studio, or use the host's documented port forwarding if available, then repeat the load check. Don't promise automatic forwarding.
+
+If preview tools are missing or refuse, or the host isn't T3, use the host's browser tool on the machine running Studio. If you fall back to the system browser, tell the person you did so and why; don't claim the host preview worked. If neither a preview nor a browser on the person's own screen is available, give the person the exact URL in this conversation. Tell them it is a private link that edits their course, and to open it on the machine running Studio or through their port forwarding. Never put Studio in an iframe or weaken its origin checks.
 
 Studio opens the learner page in Read mode. Tell the person what they can do there:
 
