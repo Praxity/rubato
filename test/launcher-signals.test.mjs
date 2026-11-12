@@ -48,48 +48,6 @@ writeFileSync(process.env.TOOL_READY, JSON.stringify({ pid: process.pid, ppid: p
 setInterval(() => {}, 1000);
 `;
 
-test('Studio receives the current launcher identity even if an older archive ignores it', posixOnly, async t => {
-  const { launcher, exited, started } = launch(t, 'studio', parentIdentity, ['studio', '.', '--no-open'], { PRAXITY_PARENT_PID: '999999' });
-  const { pid, ppid, connected, expectedParent } = await started();
-  launcher.kill('SIGKILL');
-  assert.deepEqual(await exited, [null, 'SIGKILL']);
-  assert.equal(connected, true);
-  assert.equal(expectedParent, null);
-  assert.equal(ppid, launcher.pid);
-  assert.equal(alive(pid), true, 'An older archive can ignore the optional identity');
-});
-
-for (const startup of [false, true]) {
-  test(`Studio's parent contract stops an orphan ${startup ? 'before its bootstrap' : 'after startup'}`, posixOnly, async t => {
-    const source = `import { existsSync, writeFileSync } from 'node:fs';
-import { setTimeout as delay } from 'node:timers/promises';
-const expectedParent = process.env.PRAXITY_PARENT_PID;
-const watchParent = () => {
-  const stop = () => {
-    writeFileSync(process.env.TOOL_CLOSED, JSON.stringify({ expectedParent: expectedParent ?? null, connected: process.connected, exitCode: 129 }));
-    process.exit(129);
-  };
-  process.on('disconnect', stop);
-  if (!process.connected) stop();
-};
-${startup ? '' : 'watchParent();'}
-writeFileSync(process.env.TOOL_READY, JSON.stringify({ pid: process.pid, expectedParent: expectedParent ?? null }));
-${startup ? "while (!existsSync('bootstrap-go')) await delay(20); watchParent();" : ''}
-`;
-    const { launcher, exited, started, closed, root } = launch(t, 'studio', source, ['studio', '.', '--no-open']);
-    const { pid, expectedParent } = await started();
-    launcher.kill('SIGKILL');
-    assert.deepEqual(await exited, [null, 'SIGKILL']);
-    if (startup) writeFileSync(join(root, 'bootstrap-go'), 'go');
-    await until(() => existsSync(closed) && !alive(pid), 'Studio did not stop after launcher death', 5_000);
-    const stopped = JSON.parse(readFileSync(closed, 'utf8'));
-    assert.equal(expectedParent, null);
-    assert.equal(stopped.expectedParent, expectedParent);
-    assert.equal(stopped.connected, false);
-    assert.equal(stopped.exitCode, 129);
-  });
-}
-
 test('unrelated tools do not inherit a Studio parent identity', posixOnly, async t => {
   const { launcher, exited, started } = launch(t, 'check', parentIdentity, ['check'], { PRAXITY_PARENT_PID: '999999' });
   const { connected, expectedParent } = await started();

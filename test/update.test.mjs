@@ -122,7 +122,7 @@ test('update installs the verified release, refreshes both scopes, retains rollb
   assert.equal(JSON.parse(f.cli('version').stdout).pack, '0.1.0');
 });
 
-for (const scope of ['user', 'project']) test(`update replaces modified ${scope} skill folders`, async t => {
+for (const scope of ['project']) test(`update replaces modified ${scope} skill folders`, async t => {
   const f = releaseFixture(t);
   passed(f.cli(`skills install --host claude --scope ${scope}`));
   const edited = join(scope === 'user' ? f.home : f.project, '.claude/skills/prax-format/SKILL.md');

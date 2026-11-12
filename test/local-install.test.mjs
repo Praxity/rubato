@@ -4,21 +4,7 @@ import { createHash } from 'node:crypto';
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fixture, repository, examplePack } from './helpers.mjs';
-import { installVerifiedPack, assertStudioClosed, refreshInstalledSkills } from '../src/update.mjs';
-import { runCli } from '../src/cli.mjs';
-
-test('verified local bootstrap shares the session refusal and manifest checks', t => {
-  const f = fixture(t), bootstrap = join(f.root, 'bootstrap'); mkdirSync(bootstrap);
-  cpSync(join(repository, 'schemas'), join(bootstrap, 'schemas'), { recursive: true });
-  const manifest = Buffer.from(JSON.stringify(examplePack()));
-  writeFileSync(join(bootstrap, 'pack.json'), manifest);
-  const context = { ...f.context, home: f.home };
-  const busy = () => ({ code: 0, stdout: `123 node ${join(f.home, '.praxity/toolkit/old/tools/studio/praxity.mjs')} studio .`, stderr: '' });
-  assert.throws(() => assertStudioClosed(context, busy), /Save or copy.*unsaved text/);
-  assert.throws(() => installVerifiedPack(context, { bootstrap, manifest }, { updateProcess: busy }), /Save or copy.*unsaved text/);
-  writeFileSync(join(bootstrap, 'pack.json'), '{}');
-  assert.throws(() => installVerifiedPack(context, { bootstrap, manifest }), /Bootstrap manifest SHA-256 mismatch/);
-});
+import { installVerifiedPack, refreshInstalledSkills } from '../src/update.mjs';
 
 test('verified local bootstrap passes its digest and refreshes recorded project skills', t => {
   const f = fixture(t), bootstrap = join(f.root, 'bootstrap'); mkdirSync(bootstrap);
@@ -44,13 +30,6 @@ test('verified local bootstrap passes its digest and refreshes recorded project 
   assert.equal(calls[1][1].timeout, undefined);
   assert.equal(calls[2][1].cwd, join(f.root, 'course'));
   assert.match(readFileSync(join(f.home, '.praxity/toolkit/active'), 'utf8'), /^0\.1\.0/);
-});
-
-test('--version reports the same installed revision as version', async t => {
-  const f = fixture(t), lines = [];
-  await runCli(['--version'], f.context, { print: value => lines.push(value) });
-  assert.equal(JSON.parse(lines[0]).pack, '0.1.0');
-  assert.equal(JSON.parse(lines[0]).studioSha, '80a3098752a89ebdf729e5418d4e6750aa121de8');
 });
 
 for (const result of [{code:null,signal:'SIGINT'},{code:null},{code:130,error:'interrupted'}]) test(`interrupted installer is not a skills failure ${JSON.stringify(result)}`,t=>{

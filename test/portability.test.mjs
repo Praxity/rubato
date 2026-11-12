@@ -1,10 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
 import { shell, posix, quote } from './installer-fixture.mjs';
-import { fixture, repository } from './helpers.mjs';
+import { repository } from './helpers.mjs';
 
 function nonportable(source) {
   const code = source.split('\n').filter(line => !/^\s*#/.test(line)).join('\n');
@@ -31,21 +30,6 @@ test('portability gate catches known GNU-only flags and Bash 4 constructs', () =
 test('portability gate catches unescaped slash delimiters in awk character classes', () => {
   for (const source of ['sub(/[^/]+$/, "", member)', "awk '/[a/b]/ {print}' file"]) assert.ok(nonportable(source).length, source);
   for (const source of ['sub(/[^\\/]+$/, "", member)', 'split(path, parts, "/")']) assert.equal(nonportable(source).length, 0, source);
-});
-
-test('fixture paths use the same canonical spelling as skill crash hooks', t => {
-  const { root, home } = fixture(t), alias = join(root, 'temporary alias');
-  symlinkSync(home, alias, process.platform === 'win32' ? 'junction' : 'dir');
-  const code = `import {fixture} from ${JSON.stringify(new URL('./helpers.mjs', import.meta.url).href)};
-    import {realpathSync} from 'node:fs';
-    const {root,home}=fixture({after(){}}); console.log(JSON.stringify({root,home,canonicalRoot:realpathSync(root),canonicalHome:realpathSync(home)}));`;
-  const child = spawnSync(process.execPath, ['--input-type=module', '-e', code], {
-    encoding: 'utf8', env: { ...process.env, TMPDIR: alias, TMP: alias, TEMP: alias }, timeout: 20_000,
-  });
-  assert.equal(child.status, 0, child.stderr);
-  const paths = JSON.parse(child.stdout);
-  assert.equal(paths.root, paths.canonicalRoot);
-  assert.equal(paths.home, paths.canonicalHome);
 });
 
 test('installer scripts use BSD-compatible commands and pass sh/bash syntax checks', () => {

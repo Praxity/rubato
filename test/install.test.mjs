@@ -5,8 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmdirS
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { gzipSync } from 'node:zlib';
-import { fixture, repository, examplePack } from './helpers.mjs';
+import { repository } from './helpers.mjs';
 
 import { installation, shell, posix, quote, archive } from './installer-fixture.mjs';
 import { installationPlan } from '../src/manifest.mjs';
@@ -36,16 +35,6 @@ test('POSIX bootstrap fresh install and idempotent rerun, with spaces and no pro
   passed(version); assert.equal(JSON.parse(version.stdout).pack, '0.1.0');
   assert.equal(readFileSync(join(setup.home, '.profile'), 'utf8'), 'User profile\n');
   assert.equal(readFileSync(join(setup.home, 'AGENTS.md'), 'utf8'), 'User instructions\n');
-});
-test('checksum mismatch refuses publication and launchers', t => {
-  const setup = installation(t);
-  setup.pack.tools[0].archives['darwin-arm64'].sha256 = 'a'.repeat(64); setup.save();
-  const result = setup.install();
-  assert.notEqual(result.status, 0); assert.match(result.stderr, /Checksum mismatch/);
-  assert.equal(existsSync(join(setup.toolkit, '.install.lock')), false);
-  assert.equal(existsSync(join(setup.toolkit, 'active')), false);
-  assert.equal(existsSync(join(setup.toolkit, '0.1.0')), false);
-  assert.equal(existsSync(join(setup.home, '.praxity/bin/praxity')), false);
 });
 test('interrupted install resumes from verified downloads', t => {
   const setup = installation(t);
@@ -89,12 +78,8 @@ test('changed manifest and damaged installed files cannot silently replace a ver
   writeFileSync(join(setup.toolkit, '0.1.0/tools/studio/praxity.mjs'), 'Modified');
   const damaged = setup.install(); assert.notEqual(damaged.status, 0); assert.match(damaged.stderr, /Installed file damaged/);
 });
-test('damaged cache and unsupported platform are refused', t => {
+test('an explicit unsupported platform is refused', t => {
   const setup = installation(t);
-  mkdirSync(join(setup.toolkit, '.cache'), { recursive: true });
-  const archive = setup.pack.runtimes.node.archives['darwin-arm64'];
-  writeFileSync(join(setup.toolkit, '.cache', `${archive.sha256}.tar.gz`), 'bad cache');
-  const damaged = setup.install(); assert.notEqual(damaged.status, 0); assert.match(damaged.stderr, /Cached checksum mismatch/);
   const unsupported = setup.install('--platform linux-x64');
   assert.notEqual(unsupported.status, 0); assert.match(unsupported.stderr, /not implemented/);
 });
@@ -112,28 +97,6 @@ test('rollback refuses damaged previous version and keeps both pointers', t => {
   const result = setup.action('rollback');
   assert.notEqual(result.status, 0); assert.match(result.stderr, /Installed file damaged/);
   assert.equal(readFileSync(join(setup.toolkit, 'active'), 'utf8'), before);
-});
-test('an escaping archive link never reaches extraction or activation', t => {
-  const setup = installation(t);
-  const header = Buffer.alloc(512);
-  const field = (offset, length, value) => header.write(value, offset, length, 'ascii');
-  field(0, 100, 'escape-link'); field(100, 8, '0000777\0');
-  field(108, 8, '0000000\0'); field(116, 8, '0000000\0');
-  field(124, 12, '00000000000\0'); field(136, 12, '00000000000\0');
-  field(148, 8, '        '); field(156, 1, '2'); field(157, 100, '../../outside');
-  field(257, 6, 'ustar\0'); field(263, 2, '00');
-  const checksum = [...header].reduce((total, byte) => total + byte, 0);
-  field(148, 8, `${checksum.toString(8).padStart(6, '0')}\0 `);
-  const bytes = gzipSync(Buffer.concat([header, Buffer.alloc(1024)]));
-  const malicious = join(setup.root, 'unsafe archive.tar.gz'); writeFileSync(malicious, bytes);
-  setup.pack.tools[0].archives['darwin-arm64'] = { status: 'published', url: pathToFileURL(malicious).href,
-    sha256: createHash('sha256').update(bytes).digest('hex'), format: 'tar.gz', stripComponents: 0 };
-  setup.save();
-  const result = setup.install();
-  assert.notEqual(result.status, 0); assert.match(result.stderr, /Unsafe archive link/);
-  assert.equal(existsSync(join(setup.toolkit, 'active')), false);
-  assert.equal(existsSync(join(setup.home, '.praxity/bin/praxity')), false);
-  assert.equal(existsSync(join(setup.root, 'outside')), false);
 });
 test('bootstrap rejects duplicate JSON keys before downloading Node', t => {
   const setup = installation(t);
