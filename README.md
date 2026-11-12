@@ -12,7 +12,7 @@ On a Mac, one install gives you five working tools:
 The pack also installs private Node and Typst runtimes, a `praxity` command,
 T3 course actions and skills for T3, Claude Code and Codex CLI. There is no SDK
 or MCP server. `pack.json` pins every archive by URL and SHA-256.
-Studio reads grammar 4 courses; convert grammar 3 courses first.
+Studio opens grammar 4 courses only.
 
 What changed in this release: [0.2.0 release notes](docs/release-notes/0.2.0.md).
 Earlier notes are in [`docs/release-notes/`](docs/release-notes/).
@@ -224,32 +224,6 @@ shell that may not have `~/.praxity/bin` on PATH. Open in Studio passes
 browser. Automatic editor preview needs T3 desktop and Studio's
 `--port` and `/launch` support. An occupied port makes Studio fail clearly;
 close the process using it before retrying.
-
-## Convert a grammar 3 course
-
-Keep a backup and convert a copy. The converter is archived at Studio tag
-`converter-v3-to-v4`, commit `8905c116e`. It requires access to the private Studio
-repository, Node 24.18.x and pnpm 10.28.2. From a Studio checkout:
-
-```sh
-git fetch origin tag converter-v3-to-v4
-git worktree add --detach ../praxity-converter converter-v3-to-v4
-pnpm --dir ../praxity-converter install --frozen-lockfile
-pnpm --dir ../praxity-converter --filter @praxity/desktop prebuild
-pnpm --dir ../praxity-converter --filter @praxity/convert convert <course-copy> --from 3 --out <new-output-directory>
-```
-
-Review the output, `conversion-report.json`, its SHA-256, the allocation manifest
-and `narration-review.md`. Record the approved report hash independently, then run:
-
-```sh
-pnpm --dir ../praxity-converter --filter @praxity/convert convert --install <approved-directory> --report-sha256 <approved-hash>
-```
-
-Installation writes to the course copy recorded in the report, verifies source
-and output hashes, and installs the approved identities and narration through
-the course journal. Keep unchanged assets with that installed copy. Open and
-export it with Studio before replacing your working course.
 
 ## Recovery
 
