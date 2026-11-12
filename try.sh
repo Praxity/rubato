@@ -1,11 +1,12 @@
 #!/bin/sh
-# One-command trial on an Apple Silicon Mac: download Rubato, install the
+# One-command trial on a Mac (Apple Silicon or Intel): download Rubato, install the
 # pack, run the doctor, then open Studio's editor on the bundled sample course.
 #
 #   curl -fsSL https://raw.githubusercontent.com/Praxity/rubato/main/try.sh | sh
 #
 # It only touches ~/rubato-main (the downloaded Rubato checkout), ~/.praxity
 # (the installed pack) and a copy of the sample course in ~/praxity-trial-course.
+# It refuses to run when ~/rubato-main already exists, so it never replaces your files.
 # Optional downloads (Check's browser, Java, veraPDF) need consent, so run
 # `~/.praxity/bin/praxity setup check` yourself afterwards if you want them.
 set -eu
@@ -20,8 +21,11 @@ main() {
 
   step() { printf '\n== %s\n' "$1"; }
 
+  if [ -e "$toolkit" ] || [ -L "$toolkit" ]; then
+    echo "$toolkit already exists. Move or delete it, then run this command again."
+    exit 1
+  fi
   step "Downloading Rubato to $toolkit"
-  rm -rf "$toolkit"
   curl -fsSL https://github.com/Praxity/rubato/archive/refs/heads/main.tar.gz | tar xz -C "$HOME"
 
   step "Installing the pack and checking it (no administrator rights needed)"

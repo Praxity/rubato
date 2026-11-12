@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fixture, repository } from './helpers.mjs';
 import { posix, quote, shell } from './installer-fixture.mjs';
@@ -25,4 +25,19 @@ test('trial downloads Rubato and reaches its installer in the extracted archive'
   assert.match(result.stdout, /Trial installer reached/);
   assert.ok(existsSync(join(home, 'rubato-main/install.sh')));
   assert.equal(existsSync(join(home, '.praxity')), false);
+});
+
+test('trial refuses to replace an existing ~/rubato-main', t => {
+  const { home } = fixture(t);
+  mkdirSync(join(home, 'rubato-main'));
+  writeFileSync(join(home, 'rubato-main/notes.txt'), 'mine');
+  const result = shell(`
+    export HOME=${quote(posix(home))}
+    curl() { echo "curl called"; return 99; }
+    . ${quote(posix(join(repository, 'try.sh')))}
+  `);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stdout, /rubato-main already exists\. Move or delete it/);
+  assert.doesNotMatch(result.stdout, /curl called/);
+  assert.equal(readFileSync(join(home, 'rubato-main/notes.txt'), 'utf8'), 'mine');
 });
