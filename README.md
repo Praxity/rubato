@@ -1,9 +1,9 @@
 # Rubato
 
 Rubato installs Praxity's tools and skills for learning designers into agent hosts.
-On an Apple Silicon or Intel Mac, one install gives you five working tools:
+On a Mac, one install gives you five working tools:
 
-- Studio edits a course in the browser or in T3's preview, and exports it as HTML or PDF.
+- Studio edits a course in the browser or in T3's preview, and exports it as HTML, PDF or SCORM.
 - Check audits an exported course, including for accessibility.
 - Trace writes a report on an exported HTML course.
 - Print renders Markdown to PDF.
@@ -12,105 +12,65 @@ On an Apple Silicon or Intel Mac, one install gives you five working tools:
 The pack also installs private Node and Typst runtimes, a `praxity` command,
 T3 course actions and skills for T3, Claude Code and Codex CLI. There is no SDK
 or MCP server. `pack.json` pins every archive by URL and SHA-256.
-
 Studio reads grammar 4 courses; convert grammar 3 courses first.
-The checked-in manifest pins Studio CLI `0.3.0-main.80a30987` at
-`80a3098752a89ebdf729e5418d4e6750aa121de8`, Check `0.6.0-alpha.c61b1cb3c`
-and Trace `0.1.1-experimental.9036868d4` (masked-only item-cues by default;
-choices-only and cover-the-options require `prepare item-cues --diagnostics`).
-Rubato's asset-only experimental prereleases host the verified CLI archives
-without a pack manifest or installer bootstrap: Studio downloads from
-`v0.1.1-tools.experimental.20261027.1`, Check from
-`v0.1.1-tools.experimental.20261019` and Trace from
-`v0.1.1-tools.experimental.20261024.1`.
-The remaining tool archives come from Rubato `v0.1.1`.
-These candidate pins support installation from a reviewed checkout. The checked-in
-pack version is ahead of Rubato `v0.1.1`, whose published manifest and stable update
-channel remain unchanged.
-The installer supports Apple Silicon and Intel macOS and chooses native arm64
-runtimes when launched through Rosetta. Studio has an archive for each
-architecture. Check, Trace, Print and Import share portable archives across both.
-Other unpublished platform entries in `pack.json` are placeholders.
-Before publishing, run `npm run validate:release`. It refuses unpublished tools
-on every platform in `platforms`; regular validation still permits staged packs.
-CI installs on GitHub-hosted `macos-15` and `macos-15-intel` runners.
 
-New Studio packs use `scripts/publish-studio-pack.mjs`. Its default is a dry run:
+What changed in this release: [0.2.0 release notes](docs/release-notes/0.2.0.md).
+Earlier notes are in [`docs/release-notes/`](docs/release-notes/).
 
-```sh
-node scripts/publish-studio-pack.mjs --version 0.1.2 --studio-sha <full-tested-sha> --expect-arm64-sha256 <build-job-digest> --expect-x64-sha256 <build-job-digest> --archives <verified-candidate-folder> --output <new-output-folder> --dry-run
-```
+## Supported hosts and platforms
 
-The producer workflow admits a green main branch SHA, builds both native Mac archives,
-runs the package and browser checks, then tests the packages on hosted ARM64 and
-Intel Macs. The publisher independently verifies checksums, the exact payload
-inventory, manifest-owned installer paths and skill, legal files, upstream notices
-and the tested Studio SHA. Expected archive digests come from the build job's
-outputs. Downloads identify the candidate release by its numeric ID. A replaced
-archive fails even when its accompanying checksum and inventory agree.
-The new manifest records that SHA in the Studio tool's `sourceRevision` field.
-Only generated CLI artifacts and the public Rubato installer are released.
-The build inventory owns all payload names, including split JavaScript chunks.
-The private-path scan covers Praxity-built files and `inventory.json`. Its only
-upstream exemptions are `typst/`, `node_modules/`, `licenses/` and
-`export-assets/image-codecs/`, and each exempt file must have `third-party`
-provenance in the verified inventory. Upstream binaries, wasm and documentation
-may embed their authors' build paths. Their file hashes remain verified; the
-inventory records dependency versions, licences and notices.
+Rubato 0.2.0 runs on macOS, on Apple Silicon and on Intel Macs. Windows
+support is planned for the next release.
 
-The output contains `pack.json`, `rubato-<version>.tar.gz` and `SHA256SUMS`.
-The bootstrap archive contains a `rubato/` directory with the installer and the
-same manifest. Release assets also include both Studio archives. Other tool pins
-stay on their original releases; new manifests use the current Rubato repository
-URL. Existing manifests and releases stay unchanged.
+| Host | Status |
+|---|---|
+| T3 Code, Claude Code, Codex CLI | Tested for this release |
+| Cursor, VS Code, OpenCode, Cowork | Expected to work, not tested |
 
-Both modes check that the requested version exceeds Latest and every published
-stable release. Dry runs read these release prerequisites without creating a release.
-`--publish` creates a fresh draft, uploads this allowlist, downloads and rehashes
-the uploaded assets, then publishes last. The publisher reads back the live release
-to require immutability and the exact asset digests. A readback mismatch fails
-loudly after activation and requires publisher inspection.
-It requires a token with Contents write and Administration read on this repository
-and refuses an existing release or tag. Enable
-[GitHub release immutability](https://docs.github.com/en/rest/repos/repos#check-if-immutable-releases-are-enabled-for-a-repository)
-first; the publisher checks it before writing. An upload failure leaves an inactive
-draft. Inspect it and choose a new version for the next attempt.
+## Install Rubato 0.2.0
 
-The official release channel is a trust decision in Rubato's publisher and GitHub
-account controls. `SHA256SUMS` detects damaged downloads; a checksum delivered by
-the same release is not an independent signature.
+You need a Mac with `curl`, `tar` and `shasum`, which macOS includes. You don't
+need Node or administrator rights.
 
-Praxity's tools execute locally. The chosen host and model provider control
-telemetry and what they transmit. An editor capability URL can enter the host's
-tool transcript.
+1. Download the release and its checksum list into a new folder:
 
-## Try it
+   ```sh
+   mkdir rubato-0.2.0 && cd rubato-0.2.0
+   base=https://github.com/Praxity/rubato/releases/download/v0.2.0
+   curl -fsSLO "$base/rubato-0.2.0.tar.gz"
+   curl -fsSLO "$base/SHA256SUMS"
+   ```
 
-On an Apple Silicon or Intel Mac, one command downloads Rubato, installs the pack, runs
-the doctor and opens Studio's editor in Safari on a copy of the sample course:
+2. Check the download. The command prints `rubato-0.2.0.tar.gz: OK`:
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/Praxity/rubato/main/try.sh | sh
-```
+   ```sh
+   grep ' rubato-0.2.0.tar.gz$' SHA256SUMS | shasum -a 256 -c
+   ```
 
-Read [`try.sh`](try.sh) first if you prefer; it touches only `~/rubato-main`,
-`~/.praxity` and `~/praxity-trial-course`. Press Ctrl+C to stop Studio.
+   This shows the file arrived intact. To also check that it is the file
+   Praxity published, use the [GitHub CLI](https://cli.github.com/):
 
-## Install
+   ```sh
+   gh release verify-asset v0.2.0 rubato-0.2.0.tar.gz -R Praxity/rubato
+   ```
 
-Download this repository, review `install.sh` and `pack.json`, then run the
-installer from that folder on an Apple Silicon or Intel Mac:
+3. Unpack it and run the installer:
 
-```sh
-curl -fsSL https://github.com/Praxity/rubato/archive/refs/heads/main.tar.gz | tar xz
-cd rubato-main
-sh install.sh
-```
+   ```sh
+   tar xzf rubato-0.2.0.tar.gz
+   cd rubato
+   sh install.sh
+   ```
 
-The bootstrap needs `curl`, `tar`, `awk`, `mktemp` and `shasum`. It does not
-need an existing Node or administrator privileges. It installs to
-`~/.praxity/toolkit/<pack-version>/` and creates `~/.praxity/bin/praxity`.
-Add the line it prints to your shell configuration yourself:
+Keep this `rubato` folder. You need its `install.sh` to uninstall Rubato.
+
+The installer downloads Node, Typst and the five tools, checks each against
+the SHA-256 in `pack.json`, then runs the doctor. It installs to
+`~/.praxity/toolkit/0.2.0/` and creates `~/.praxity/bin/praxity`.
+On an Apple Silicon Mac it installs native arm64 runtimes, even from a
+Terminal running under Rosetta.
+
+Add the line the installer prints to your shell configuration yourself:
 
 ```sh
 export PATH="$HOME/.praxity/bin:$PATH"
@@ -120,21 +80,14 @@ Use `~/.praxity/bin/praxity` directly until your shell and host have the new PAT
 T3 course actions call it by that path, so they work before you edit PATH.
 The doctor's `launcher.path` item says whether `praxity` is on PATH and names
 the line to add. Neither the installer nor the doctor edits shell files.
-The launcher selects the active pack and uses its private Node. It sets Print's
-`PRAXITY_PRINT_TYPST` and Import's `PRAXITY_CLI` to absolute pack paths. Studio's
-present standalone publisher still needs a supported shared-Typst option.
-Node Studio launches receive a private IPC channel so Studio can detect launcher
-death during startup. Executable runners receive `PRAXITY_PARENT_PID` with the
-launcher's PID instead. Their Studio bootstrap must consume and remove that
-variable before loading commands or creating descendants. Older executables
-that do not consume it can pass the identity to their descendants. Other tools
-receive neither identity; the launcher's environment remains unchanged.
 
-The reviewed checkout supplies the bootstrap and default manifest.
-HTTPS manifests must match `--manifest-sha256 <reviewed-sha256>` or the SHA-256 of
-that checkout's `pack.json`, checked before Node is selected.
-Review local `file:///...` manifests directly; archive hashes check artifact
-integrity against that trusted manifest.
+Then install the skills for your host (see [Skills](#skills)):
+
+```sh
+~/.praxity/bin/praxity skills install --host claude --scope user
+```
+
+Everyday commands:
 
 ```sh
 ~/.praxity/bin/praxity setup
@@ -151,7 +104,24 @@ integrity against that trusted manifest.
 For example, `praxity setup check browser` forwards `setup browser` to Check.
 It never adds `--yes`. Every other subcommand and its arguments reach Studio
 unchanged. Rubato reserves `setup`, `doctor`, `version`, `update`, `rollback`,
-`skills`, `init`, `check`, `trace`, `print` and `import`.
+`skills`, `init`, `action`, `check`, `trace`, `print` and `import`.
+
+## Try it on the sample course
+
+To try the latest development version on `main` instead, one command downloads
+Rubato to `~/rubato-main`, installs the pack, runs the doctor and opens Studio's
+editor in Safari on a copy of the sample course:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Praxity/rubato/main/try.sh | sh
+```
+
+Read [`try.sh`](try.sh) first if you prefer; it touches only `~/rubato-main`,
+`~/.praxity` and `~/praxity-trial-course`. If `~/rubato-main` already exists,
+the script stops without changing anything; move or delete that folder and run
+it again. It reuses an existing `~/praxity-trial-course`. If the install fails
+but an earlier Rubato is installed, it opens Studio from that earlier version.
+Press Ctrl+C to stop Studio.
 
 ## Update
 
@@ -295,7 +265,7 @@ The installer owns everything in `~/.praxity/toolkit` and the launcher at
 failures publish no version or launcher. Installed file damage is refused.
 Roll back to an intact previous pack, or uninstall and reinstall. A different
 manifest needs a new pack version. There is no migration of prerelease installs.
-Old files `~/.praxity-toolkit-bootstrap.tsv`, `~/.praxity/toolkit/.install-ledger.tsv`, `~/.praxity/toolkit/.bootstrap-*` and `~/.praxity/toolkit-skills.json` can be deleted.
+Old files `~/.praxity-toolkit-bootstrap.tsv`, `~/.praxity/toolkit/.install-ledger.tsv` and `~/.praxity/toolkit/.bootstrap-*` can be deleted.
 
 Activation writes both version pointers to a temporary file, then renames it to
 `active`. If the version check or doctor fails, it restores the previous `active`
@@ -308,12 +278,54 @@ a pack. Rollback and uninstall do not detect dirty editor sessions.
 
 ```sh
 ~/.praxity/bin/praxity rollback
-sh /absolute/path/to/rubato/install.sh uninstall
+sh /path/to/rubato/install.sh uninstall
 ```
 
 Uninstall removes `~/.praxity/toolkit` and `~/.praxity/bin/praxity`, including
 any modified files inside them. It preserves optional tool components,
 generated host skills and other `~/.praxity` data.
+
+## Remove Rubato
+
+This removes Rubato, its tools and their downloads. Your courses stay where they
+are, including each course's `.praxity/` identity folder, `t3.json` and
+`.vscode/settings.json`.
+
+1. Save your work in Studio, close its tabs, and stop Studio.
+2. Remove the skills from each host and scope you installed them in. For user scope:
+
+   ```sh
+   ~/.praxity/bin/praxity skills uninstall --host claude --scope user
+   ~/.praxity/bin/praxity skills uninstall --host codex --scope user
+   ```
+
+   For project scope, run the same commands with `--scope project` in each
+   project folder where you installed skills. Edited skills are backed up first.
+3. Remove the pack and the `praxity` command, using the `rubato` folder you
+   installed from (download it again as in [Install](#install-rubato-020) if
+   you deleted it):
+
+   ```sh
+   sh /path/to/rubato/install.sh uninstall
+   ```
+
+4. Remove Check's optional downloads (browser, Java, veraPDF), if you ran its setup:
+
+   ```sh
+   rm -rf ~/Library/Application\ Support/Praxity\ Check
+   ```
+
+5. Copy any skill edits you want to keep out of `~/.praxity/skill-backups/`.
+   The rest of `~/.praxity` holds port reservations, setup refusals and skill
+   ownership records. Then delete the folder:
+
+   ```sh
+   rm -rf ~/.praxity
+   ```
+
+6. Remove the `export PATH="$HOME/.praxity/bin:$PATH"` line from your shell
+   configuration.
+7. In T3, delete the saved Praxity actions in each project's Actions settings.
 
 ## Skills
 
@@ -327,7 +339,7 @@ installed tools' skill folders without rewriting them.
 
 ```sh
 node scripts/build-adapters.mjs --output dist/adapters
-node scripts/build-adapters.mjs --installed "$HOME/.praxity/toolkit/0.1.1" --output dist/installed-adapters
+node scripts/build-adapters.mjs --installed "$HOME/.praxity/toolkit/0.2.0" --output dist/installed-adapters
 praxity skills install --host t3 --scope user
 ```
 
@@ -418,7 +430,8 @@ praxity skills install --host codex --scope user
 Files land in `~/.agents/skills/<name>/SKILL.md`. With `--scope project`, they
 land in `.agents/skills` under the current project. Codex also scans parent
 folders up to the repository root. Start Codex in the project, run `/skills`
-or type `$`, and confirm both Rubato skill names appear. Ask it to list the
+or type `$`, and confirm Rubato's four skills appear: `install-praxity`,
+`studio-editor`, `composer` and `assessment-writing`. Ask it to list the
 available Praxity skills before invoking one. See [Codex skill discovery](https://learn.chatgpt.com/docs/build-skills).
 
 ### Claude Code
@@ -464,7 +477,144 @@ state. Rubato records Check's explicit refusal line from setup run through
 This per-user state survives updates, rollback and uninstall. It cannot see a refusal from Check run on its own.
 A component that works counts as ok, even if you refused it earlier.
 
-## Release contract
+## Known limits
+
+- If other people have user accounts on your Mac, any of those accounts can
+  get Studio's editing link while Studio is running, and use it to edit the
+  open course. Run Studio only on a Mac whose other accounts you trust. A fix
+  is planned for the next release.
+- Praxity's tools run on your computer. The host you choose and its model
+  provider control telemetry and what they send. An editor link can appear in
+  the host's tool transcript.
+
+## Licences
+
+- Rubato's own scripts, skills and adapters are MIT-licensed (see [`LICENSE`](LICENSE)).
+- Studio, Check, Trace, Print and Import keep their own licence, PolyForm
+  Perimeter 1.0.1. Each tool's archive holds its licence, Required Notices
+  and third-party notices; installing or adapting a tool does not relicense it.
+  After install they are under `~/.praxity/toolkit/0.2.0/tools/<tool>/`.
+- Node.js and Typst are downloaded from their official releases under their
+  own licences, kept in `~/.praxity/toolkit/0.2.0/runtimes/`.
+- Typst embeds fonts with their own terms: Libertinus (SIL Open Font Licence),
+  New Computer Modern (GUST Font Licence) and DejaVu (Bitstream Vera and Arev).
+  Typst's download doesn't include those terms. Read them in the font notice
+  shipped with Studio's copy of Typst,
+  `~/.praxity/toolkit/0.2.0/tools/studio/typst/FONT-NOTICE`.
+- Studio includes DOMPurify, which is offered under MPL-2.0 or Apache-2.0.
+  Praxity uses it under Apache-2.0; both licence texts stay in Studio's archive.
+- Optional downloads come from their publishers under their own licences, and
+  only after you agree. Check's setup can download a headless Chromium,
+  FFmpeg (LGPL-2.1 or later), Temurin Java (GPL-2.0 with the Classpath
+  Exception) and veraPDF (GPL-3.0 or later, or MPL-2.0 or later). Check's
+  `NOTICE.md` lists them.
+
+## Paste into your agent
+
+> Install Rubato 0.2.0 on this Mac from the extracted release folder. Read its
+> install-praxity skill first. Show the concrete downloads and licences and
+> obtain consent. Run only its reviewed bootstrap. Keep tool setup consent
+> prompts visible, run doctor, and install the adapter for my host and scope.
+> Preserve my shell and AGENTS files. Show PATH and recovery commands. Use the
+> absolute launcher if PATH is stale.
+
+## Development
+
+Use Node >=24.18 and <25. There are no package dependencies.
+
+```sh
+npm run validate
+node --test
+```
+
+Offline installer tests use fake archives, temporary homes and a platform
+override. On Windows, invoke the checks from PowerShell. Installer subprocesses
+use Git Bash. Golden adapter files record
+reviewed content hashes. CI runs the offline tests on GitHub-hosted Ubuntu, and the
+tests plus a real install in a temporary home on GitHub-hosted Apple Silicon
+(`macos-15`) and Intel (`macos-15-intel`) macOS runners.
+No self-hosted machine runs code from this public repository's pull requests.
+
+### Install from a main checkout
+
+To install the development version, download this repository, review
+`install.sh` and `pack.json`, then run the installer from that folder:
+
+```sh
+curl -fsSL https://github.com/Praxity/rubato/archive/refs/heads/main.tar.gz | tar xz
+cd rubato-main
+sh install.sh
+```
+
+The bootstrap needs `curl`, `tar`, `awk`, `mktemp` and `shasum`.
+The reviewed checkout supplies the bootstrap and default manifest.
+HTTPS manifests must match `--manifest-sha256 <reviewed-sha256>` or the SHA-256 of
+that checkout's `pack.json`, checked before Node is selected.
+Review local `file:///...` manifests directly; archive hashes check artifact
+integrity against that trusted manifest.
+Before publishing, run `npm run validate:release`. It refuses unpublished tools
+on every platform in `platforms`; regular validation still permits staged packs.
+
+### Launcher
+
+The launcher selects the active pack and uses its private Node. It sets Print's
+`PRAXITY_PRINT_TYPST` and Import's `PRAXITY_CLI` to absolute pack paths. Studio's
+present standalone publisher still needs a supported shared-Typst option.
+Node Studio launches receive a private IPC channel so Studio can detect launcher
+death during startup. Executable runners receive `PRAXITY_PARENT_PID` with the
+launcher's PID instead. Their Studio bootstrap must consume and remove that
+variable before loading commands or creating descendants. Older executables
+that do not consume it can pass the identity to their descendants. Other tools
+receive neither identity; the launcher's environment remains unchanged.
+
+### Publish a release
+
+New Studio packs use `scripts/publish-studio-pack.mjs`. Its default is a dry run:
+
+```sh
+node scripts/publish-studio-pack.mjs --version 0.2.0 --studio-sha <full-tested-sha> --expect-arm64-sha256 <build-job-digest> --expect-x64-sha256 <build-job-digest> --archives <verified-candidate-folder> --output <new-output-folder> --dry-run
+```
+
+The producer workflow admits a green main branch SHA, builds both native Mac archives,
+runs the package and browser checks, then tests the packages on hosted ARM64 and
+Intel Macs. The publisher independently verifies checksums, the exact payload
+inventory, manifest-owned installer paths and skill, legal files, upstream notices
+and the tested Studio SHA. Expected archive digests come from the build job's
+outputs. Downloads identify the candidate release by its numeric ID. A replaced
+archive fails even when its accompanying checksum and inventory agree.
+The new manifest records that SHA in the Studio tool's `sourceRevision` field.
+Only generated CLI artifacts and the public Rubato installer are released.
+The build inventory owns all payload names, including split JavaScript chunks.
+The private-path scan covers Praxity-built files and `inventory.json`. Its only
+upstream exemptions are `typst/`, `node_modules/`, `licenses/` and
+`export-assets/image-codecs/`, and each exempt file must have `third-party`
+provenance in the verified inventory. Upstream binaries, wasm and documentation
+may embed their authors' build paths. Their file hashes remain verified; the
+inventory records dependency versions, licences and notices.
+
+The output contains `pack.json`, `rubato-<version>.tar.gz` and `SHA256SUMS`.
+The bootstrap archive contains a `rubato/` directory with the installer and the
+same manifest. Release assets also include both Studio archives. Other tool pins
+stay on their original releases; new manifests use the current Rubato repository
+URL. Existing manifests and releases stay unchanged.
+
+Both modes check that the requested version exceeds Latest and every published
+stable release. Dry runs read these release prerequisites without creating a release.
+`--publish` creates a fresh draft, uploads this allowlist, downloads and rehashes
+the uploaded assets, then publishes last. The publisher reads back the live release
+to require immutability and the exact asset digests. A readback mismatch fails
+loudly after activation and requires publisher inspection.
+It requires a token with Contents write and Administration read on this repository
+and refuses an existing release or tag. Enable
+[GitHub release immutability](https://docs.github.com/en/rest/repos/repos#check-if-immutable-releases-are-enabled-for-a-repository)
+first; the publisher checks it before writing. An upload failure leaves an inactive
+draft. Inspect it and choose a new version for the next attempt.
+
+The official release channel is a trust decision in Rubato's publisher and GitHub
+account controls. `SHA256SUMS` detects damaged downloads; a checksum delivered by
+the same release is not an independent signature.
+
+### Release contract
 
 `schemas/pack.schema.json` owns artifact formats. A published archive needs an
 official URL, SHA-256, format and root stripping count. Its entry and notices
@@ -481,16 +631,17 @@ It contains regular files and directories only. The checksum list has one
 bootstrap, with no duplicate entries for either. Publish all assets together
 before marking the release latest; update refuses incomplete releases.
 
-The published `v0.1.1` release contains all five darwin-arm64 tool archives and
-Studio's darwin-x64 archive. The checked-in `pack.json` replaces its Check and
-Trace pins with commit-qualified portable CLI archives hosted on Rubato's
-asset-only experimental prereleases, recording each full source revision and
-archive SHA-256. These are byte-for-byte copies of the owning tools' prereleases.
-The asset-only release does not update the stable channel or publish a pack.
-Check, Trace, Print and Import reuse the same archives for Intel macOS.
-Print's asset name retains `darwin-arm64` for compatibility; its payload
-inventory declares it portable. Other platform entries stay
-`unpublished`, with the reason recorded beside each.
+Each release attaches Studio's two archives, `pack.json`, the bootstrap and
+`SHA256SUMS`. Check,
+Trace, Print and Import archives stay attached to the earlier Rubato release that
+first published them, including asset-only prereleases that hold verified tool
+archives without a pack manifest. These are byte-for-byte copies of the owning
+tools' releases; each pin records the archive's SHA-256 and, where known, its
+full source revision. An asset-only release does not update the stable channel
+or publish a pack. Check, Trace, Print and Import use the same archives on
+Apple Silicon and Intel Macs. Print's asset name keeps `darwin-arm64` for
+compatibility; its payload inventory declares it portable. Other platform
+entries stay `unpublished`, with the reason recorded beside each.
 
 Published pack manifests retain their original archive URLs. GitHub redirects
 those URLs to this repository after the rename.
@@ -501,33 +652,3 @@ the [Node release instructions](https://github.com/nodejs/node/blob/main/README.
 Typst 0.15.1 hashes came from [official release asset metadata](https://api.github.com/repos/typst/typst/releases/tags/v0.15.1).
 `docs/provenance/` preserves the signed Node list, public key and extracted
 checksums. Neither origin settles signing, Gatekeeper or clean-Mac acceptance.
-
-Rubato's own scripts, skills and adapters are MIT-licensed (see `LICENSE`).
-The tools it installs keep their own licences: Studio, Check, Trace, Print and
-Import are under PolyForm Perimeter 1.0.1, with their third-party notices inside
-each archive. Installing or adapting a tool does not relicense it.
-
-## Paste into your agent
-
-> Use the reviewed Rubato checkout to install its pinned manifest on
-> this Apple Silicon or Intel Mac. Read its install-praxity skill first. Show the concrete
-> downloads, licences and unpublished blockers and obtain consent. Run only its
-> reviewed bootstrap. Keep tool setup consent prompts visible, run doctor, and
-> install the adapter for my host and scope. Preserve my shell and AGENTS files.
-> Show PATH and recovery commands. Use the absolute launcher if PATH is stale.
-
-## Development
-
-Use Node >=24.18 and <25. There are no package dependencies.
-
-```sh
-npm run validate
-node --test
-```
-
-Offline installer tests use fake archives, temporary homes and a platform
-override. On Windows, invoke the checks from PowerShell. Installer subprocesses
-use Git Bash. Golden adapter files record
-reviewed content hashes. CI runs the offline tests on GitHub-hosted Ubuntu, and the
-tests plus a real install in a temporary home on GitHub-hosted Apple Silicon macOS.
-No self-hosted machine runs code from this public repository's pull requests.
